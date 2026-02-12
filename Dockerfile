@@ -24,6 +24,9 @@ RUN npm run build
 FROM node:20-alpine
 WORKDIR /app
 
+# Install OpenSSL for Prisma
+RUN apk add --no-cache openssl
+
 # Copy Backend production dependencies
 COPY backend/package*.json ./
 RUN npm install --production
@@ -37,7 +40,7 @@ COPY --from=frontend-builder /app/frontend/dist ./public
 
 # Copy Prisma schema and generate client
 COPY backend/prisma ./prisma
-Run npx prisma generate
+RUN npx prisma generate
 
 # Expose port
 EXPOSE 3001
