@@ -65,8 +65,19 @@ app.use((err: Error, req: express.Request, res: express.Response, next: express.
 });
 
 // 404 handler
-app.use((req, res) => {
+// 404 handler for API routes
+app.use('/api/*', (req, res) => {
     res.status(404).json({ error: 'Not Found' });
+});
+
+// Serve static files from the React frontend app
+import path from 'path';
+const frontendPath = path.join(__dirname, '../public'); // Assumes dist is copied to public in Docker
+app.use(express.static(frontendPath));
+
+// Anything that doesn't match the above, send back index.html
+app.get('*', (req, res) => {
+    res.sendFile(path.join(frontendPath, 'index.html'));
 });
 
 app.listen(PORT, () => {

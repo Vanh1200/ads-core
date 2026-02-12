@@ -14,36 +14,26 @@ This repository contains the source code for the Ads Core System.
 2.  Navigate to the project directory.
 3.  Run `docker-compose up` to start the services.
 
-## Deployment to Railway (Recommended)
+## Deployment on Railway (Monolith Strategy)
 
-Since this project has both Backend and Frontend in one repository (Monorepo), you need to create 2 services in Railway.
+We deploy both Frontend and Backend as a **single service** to save costs and simplify management.
 
-### Step 1: Deploy Backend
 1.  Sign up/Login to [Railway](https://railway.app).
 2.  Click **"New Project"** -> **"Deploy from GitHub repo"**.
 3.  Select this repository.
-4.  Click **"Add Variables"** (or Settings later) and add:
-    -   `PORT`: `3001` (Optional, but good to be explicit).
+4.  Railway will find the `Dockerfile` in the root and start building.
+5.  **Configure Variables**:
+    -   `PORT`: `3001`
+    -   `DATABASE_URL`: Add a PostgreSQL service and link it here.
     -   `JWT_SECRET`: Your secure secret.
-    -   `DATABASE_URL`: (We will add this in Step 3).
-5.  Go to **Settings** -> **Root Directory**: Set to `/backend`.
-6.  Railway will find the `Dockerfile` and deploy.
+    -   `FRONTEND_URL`: The public URL of this service (e.g., `https://ads-core-production.up.railway.app`).
+    -   `VITE_API_URL`: **IMPORTANT**: Set this to `/api` (relative path) so the frontend talks to the backend on the same domain.
+6.  **Redeploy** to apply changes.
 
-### Step 2: Deploy Frontend
-1.  In the same project, click **"New"** button -> **"GitHub Repo"**.
-2.  Select the **SAME repository** again.
-3.  Go to **Settings** -> **Root Directory**: Set to `/frontend`.
-4.  Go to **Variables** and add:
-    -   `VITE_API_URL`: The URL of your Backend service (e.g., `https://web-production-xxxx.up.railway.app/api`).
-    -   **Important**: You find the Backend URL in the "Settings" -> "Public Networking" of the Backend service.
-5.  Railway will find the `Dockerfile` and deploy.
+### Development
+1.  Frontend: `cd frontend && npm run dev`
+2.  Backend: `cd backend && npm run dev`
 
-### Step 3: Add Database
-1.  Click **"New"** -> **"Database"** -> **"Add PostgreSQL"**.
-2.  Railway will create a database service.
-3.  Go to the **Backend Service** -> **Variables**.
-4.  Railway often auto-injects `DATABASE_URL`. If not, copy it from the Postgres service "Connect" tab and add it manually.
-5.  **Redeploy** the Backend if needed.
 ## Deployment with Docker (Self-hosted)
 
 Use this if you have a VPS (DigitalOcean Droplet, EC2).
