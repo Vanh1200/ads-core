@@ -667,7 +667,7 @@ export default function Batches() {
                                     />
                                 </th>
                                 <th
-                                    style={{ width: '25%', cursor: 'pointer', userSelect: 'none' }}
+                                    style={{ cursor: 'pointer', userSelect: 'none' }}
                                     onClick={() => handleSort('mccAccountName')}
                                 >
                                     <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
@@ -675,7 +675,7 @@ export default function Batches() {
                                     </div>
                                 </th>
                                 <th
-                                    style={{ width: '10%', cursor: 'pointer', userSelect: 'none' }}
+                                    style={{ cursor: 'pointer', userSelect: 'none' }}
                                     onClick={() => handleSort('status')}
                                 >
                                     <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
@@ -683,7 +683,7 @@ export default function Batches() {
                                     </div>
                                 </th>
                                 <th
-                                    style={{ width: '10%', cursor: 'pointer', userSelect: 'none' }}
+                                    style={{ cursor: 'pointer', userSelect: 'none' }}
                                     onClick={() => handleSort('readiness')}
                                 >
                                     <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
@@ -691,7 +691,7 @@ export default function Batches() {
                                     </div>
                                 </th>
                                 <th
-                                    style={{ width: '10%', cursor: 'pointer', userSelect: 'none' }}
+                                    style={{ cursor: 'pointer', userSelect: 'none' }}
                                     onClick={() => handleSort('timezone')}
                                 >
                                     <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>

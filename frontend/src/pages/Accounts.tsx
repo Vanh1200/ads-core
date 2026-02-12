@@ -981,7 +981,7 @@ export default function Accounts() {
                                 </th>
                                 <th
                                     onClick={() => handleSort('googleAccountId')}
-                                    style={{ cursor: 'pointer', userSelect: 'none', width: '15%', position: 'relative' }}
+                                    style={{ cursor: 'pointer', userSelect: 'none', position: 'relative' }}
                                     className="group"
                                 >
                                     <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
@@ -1009,7 +1009,7 @@ export default function Accounts() {
                                 </th>
                                 <th
                                     onClick={() => handleSort('accountName')}
-                                    style={{ cursor: 'pointer', userSelect: 'none', width: '18%' }}
+                                    style={{ cursor: 'pointer', userSelect: 'none' }}
                                 >
                                     <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
                                         Tên tài khoản <SortIcon field="accountName" />
@@ -1017,7 +1017,7 @@ export default function Accounts() {
                                 </th>
                                 <th
                                     onClick={() => handleSort('status')}
-                                    style={{ cursor: 'pointer', userSelect: 'none', width: '13%' }}
+                                    style={{ cursor: 'pointer', userSelect: 'none' }}
                                 >
                                     <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
                                         Trạng thái <SortIcon field="status" />
@@ -1025,7 +1025,7 @@ export default function Accounts() {
                                 </th>
                                 <th
                                     onClick={() => handleSort('currency')}
-                                    style={{ cursor: 'pointer', userSelect: 'none', width: '8%' }}
+                                    style={{ cursor: 'pointer', userSelect: 'none' }}
                                 >
                                     <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
                                         Tiền tệ <SortIcon field="currency" />
@@ -1033,7 +1033,7 @@ export default function Accounts() {
                                 </th>
                                 <th
                                     onClick={() => handleSort('totalSpending')}
-                                    style={{ cursor: 'pointer', userSelect: 'none', width: '10%' }}
+                                    style={{ cursor: 'pointer', userSelect: 'none' }}
                                 >
                                     <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-start', gap: 2 }}>
                                         <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
@@ -1064,7 +1064,7 @@ export default function Accounts() {
                                 </th>
                                 <th
                                     onClick={() => handleSort('batch')}
-                                    style={{ cursor: 'pointer', userSelect: 'none', width: '15%' }}
+                                    style={{ cursor: 'pointer', userSelect: 'none' }}
                                 >
                                     <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
                                         Lô (MA) <SortIcon field="batch" />
@@ -1072,7 +1072,7 @@ export default function Accounts() {
                                 </th>
                                 <th
                                     onClick={() => handleSort('currentMi')}
-                                    style={{ cursor: 'pointer', userSelect: 'none', width: '17%' }}
+                                    style={{ cursor: 'pointer', userSelect: 'none' }}
                                 >
                                     <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
                                         Invoice MCC (MI) <SortIcon field="currentMi" />
@@ -1080,7 +1080,7 @@ export default function Accounts() {
                                 </th>
                                 <th
                                     onClick={() => handleSort('currentMc')}
-                                    style={{ cursor: 'pointer', userSelect: 'none', width: '14%' }}
+                                    style={{ cursor: 'pointer', userSelect: 'none' }}
                                 >
                                     <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
                                         Khách hàng (MC) <SortIcon field="currentMc" />

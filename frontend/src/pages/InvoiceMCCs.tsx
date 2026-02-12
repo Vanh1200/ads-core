@@ -191,11 +191,11 @@ export default function InvoiceMCCs() {
                     <table className="data-table">
                         <thead>
                             <tr>
-                                <th style={{ width: '20%' }}>Tên</th>
-                                <th style={{ width: '15%' }}>MCC Invoice ID</th>
-                                <th style={{ width: '15%' }}>Trạng thái</th>
-                                <th style={{ width: '12%' }}>Tín dụng</th>
-                                <th style={{ width: '10%' }}>Tài khoản</th>
+                                <th>Tên</th>
+                                <th>MCC Invoice ID</th>
+                                <th>Trạng thái</th>
+                                <th>Tín dụng</th>
+                                <th>Tài khoản</th>
                                 <th style={{ width: '10%' }}>
                                     <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-start', gap: 2 }}>
                                         <span style={{ fontSize: 13 }}>Chi phí</span>

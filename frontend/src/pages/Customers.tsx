@@ -177,10 +177,10 @@ export default function Customers() {
                     <table className="data-table">
                         <thead>
                             <tr>
-                                <th style={{ width: '20%' }}>Tên khách hàng</th>
-                                <th style={{ width: '12%' }}>Trạng thái</th>
-                                <th style={{ width: '8%' }}>Tài khoản</th>
-                                <th style={{ width: '12%' }}>Tổng chi phí</th>
+                                <th>Tên khách hàng</th>
+                                <th>Trạng thái</th>
+                                <th>Tài khoản</th>
+                                <th>Tổng chi phí</th>
                                 <th style={{ width: '10%' }}>
                                     <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-start', gap: 2 }}>
                                         <span style={{ fontSize: 13 }}>Chi phí</span>
