@@ -1,0 +1,347 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// ==================== ENUMS ====================
+
+enum UserRole {
+  ADMIN
+  MANAGER     // Quản lý (Full quyền các role bên dưới)
+  BUYER       // NV Mua tài khoản
+  LINKER      // NV Nối tín
+  ASSIGNER    // NV Giao khách
+  UPDATER     // NV Cập nhật tiền
+  VIEWER      // NV Xem báo cáo
+}
+
+enum PartnerType {
+  ACCOUNT_SUPPLIER
+  INVOICE_PROVIDER
+  BOTH
+}
+
+enum BatchStatus {
+  ACTIVE
+  INACTIVE
+}
+
+enum InvoiceMCCStatus {
+  ACTIVE
+  PENDING
+  EXHAUSTED
+  INACTIVE
+}
+
+enum CreditStatus {
+  PENDING
+  CONNECTED
+  FAILED
+}
+
+enum CustomerStatus {
+  ACTIVE
+  INACTIVE
+}
+
+enum AccountStatus {
+  ACTIVE
+  SUSPENDED
+}
+
+enum HistoryReason {
+  INITIAL
+  MIGRATION
+  CREDIT_EXHAUSTED
+  REASSIGN
+  CUSTOMER_INACTIVE
+}
+
+enum SnapshotType {
+  MI_CHANGE
+  MC_CHANGE
+  DAILY_FINAL
+}
+
+enum ActivityAction {
+  CREATE
+  UPDATE
+  DELETE
+  LINK_MI
+  UNLINK_MI
+  ASSIGN_MC
+  UNASSIGN_MC
+  SNAPSHOT
+  IMPORT_SPENDING
+  IMPORT
+  SYNC
+}
+
+// ==================== MODELS ====================
+
+model User {
+  id            String   @id @default(uuid())
+  email         String   @unique
+  passwordHash  String   @map("password_hash")
+  fullName      String   @map("full_name")
+  role          UserRole @default(VIEWER)
+  isActive      Boolean  @default(true) @map("is_active")
+  createdAt     DateTime @default(now()) @map("created_at")
+  updatedAt     DateTime @updatedAt @map("updated_at")
+
+  // Relations
+  customersAssigned  Customer[]          @relation("AssignedStaff")
+  batchesCreated     AccountBatch[]      @relation("BatchCreator")
+  invoiceMCCsCreated InvoiceMCC[]        @relation("InvoiceMCCCreator")
+  miHistoriesLinked  AccountMIHistory[]  @relation("MILinkedBy")
+  miHistoriesUnlinked AccountMIHistory[] @relation("MIUnlinkedBy")
+  mcHistoriesAssigned AccountMCHistory[] @relation("MCAssignedBy")
+  mcHistoriesUnassigned AccountMCHistory[] @relation("MCUnassignedBy")
+  snapshots          SpendingSnapshot[]
+  activityLogs       ActivityLog[]
+
+  @@map("users")
+}
+
+model Partner {
+  id          String      @id @default(uuid())
+  name        String
+  contactInfo String?     @map("contact_info")
+  type        PartnerType
+  notes       String?
+  createdAt   DateTime    @default(now()) @map("created_at")
+
+  // Relations
+  batches     AccountBatch[]
+  invoiceMCCs InvoiceMCC[]
+
+  @@map("partners")
+}
+
+model AccountBatch {
+  id             String      @id @default(uuid())
+  mccAccountName String?     @map("mcc_account_name")
+  mccAccountId   String?     @map("mcc_account_id")
+  isPrelinked    Boolean     @default(false) @map("is_prelinked") // MA === MI
+  status         BatchStatus @default(ACTIVE)
+  totalAccounts  Int         @default(0) @map("total_accounts")
+  liveAccounts   Int         @default(0) @map("live_accounts")
+  timezone       String?     // UTC+8, UTC-3, etc.
+  year           Int?        // Năm tạo tài khoản (2024, 2025, etc.)
+  readiness      Int         @default(0) // Mức độ readiness (0-10)
+  notes          String?
+  createdAt      DateTime    @default(now()) @map("created_at")
+  updatedAt      DateTime    @updatedAt @map("updated_at")
+
+  // Foreign keys
+  partnerId  String? @map("partner_id")
+  createdById String @map("created_by")
+
+  // Relations
+  partner   Partner? @relation(fields: [partnerId], references: [id])
+  createdBy User     @relation("BatchCreator", fields: [createdById], references: [id])
+  accounts  Account[]
+
+  @@map("account_batches")
+}
+
+model InvoiceMCC {
+  id                  String           @id @default(uuid())
+  name                String           // Tên MCC Invoice
+  mccInvoiceId        String           @unique @map("mcc_invoice_id")
+  status              InvoiceMCCStatus @default(PENDING)
+  creditStatus        CreditStatus     @default(PENDING) @map("credit_status")
+  linkedAccountsCount Int              @default(0) @map("linked_accounts_count")
+  activeAccountsCount Int              @default(0) @map("active_accounts_count")
+  notes               String?
+  createdAt           DateTime         @default(now()) @map("created_at")
+  updatedAt           DateTime         @updatedAt @map("updated_at")
+
+  // Foreign keys
+  partnerId   String? @map("partner_id")
+  createdById String  @map("created_by")
+
+  // Relations
+  partner       Partner?           @relation(fields: [partnerId], references: [id])
+  createdBy     User               @relation("InvoiceMCCCreator", fields: [createdById], references: [id])
+  accounts      Account[]          @relation("CurrentMI")
+  miHistories   AccountMIHistory[]
+  snapshots     SpendingSnapshot[] @relation("SnapshotMI")
+  spendingRecords SpendingRecord[] @relation("SpendingMI")
+
+  @@map("invoice_mccs")
+}
+
+model Customer {
+  id             String         @id @default(uuid())
+  name           String         @unique
+  contactInfo    String?        @map("contact_info")
+  status         CustomerStatus @default(ACTIVE)
+  totalSpending  Decimal        @default(0) @map("total_spending") @db.Decimal(15, 2)
+  totalAccounts  Int            @default(0) @map("total_accounts")
+  activeAccounts Int            @default(0) @map("active_accounts")
+  notes          String?
+  createdAt      DateTime       @default(now()) @map("created_at")
+  updatedAt      DateTime       @updatedAt @map("updated_at")
+
+  // Foreign keys
+  assignedStaffId String? @map("assigned_staff_id")
+
+  // Relations
+  assignedStaff   User?              @relation("AssignedStaff", fields: [assignedStaffId], references: [id])
+  accounts        Account[]          @relation("CurrentMC")
+  mcHistories     AccountMCHistory[]
+  snapshots       SpendingSnapshot[] @relation("SnapshotMC")
+  spendingRecords SpendingRecord[]   @relation("SpendingMC")
+
+  @@map("customers")
+}
+
+model Account {
+  id              String        @id @default(uuid())
+  googleAccountId String        @unique @map("google_account_id")
+  accountName     String        @map("account_name")
+  status          AccountStatus @default(ACTIVE)
+  currency        String        @default("USD")
+  timezone        String?       // UTC+8, UTC-3, etc.
+  mccAccountName  String?       @map("mcc_account_name")
+  mccAccountId    String?       @map("mcc_account_id")
+  totalSpending   Decimal       @default(0) @map("total_spending") @db.Decimal(15, 2)
+  lastSynced      DateTime?     @map("last_synced")
+  createdAt       DateTime      @default(now()) @map("created_at")
+  updatedAt       DateTime      @updatedAt @map("updated_at")
+
+  // Foreign keys
+  batchId      String  @map("batch_id")
+  currentMiId  String? @map("current_mi_id")
+  currentMcId  String? @map("current_mc_id")
+
+  // Relations
+  batch       AccountBatch       @relation(fields: [batchId], references: [id])
+  currentMi   InvoiceMCC?        @relation("CurrentMI", fields: [currentMiId], references: [id])
+  currentMc   Customer?          @relation("CurrentMC", fields: [currentMcId], references: [id])
+  miHistories AccountMIHistory[]
+  mcHistories AccountMCHistory[]
+  snapshots   SpendingSnapshot[]
+  spendingRecords SpendingRecord[]
+
+  @@map("accounts")
+}
+
+model AccountMIHistory {
+  id           String        @id @default(uuid())
+  linkedAt     DateTime      @map("linked_at")
+  unlinkedAt   DateTime?     @map("unlinked_at")
+  reason       HistoryReason
+  notes        String?
+  createdAt    DateTime      @default(now()) @map("created_at")
+
+  // Foreign keys
+  accountId     String  @map("account_id")
+  invoiceMccId  String  @map("invoice_mcc_id")
+  linkedById    String  @map("linked_by")
+  unlinkedById  String? @map("unlinked_by")
+
+  // Relations
+  account     Account    @relation(fields: [accountId], references: [id])
+  invoiceMcc  InvoiceMCC @relation(fields: [invoiceMccId], references: [id])
+  linkedBy    User       @relation("MILinkedBy", fields: [linkedById], references: [id])
+  unlinkedBy  User?      @relation("MIUnlinkedBy", fields: [unlinkedById], references: [id])
+
+  @@map("account_mi_histories")
+}
+
+model AccountMCHistory {
+  id           String        @id @default(uuid())
+  assignedAt   DateTime      @map("assigned_at")
+  unassignedAt DateTime?     @map("unassigned_at")
+  reason       HistoryReason
+  notes        String?
+  createdAt    DateTime      @default(now()) @map("created_at")
+
+  // Foreign keys
+  accountId      String  @map("account_id")
+  customerId     String  @map("customer_id")
+  assignedById   String  @map("assigned_by")
+  unassignedById String? @map("unassigned_by")
+
+  // Relations
+  account      Account  @relation(fields: [accountId], references: [id])
+  customer     Customer @relation(fields: [customerId], references: [id])
+  assignedBy   User     @relation("MCAssignedBy", fields: [assignedById], references: [id])
+  unassignedBy User?    @relation("MCUnassignedBy", fields: [unassignedById], references: [id])
+
+  @@map("account_mc_histories")
+}
+
+model SpendingSnapshot {
+  id               String       @id @default(uuid())
+  spendingDate     DateTime     @map("spending_date") @db.Date
+  cumulativeAmount Decimal      @map("cumulative_amount") @db.Decimal(15, 2)
+  snapshotAt       DateTime     @map("snapshot_at")
+  snapshotType     SnapshotType @map("snapshot_type")
+  createdAt        DateTime     @default(now()) @map("created_at")
+
+  // Foreign keys
+  accountId     String  @map("account_id")
+  invoiceMccId  String? @map("invoice_mcc_id")
+  customerId    String? @map("customer_id")
+  createdById   String  @map("created_by")
+
+  // Relations
+  account    Account     @relation(fields: [accountId], references: [id])
+  invoiceMcc InvoiceMCC? @relation("SnapshotMI", fields: [invoiceMccId], references: [id])
+  customer   Customer?   @relation("SnapshotMC", fields: [customerId], references: [id])
+  createdBy  User        @relation(fields: [createdById], references: [id])
+
+  @@map("spending_snapshots")
+}
+
+model SpendingRecord {
+  id           String   @id @default(uuid())
+  spendingDate DateTime @map("spending_date") @db.Date
+  amount       Decimal  @db.Decimal(15, 2)
+  currency     String   @default("USD")
+  periodStart  DateTime @map("period_start")
+  periodEnd    DateTime @map("period_end")
+  createdAt    DateTime @default(now()) @map("created_at")
+
+  // Foreign keys
+  accountId    String  @map("account_id")
+  invoiceMccId String? @map("invoice_mcc_id")
+  customerId   String? @map("customer_id")
+
+  // Relations
+  account    Account     @relation(fields: [accountId], references: [id])
+  invoiceMcc InvoiceMCC? @relation("SpendingMI", fields: [invoiceMccId], references: [id])
+  customer   Customer?   @relation("SpendingMC", fields: [customerId], references: [id])
+
+  @@map("spending_records")
+}
+
+model ActivityLog {
+  id          String         @id @default(uuid())
+  action      ActivityAction
+  entityType  String         @map("entity_type")
+  entityId    String         @map("entity_id")
+  oldValues   Json?          @map("old_values")
+  newValues   Json?          @map("new_values")
+  description String?
+  ipAddress   String?        @map("ip_address")
+  createdAt   DateTime       @default(now()) @map("created_at")
+
+  // Foreign keys
+  userId String @map("user_id")
+
+  // Relations
+  user User @relation(fields: [userId], references: [id])
+
+  @@map("activity_logs")
+}
