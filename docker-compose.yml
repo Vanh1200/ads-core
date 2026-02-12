@@ -11,6 +11,39 @@ services:
     volumes:
       - postgres_data:/var/lib/postgresql/data
     restart: unless-stopped
+    networks:
+      - app-network
+
+  backend:
+    build: ./backend
+    container_name: ads-core-backend
+    restart: unless-stopped
+    ports:
+      - "3001:3001"
+    environment:
+      - PORT=3001
+      - DATABASE_URL=postgresql://postgres:postgres@postgres:5432/ads_core?schema=public
+      - JWT_SECRET=your_jwt_secret_here_change_me_in_production
+      # Add other env vars here
+    depends_on:
+      - postgres
+    networks:
+      - app-network
+
+  frontend:
+    build: ./frontend
+    container_name: ads-core-frontend
+    restart: unless-stopped
+    ports:
+      - "80:80"
+    depends_on:
+      - backend
+    networks:
+      - app-network
+
+networks:
+  app-network:
+    driver: bridge
 
 volumes:
   postgres_data:
