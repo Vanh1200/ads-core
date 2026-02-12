@@ -149,6 +149,7 @@ model AccountBatch {
   createdBy User     @relation("BatchCreator", fields: [createdById], references: [id])
   accounts  Account[]
 
+  @@unique([mccAccountId])
   @@map("account_batches")
 }
 
@@ -323,6 +324,7 @@ model SpendingRecord {
   invoiceMcc InvoiceMCC? @relation("SpendingMI", fields: [invoiceMccId], references: [id])
   customer   Customer?   @relation("SpendingMC", fields: [customerId], references: [id])
 
+  @@unique([accountId, spendingDate])
   @@map("spending_records")
 }
 
