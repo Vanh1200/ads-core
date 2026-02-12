@@ -14,6 +14,9 @@
   --shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.3);
   --radius: 12px;
   --radius-sm: 8px;
+  --z-drawer: 1000;
+  --z-overlay: 900;
+  --z-header: 800;
 }
 
 html {
@@ -814,21 +817,126 @@ body {
   border-left: 3px solid var(--danger);
 }
 
+/* Mobile Navigation Header */
+.mobile-header {
+  display: none;
+  height: 64px;
+  background: var(--surface);
+  border-bottom: 1px solid var(--border);
+  padding: 0 16px;
+  align-items: center;
+  justify-content: space-between;
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  z-index: var(--z-header);
+}
+
+.mobile-logo {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-weight: 700;
+  color: var(--text);
+  text-decoration: none;
+}
+
+.menu-toggle {
+  background: transparent;
+  border: none;
+  color: var(--text);
+  cursor: pointer;
+  padding: 8px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.sidebar-overlay {
+  display: none;
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.5);
+  backdrop-filter: blur(4px);
+  z-index: var(--z-overlay);
+  animation: fadeIn 0.2s ease;
+}
+
+@keyframes fadeIn {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
 /* Responsive */
 @media (max-width: 768px) {
+  .mobile-header {
+    display: flex;
+  }
+
   .sidebar {
-    width: 100%;
-    height: auto;
-    position: relative;
+    width: 280px;
+    height: 100vh;
+    position: fixed;
+    z-index: var(--z-drawer);
+    transform: translateX(-100%);
+    transition: transform 0.3s ease;
+    box-shadow: 20px 0 50px rgba(0, 0, 0, 0.5);
+  }
+
+  .sidebar.open {
+    transform: translateX(0);
+  }
+
+  .sidebar-overlay.show {
+    display: block;
   }
 
   .main-content {
     margin-left: 0;
     padding: 16px;
+    padding-top: 80px; /* Space for mobile header */
+    width: 100%;
   }
 
   .stats-grid {
     grid-template-columns: 1fr;
+  }
+
+  .page-header {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 16px;
+  }
+
+  .login-card {
+    padding: 24px;
+    margin: 16px;
+  }
+
+  .modal {
+    margin: 10px;
+    max-height: 80vh;
+  }
+}
+
+@media (max-width: 480px) {
+  .page-title {
+    font-size: 22px;
+  }
+
+  .stat-value {
+    font-size: 24px;
+  }
+
+  .card-header {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 12px;
+  }
+
+  .table-container {
+    margin-top: 8px;
   }
 }
 

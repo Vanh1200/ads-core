@@ -34,6 +34,17 @@ export default function Layout() {
     const queryClient = useQueryClient();
 
     const [showLogoutConfirm, setShowLogoutConfirm] = useState(false);
+    const [isSidebarOpen, setIsSidebarOpen] = useState(false);
+
+    // Auto-close sidebar on mobile when navigating
+    const handleNavClick = (path: string) => {
+        setIsSidebarOpen(false);
+        if (path === '/accounts') {
+            sessionStorage.removeItem('accounts_filters');
+            sessionStorage.removeItem('lastAccountPath');
+            window.dispatchEvent(new CustomEvent('reset-accounts-filters'));
+        }
+    };
 
     const filteredNavItems = navItems.filter(item => {
         if (!user) return false;
@@ -46,17 +57,13 @@ export default function Layout() {
             case '/': // Dashboard
             case '/partners': // Partners
             case '/accounts': // Accounts
-            case '/batches': // Manage Batches (Read-only for most)
-            case '/invoice-mccs': // Manage MI (Read-only for most)
-            case '/customers': // Manage MC (Read-only for most)
+            case '/batches': // Batchs
+            case '/invoice-mccs': // MI
+            case '/customers': // MC
                 return true;
             case '/import': // Import
             case '/quick-link': // Quick Link
                 return ['ADMIN', 'MANAGER', 'BUYER', 'LINKER', 'UPDATER'].includes(user.role);
-            case '/activity-logs':
-                return false; // Only ADMIN (handled by first check)
-            case '/users':
-                return false; // Only ADMIN (handled by first check)
             default:
                 return false;
         }
@@ -78,11 +85,34 @@ export default function Layout() {
         VIEWER: 'NV Xem báo cáo',
     };
 
+
     return (
         <div className="app-layout">
-            <aside className="sidebar">
+            {/* Mobile Header */}
+            <header className="mobile-header">
+                <button
+                    className="menu-toggle"
+                    onClick={() => setIsSidebarOpen(true)}
+                    aria-label="Open menu"
+                >
+                    <Layers size={24} />
+                </button>
+                <NavLink to="/" className="mobile-logo">
+                    <div className="sidebar-logo-icon" style={{ width: '28px', height: '28px', fontSize: '14px' }}>AC</div>
+                    <span>Ads Core</span>
+                </NavLink>
+                <div style={{ width: '40px' }}></div> {/* Spacer */}
+            </header>
+
+            {/* Sidebar Overlay */}
+            <div
+                className={`sidebar-overlay ${isSidebarOpen ? 'show' : ''}`}
+                onClick={() => setIsSidebarOpen(false)}
+            />
+
+            <aside className={`sidebar ${isSidebarOpen ? 'open' : ''}`}>
                 <div className="sidebar-header">
-                    <NavLink to="/" className="sidebar-logo">
+                    <NavLink to="/" className="sidebar-logo" onClick={() => setIsSidebarOpen(false)}>
                         <div className="sidebar-logo-icon">AC</div>
                         <span>Ads Core System</span>
                     </NavLink>
@@ -96,13 +126,7 @@ export default function Layout() {
                                 <NavLink
                                     key={item.path}
                                     to={item.path}
-                                    onClick={() => {
-                                        if (item.path === '/accounts') {
-                                            sessionStorage.removeItem('accounts_filters');
-                                            sessionStorage.removeItem('lastAccountPath');
-                                            window.dispatchEvent(new CustomEvent('reset-accounts-filters'));
-                                        }
-                                    }}
+                                    onClick={() => handleNavClick(item.path)}
                                     className={({ isActive }) =>
                                         `nav-link ${isActive && location.pathname === item.path ? 'active' : ''}`
                                     }
