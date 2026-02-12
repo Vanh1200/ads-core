@@ -12,7 +12,7 @@ router.get('/', authenticateToken, canView, async (req: AuthRequest, res: Respon
         const validation = paginationSchema.safeParse(req.query);
         const { page, limit } = validation.success ? validation.data : { page: 1, limit: 20 };
         const { search, spendingDays } = req.query;
-        const days = spendingDays ? parseInt(spendingDays as string) : 1;
+        const days = spendingDays ? parseInt(spendingDays as string) : 7;
         const startDate = new Date();
         startDate.setHours(0, 0, 0, 0);
         startDate.setDate(startDate.getDate() - (days - 1));

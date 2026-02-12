@@ -43,7 +43,7 @@ interface ParsedAccount {
     existingBatchId: string | null;
 }
 
-type SortField = 'mccAccountName' | 'mccAccountId' | 'status' | 'readiness' | 'timezone' | 'year' | 'partner' | 'createdAt';
+type SortField = 'mccAccountName' | 'mccAccountId' | 'status' | 'readiness' | 'timezone' | 'year' | 'partner' | 'createdAt' | 'rangeSpending';
 type SortOrder = 'asc' | 'desc';
 
 interface ParsedBatchData {
@@ -71,7 +71,7 @@ export default function Batches() {
     const [yearFilter, setYearFilter] = useState(searchParams.get('year') || '');
     const [partnerFilter, setPartnerFilter] = useState(searchParams.get('partnerId') || '');
 
-    const [spendingDays, setSpendingDays] = useState(1);
+    const [spendingDays, setSpendingDays] = useState(7);
 
     const [page, setPage] = useState(1);
     const [limit] = useState(20);
@@ -708,9 +708,15 @@ export default function Batches() {
                                 </th>
                                 <th style={{ width: '8%' }}>Tài khoản</th>
                                 <th style={{ width: '8%' }}>Sóng</th>
-                                <th style={{ width: '10%' }}>
+                                <th
+                                    style={{ width: '10%', cursor: 'pointer', userSelect: 'none' }}
+                                    onClick={() => handleSort('rangeSpending')}
+                                >
                                     <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-start', gap: 2 }}>
-                                        <span style={{ fontSize: 13 }}>Chi phí</span>
+                                        <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
+                                            <span style={{ fontSize: 13 }}>Chi phí</span>
+                                            <SortIcon field="rangeSpending" />
+                                        </div>
                                         <select
                                             value={spendingDays}
                                             onChange={(e) => setSpendingDays(Number(e.target.value))}

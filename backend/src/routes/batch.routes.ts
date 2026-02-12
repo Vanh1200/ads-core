@@ -12,7 +12,7 @@ router.get('/', authenticateToken, canView, async (req: AuthRequest, res: Respon
         const validation = paginationSchema.safeParse(req.query);
         const { page, limit } = validation.success ? validation.data : { page: 1, limit: 20 };
         const { search, spendingDays, timezone, year, status, partnerId, ids, sortBy, sortOrder } = req.query;
-        const days = spendingDays ? parseInt(spendingDays as string) : 1;
+        const days = spendingDays ? parseInt(spendingDays as string) : 7;
         const startDate = new Date();
         startDate.setHours(0, 0, 0, 0);
         startDate.setDate(startDate.getDate() - (days - 1));
@@ -84,6 +84,12 @@ router.get('/', authenticateToken, canView, async (req: AuthRequest, res: Respon
                 case 'partner':
                     orderBy = { partner: { name: order } };
                     break;
+                case 'rangeSpending':
+                    // We'll handle this AFTER fetching if we want accurate dynamic sorting,
+                    // but for database-level sorting, we can use totalSpending as a proxy if appropriate.
+                    // However, to satisfy the UI click, we'll implement in-memory sorting below for small datasets.
+                    orderBy = { createdAt: 'desc' };
+                    break;
                 default:
                     orderBy = { createdAt: 'desc' };
             }
@@ -128,6 +134,12 @@ router.get('/', authenticateToken, canView, async (req: AuthRequest, res: Respon
                 rangeSpending
             };
         });
+
+        // Handle in-memory sorting for rangeSpending
+        if (sortBy === 'rangeSpending') {
+            const order = (sortOrder as string) === 'asc' ? 1 : -1;
+            data.sort((a, b) => (Number(a.rangeSpending) - Number(b.rangeSpending)) * order);
+        }
 
         res.json({
             data,

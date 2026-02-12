@@ -7,7 +7,7 @@ const filePath = path.join(__dirname, '../../MCC manager.xlsx');
 
 async function migrate() {
     try {
-        console.log('--- STARTING HIGH-SPEED BULK MIGRATION (2026) ---');
+        console.log('--- STARTING REFINED HIGH-SPEED MIGRATION (ACCURATE 2026) ---');
 
         const admin = await prisma.user.findFirst({ where: { role: 'ADMIN' } });
         if (!admin) throw new Error('Admin not found. Run seed first.');
@@ -81,7 +81,7 @@ async function migrate() {
                 for (const [key, value] of Object.entries(row)) {
                     if (key && typeof key === 'string' && key.includes('/') && !isNaN(Number(value)) && Number(value) >= 0) {
                         const [day, month] = key.split('/').map(Number);
-                        const spendingDate = new Date(2026, month - 1, day); // Corrected to 2026
+                        const spendingDate = new Date(2026, month - 1, day);
                         allSpending.push({
                             _accID: accID,
                             spendingDate,
@@ -152,18 +152,37 @@ async function migrate() {
             process.stdout.write(`+`);
         }
 
-        console.log('\nStep 5: Refreshing Summaries...');
+        console.log('\nStep 5: Refreshing Aggregations...');
+        // Update Account totalSpending
         await prisma.$executeRaw`
             UPDATE accounts a
             SET total_spending = COALESCE((
                 SELECT SUM(amount) FROM spending_records s WHERE s.account_id = a.id
             ), 0)
         `;
+
+        // Update Customer stats
         await prisma.$executeRaw`
             UPDATE customers c
             SET total_spending = COALESCE((
                 SELECT SUM(amount) FROM spending_records s WHERE s.customer_id = c.id
-            ), 0)
+            ), 0),
+            total_accounts = (SELECT COUNT(*) FROM accounts a WHERE a.current_mc_id = c.id),
+            active_accounts = (SELECT COUNT(*) FROM accounts a WHERE a.current_mc_id = c.id AND a.status = 'ACTIVE')
+        `;
+
+        // Update Batch stats
+        await prisma.$executeRaw`
+            UPDATE account_batches b
+            SET total_accounts = (SELECT COUNT(*) FROM accounts a WHERE a.batch_id = b.id),
+            live_accounts = (SELECT COUNT(*) FROM accounts a WHERE a.batch_id = b.id AND a.status = 'ACTIVE')
+        `;
+
+        // Update Invoice stats
+        await prisma.$executeRaw`
+            UPDATE invoice_mccs i
+            SET linked_accounts_count = (SELECT COUNT(*) FROM accounts a WHERE a.current_mi_id = i.id),
+            active_accounts_count = (SELECT COUNT(*) FROM accounts a WHERE a.current_mi_id = i.id AND a.status = 'ACTIVE')
         `;
 
         console.log(`--- MIGRATION COMPLETE ---`);
@@ -175,4 +194,3 @@ async function migrate() {
 }
 
 migrate();
-function delay(ms: number) { return new Promise(resolve => setTimeout(resolve, ms)); }

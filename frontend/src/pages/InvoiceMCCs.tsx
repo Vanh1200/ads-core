@@ -29,7 +29,7 @@ export default function InvoiceMCCs() {
     const { user } = useAuthStore();
     const navigate = useNavigate();
     const [search, setSearch] = useState('');
-    const [spendingDays, setSpendingDays] = useState(1);
+    const [spendingDays, setSpendingDays] = useState(7);
     const [showModal, setShowModal] = useState(false);
     const [selectedInvoiceMCC, setSelectedInvoiceMCC] = useState<InvoiceMCC | null>(null);
     const [deleteId, setDeleteId] = useState<string | null>(null);
