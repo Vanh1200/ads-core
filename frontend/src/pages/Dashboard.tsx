@@ -148,7 +148,7 @@ export default function Dashboard() {
                 ))}
             </div>
 
-            <div style={{ display: 'grid', gridTemplateColumns: '2fr 1fr', gap: '24px', marginBottom: '24px' }}>
+            <div className="dashboard-main-grid">
                 {/* Global Spending Chart */}
                 <div className="card">
                     <div className="card-header">

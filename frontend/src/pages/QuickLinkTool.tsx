@@ -332,7 +332,7 @@ export default function QuickLinkTool() {
 
                 {/* Top Section: Destination (Left) and Requirements (Right) */}
                 {/* REMOVED alignItems: 'start' to allow stretching for equal height */}
-                <div style={{ display: 'grid', gridTemplateColumns: 'minmax(350px, 1fr) 2fr', gap: 24 }}>
+                <div className="quick-link-grid">
 
                     {/* Destination Section */}
                     <div className="card" style={{ height: '100%' }}>
@@ -467,10 +467,7 @@ export default function QuickLinkTool() {
                                     );
 
                                     return (
-                                        <div key={req.id} style={{
-                                            display: 'grid',
-                                            gridTemplateColumns: '1fr 1fr 1fr 1fr 44px',
-                                            gap: 16,
+                                        <div key={req.id} className="tool-form-row" style={{
                                             alignItems: 'start',
                                             padding: 16,
                                             backgroundColor: 'var(--surface-hover)',

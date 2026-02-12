@@ -216,7 +216,7 @@ export default function Import() {
             </div>
 
             {/* Two-column layout: Upload form + Help */}
-            <div style={{ display: 'grid', gridTemplateColumns: 'minmax(0, 1fr) minmax(0, 1fr)', gap: '24px', alignItems: 'stretch', width: '100%' }}>
+            <div className="import-grid">
                 {/* Left: Upload Form */}
                 <div className="card" style={{ display: 'flex', flexDirection: 'column', minWidth: 0 }}>
                     <div className="card-body">
