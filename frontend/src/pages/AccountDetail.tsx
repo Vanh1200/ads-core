@@ -418,7 +418,7 @@ export default function AccountDetail() {
                                 <div style={{ marginTop: '24px' }}>
                                     <h4 style={{ marginBottom: '12px' }}>Chi tiết</h4>
                                     <div className="table-container">
-                                        <table className="data-table" style={{ tableLayout: 'fixed', width: '100%' }}>
+                                        <table className="data-table">
                                             <thead>
                                                 <tr>
                                                     <th style={{ width: '15%' }}>Ngày</th>

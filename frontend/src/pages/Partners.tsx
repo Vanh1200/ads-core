@@ -150,7 +150,7 @@ export default function Partners() {
                     </div>
                 </div>
                 <div className="table-container">
-                    <table className="data-table" style={{ width: '100%' }}>
+                    <table className="data-table">
                         <thead>
                             <tr>
                                 <th>Tên đối tác</th>

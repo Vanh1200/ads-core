@@ -965,7 +965,7 @@ export default function Accounts() {
 
                 <div className="table-container">
                     {/* Global Selection Banner Removed - Moved to Action Bar */}
-                    <table className="data-table" style={{ tableLayout: 'fixed', width: '100%' }}>
+                    <table className="data-table">
                         <thead>
                             <tr>
                                 <th style={{ width: '40px' }}>

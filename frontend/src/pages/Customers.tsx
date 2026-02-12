@@ -174,7 +174,7 @@ export default function Customers() {
                     </div>
                 </div>
                 <div className="table-container">
-                    <table className="data-table" style={{ width: '100%' }}>
+                    <table className="data-table">
                         <thead>
                             <tr>
                                 <th style={{ width: '20%' }}>Tên khách hàng</th>

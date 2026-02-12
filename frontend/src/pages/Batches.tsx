@@ -655,7 +655,7 @@ export default function Batches() {
                 </div>
 
                 <div className="table-container">
-                    <table className="data-table" style={{ tableLayout: 'fixed', width: '100%' }}>
+                    <table className="data-table">
                         <thead>
                             <tr>
                                 <th style={{ width: 40, textAlign: 'center' }}>

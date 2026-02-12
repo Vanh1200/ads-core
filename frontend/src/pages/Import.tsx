@@ -487,7 +487,7 @@ export default function Import() {
 
                         {/* Preview Table */}
                         <div className="table-container">
-                            <table className="data-table" style={{ tableLayout: 'fixed', width: '100%' }}>
+                            <table className="data-table">
                                 <thead>
                                     <tr>
                                         <th style={{ width: '25%' }}>Tài khoản</th>

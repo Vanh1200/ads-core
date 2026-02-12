@@ -431,7 +431,8 @@ body {
 .table {
   width: 100%;
   border-collapse: collapse;
-  table-layout: auto;
+  table-layout: auto !important;
+  min-width: max-content;
 }
 
 .data-table th,
@@ -466,7 +467,7 @@ body {
 
 .table-sticky-first table {
   width: 100%;
-  min-width: max-content;
+  min-width: max-content !important;
 }
 
 .table-sticky-first th:first-child,
@@ -903,6 +904,8 @@ body {
     padding-top: 80px;
     /* Space for mobile header */
     width: 100%;
+    overflow-x: hidden;
+    /* Prevent horizontal scroll on body */
   }
 
   .stats-grid {
