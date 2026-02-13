@@ -25,7 +25,9 @@ async function backup() {
             'account',
             'spendingRecord',
             'activityLog',
-            'creditLinking'
+            'accountMIHistory',
+            'accountMCHistory',
+            'spendingSnapshot'
         ];
 
         for (const table of tables) {

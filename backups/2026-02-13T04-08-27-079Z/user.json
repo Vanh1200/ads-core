@@ -1,0 +1,72 @@
+[
+  {
+    "id": "267e2ea7-6d29-4d61-b368-039da52468a0",
+    "email": "admin@aasystem.local",
+    "passwordHash": "$2a$10$WAAqJFFgD.zWNVBHQfR10OoNKqvj/qxOeECqhE.STOz7p30YNqmIC",
+    "fullName": "System Admin",
+    "role": "ADMIN",
+    "isActive": true,
+    "createdAt": "2026-02-13T03:52:57.491Z",
+    "updatedAt": "2026-02-13T03:52:57.491Z"
+  },
+  {
+    "id": "a81ed648-5b94-4c6c-9b3a-44b9294ba1d0",
+    "email": "manager@aasystem.local",
+    "passwordHash": "$2a$10$EKTX6lwk4u5dYwHEYb6Zeep6IUnWirEjQyJg2FDttwibiZp7UT0em",
+    "fullName": "Manager User",
+    "role": "MANAGER",
+    "isActive": true,
+    "createdAt": "2026-02-13T03:52:58.201Z",
+    "updatedAt": "2026-02-13T03:52:58.201Z"
+  },
+  {
+    "id": "102f6347-2716-42d9-af5a-56c65b13ac9e",
+    "email": "buyer@aasystem.local",
+    "passwordHash": "$2a$10$WytozrxRSmrIJ98e4i82xOwTDAwSoBMnUDMyZssAQp10f2r3PRncG",
+    "fullName": "Buyer User",
+    "role": "BUYER",
+    "isActive": true,
+    "createdAt": "2026-02-13T03:52:58.878Z",
+    "updatedAt": "2026-02-13T03:52:58.878Z"
+  },
+  {
+    "id": "852c31cf-bb37-48a4-a527-0a1f006f2680",
+    "email": "linker@aasystem.local",
+    "passwordHash": "$2a$10$NU.cdE68dSb/xt9I/2CFSOugLMYaaY9ysBvAt2V0pPgL8MOutGPxi",
+    "fullName": "Linker User",
+    "role": "LINKER",
+    "isActive": true,
+    "createdAt": "2026-02-13T03:52:59.379Z",
+    "updatedAt": "2026-02-13T03:52:59.379Z"
+  },
+  {
+    "id": "fd7feae8-9e91-432c-aa86-498af1ebd5e8",
+    "email": "assigner@aasystem.local",
+    "passwordHash": "$2a$10$XI9o0A03ZwnVjUUx45BTjeayLGQPDH9UOYReVYhaKfmCK3FqVmn7K",
+    "fullName": "Assigner User",
+    "role": "ASSIGNER",
+    "isActive": true,
+    "createdAt": "2026-02-13T03:52:59.870Z",
+    "updatedAt": "2026-02-13T03:52:59.870Z"
+  },
+  {
+    "id": "113d7a79-08c4-4428-b870-0b5301785ca8",
+    "email": "updater@aasystem.local",
+    "passwordHash": "$2a$10$tnhuf97TGU/gQVXMsb5CMOUzB4Dm.jJBspy2FjfoT475HS2T7i2Eq",
+    "fullName": "Updater User",
+    "role": "UPDATER",
+    "isActive": true,
+    "createdAt": "2026-02-13T03:53:00.406Z",
+    "updatedAt": "2026-02-13T03:53:00.406Z"
+  },
+  {
+    "id": "9cdd7d5a-60dc-4ec5-9fd0-52d4b5ea2844",
+    "email": "viewer@aasystem.local",
+    "passwordHash": "$2a$10$DSWwez0qbiSNrFy4/XAJMOOI2t7D/Ju79EhM6NzMDHpHXa.39fbWW",
+    "fullName": "Viewer User",
+    "role": "VIEWER",
+    "isActive": true,
+    "createdAt": "2026-02-13T03:53:00.904Z",
+    "updatedAt": "2026-02-13T03:53:00.904Z"
+  }
+]
