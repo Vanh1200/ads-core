@@ -1,9 +1,29 @@
+// Diagnostic listeners (MUST BE AT THE VERY TOP)
+process.on('SIGTERM', () => {
+    console.warn('[PROCESS] SIGTERM received. Server is shutting down...');
+    process.exit(0);
+});
+
+process.on('SIGINT', () => {
+    console.warn('[PROCESS] SIGINT received. Server is shutting down...');
+    process.exit(0);
+});
+
+process.on('unhandledRejection', (reason, promise) => {
+    console.error('[PROCESS] Unhandled Rejection at:', promise, 'reason:', reason);
+});
+
+process.on('uncaughtException', (err) => {
+    console.error('[PROCESS] Uncaught Exception:', err);
+    // Give time for logs to be written
+    setTimeout(() => process.exit(1), 1000);
+});
+
 import dotenv from 'dotenv';
 dotenv.config();
 
 import fs from 'fs';
 import path from 'path';
-
 import express from 'express';
 import cors from 'cors';
 import helmet from 'helmet';
@@ -24,7 +44,17 @@ import creditLinkingRoutes from './routes/creditLinking.routes';
 import statsRoutes from './routes/stats.routes';
 
 const app = express();
-const PORT = process.env.PORT || 3001;
+const PORT = Number(process.env.PORT) || 3001;
+
+// Immediate request logger for diagnostics
+app.use((req, res, next) => {
+    if (req.url === '/api/health') {
+        console.log(`[HEALTH] Request from ${req.ip} - ${new Date().toISOString()}`);
+    } else {
+        console.log(`[REQUEST] ${req.method} ${req.url} - from ${req.ip}`);
+    }
+    next();
+});
 
 // Middleware
 app.use(helmet({
@@ -43,14 +73,14 @@ app.use(morgan('dev'));
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
-// Health check with logging
+// Health check with logic
 app.get('/api/health', (req, res) => {
-    console.log(`[HEALTH] Health check request from ${req.ip} - ${new Date().toISOString()}`);
     res.json({
         status: 'ok',
         timestamp: new Date().toISOString(),
         env: process.env.NODE_ENV,
-        uptime: process.uptime()
+        uptime: process.uptime(),
+        memory: process.memoryUsage()
     });
 });
 
@@ -77,7 +107,6 @@ app.use((err: Error, req: express.Request, res: express.Response, next: express.
     });
 });
 
-// 404 handler
 // 404 handler for API routes
 app.use('/api/*', (req, res) => {
     res.status(404).json({ error: 'Not Found' });
@@ -92,34 +121,15 @@ app.get('*', (req, res) => {
     res.sendFile(path.join(frontendPath, 'index.html'));
 });
 
-app.listen(PORT, () => {
-    console.log(`🚀 Server running on http://localhost:${PORT}`);
-    console.log(`📊 Health check: http://localhost:${PORT}/api/health`);
+// Bind explicitly to 0.0.0.0
+app.listen(PORT, '0.0.0.0', () => {
+    console.log(`🚀 Server running on http://0.0.0.0:${PORT}`);
+    console.log(`📊 Health check: http://0.0.0.0:${PORT}/api/health`);
     console.log(`📂 Frontend path: ${frontendPath}`);
     console.log(`📄 index.html exists: ${fs.existsSync(path.join(frontendPath, 'index.html'))}`);
     console.log(`🔑 DATABASE_URL defined: ${!!process.env.DATABASE_URL}`);
     console.log(`🔑 JWT_SECRET defined: ${!!process.env.JWT_SECRET}`);
-});
-
-// Diagnostic listeners
-process.on('SIGTERM', () => {
-    console.warn('[PROCESS] SIGTERM received. Server is shutting down...');
-    process.exit(0);
-});
-
-process.on('SIGINT', () => {
-    console.warn('[PROCESS] SIGINT received. Server is shutting down...');
-    process.exit(0);
-});
-
-process.on('unhandledRejection', (reason, promise) => {
-    console.error('[PROCESS] Unhandled Rejection at:', promise, 'reason:', reason);
-});
-
-process.on('uncaughtException', (err) => {
-    console.error('[PROCESS] Uncaught Exception:', err);
-    // Give time for logs to be written
-    setTimeout(() => process.exit(1), 1000);
+    console.log(`🌍 NODE_ENV: ${process.env.NODE_ENV}`);
 });
 
 export default app;
