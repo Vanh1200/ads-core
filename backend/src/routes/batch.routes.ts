@@ -1,5 +1,6 @@
 import { Router, Response } from 'express';
 import prisma from '../config/database';
+import { Prisma } from '@prisma/client';
 import { authenticateToken, AuthRequest, isBuyer, canView } from '../middleware/auth.middleware';
 import { createBatchSchema, paginationSchema } from '../utils/validators';
 import logActivity from '../utils/activityLogger';
@@ -102,16 +103,6 @@ router.get('/', authenticateToken, canView, async (req: AuthRequest, res: Respon
                     partner: { select: { id: true, name: true } },
                     createdBy: { select: { id: true, fullName: true } },
                     _count: { select: { accounts: true } },
-                    accounts: {
-                        select: {
-                            spendingRecords: {
-                                where: {
-                                    spendingDate: { gte: startDate }
-                                },
-                                select: { amount: true }
-                            }
-                        }
-                    }
                 },
                 skip: (page - 1) * limit,
                 take: limit,
@@ -120,20 +111,29 @@ router.get('/', authenticateToken, canView, async (req: AuthRequest, res: Respon
             prisma.accountBatch.count({ where }),
         ]);
 
-        // Calculate range spending for each batch
-        const data = batches.map(batch => {
-            const rangeSpending = batch.accounts.reduce((sum, account) => {
-                const accountSpending = account.spendingRecords.reduce((aSum, record) => aSum + Number(record.amount), 0);
-                return sum + accountSpending;
-            }, 0);
+        // Optimized Aggregation: Fetch spending sums using a single raw SQL query
+        const batchIds = batches.map(b => b.id);
+        let rangeSpendingMap: Record<string, number> = {};
 
-            // Remove accounts from response to keep it small
-            const { accounts, ...rest } = batch;
-            return {
-                ...rest,
-                rangeSpending
-            };
-        });
+        if (batchIds.length > 0) {
+            const spendingAggs: any[] = await prisma.$queryRaw`
+                SELECT a.batch_id as "batchId", SUM(s.amount) as "totalAmount"
+                FROM spending_records s
+                JOIN accounts a ON s.account_id = a.id
+                WHERE a.batch_id IN (${Prisma.join(batchIds)}) 
+                  AND s.spending_date >= ${startDate}
+                GROUP BY a.batch_id
+            `;
+
+            spendingAggs.forEach(agg => {
+                rangeSpendingMap[agg.batchId] = Number(agg.totalAmount || 0);
+            });
+        }
+
+        const data = batches.map(batch => ({
+            ...batch,
+            rangeSpending: rangeSpendingMap[batch.id] || 0
+        }));
 
         // Handle in-memory sorting for rangeSpending
         if (sortBy === 'rangeSpending') {

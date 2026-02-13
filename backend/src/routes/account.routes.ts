@@ -77,10 +77,6 @@ router.get('/', authenticateToken, canView, async (req: AuthRequest, res: Respon
                     batch: { select: { id: true, mccAccountName: true, mccAccountId: true } },
                     currentMi: { select: { id: true, name: true, mccInvoiceId: true } },
                     currentMc: { select: { id: true, name: true } },
-                    spendingRecords: {
-                        where: { spendingDate: { gte: spendingStart } },
-                        select: { amount: true }
-                    }
                 },
                 skip: (page - 1) * limit,
                 take: limit,
@@ -89,10 +85,30 @@ router.get('/', authenticateToken, canView, async (req: AuthRequest, res: Respon
             prisma.account.count({ where }),
         ]);
 
+        // Optimized Aggregation: Fetch spending sums using groupBy
+        const accountIds = accounts.map(a => a.id);
+        let rangeSpendingMap: Record<string, number> = {};
+
+        if (accountIds.length > 0) {
+            const spendingAggs = await prisma.spendingRecord.groupBy({
+                by: ['accountId'],
+                where: {
+                    accountId: { in: accountIds },
+                    spendingDate: { gte: spendingStart }
+                },
+                _sum: {
+                    amount: true
+                }
+            });
+
+            spendingAggs.forEach(agg => {
+                rangeSpendingMap[agg.accountId] = Number(agg._sum.amount || 0);
+            });
+        }
+
         const accountsWithSpending = accounts.map((acc: any) => ({
             ...acc,
-            rangeSpending: (acc.spendingRecords || []).reduce((sum: number, r: any) => sum + Number(r.amount), 0),
-            spendingRecords: undefined // remove heavy list
+            rangeSpending: rangeSpendingMap[acc.id] || 0
         }));
 
         res.json({

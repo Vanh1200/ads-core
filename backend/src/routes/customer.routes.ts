@@ -27,12 +27,6 @@ router.get('/', authenticateToken, canView, async (req: AuthRequest, res: Respon
                 include: {
                     assignedStaff: { select: { id: true, fullName: true } },
                     _count: { select: { accounts: true } },
-                    spendingRecords: {
-                        where: {
-                            spendingDate: { gte: startDate }
-                        },
-                        select: { amount: true }
-                    }
                 },
                 skip: (page - 1) * limit,
                 take: limit,
@@ -41,14 +35,33 @@ router.get('/', authenticateToken, canView, async (req: AuthRequest, res: Respon
             prisma.customer.count({ where }),
         ]);
 
-        const data = customers.map(customer => {
-            const rangeSpending = customer.spendingRecords.reduce((sum, record) => sum + Number(record.amount), 0);
-            const { spendingRecords, ...rest } = customer;
-            return {
-                ...rest,
-                rangeSpending
-            };
-        });
+        // Optimized Aggregation: Fetch spending sums using groupBy
+        const customerIds = customers.map(c => c.id);
+        let rangeSpendingMap: Record<string, number> = {};
+
+        if (customerIds.length > 0) {
+            const spendingAggs = await prisma.spendingRecord.groupBy({
+                by: ['customerId'],
+                where: {
+                    customerId: { in: customerIds },
+                    spendingDate: { gte: startDate }
+                },
+                _sum: {
+                    amount: true
+                }
+            });
+
+            spendingAggs.forEach(agg => {
+                if (agg.customerId) {
+                    rangeSpendingMap[agg.customerId] = Number(agg._sum.amount || 0);
+                }
+            });
+        }
+
+        const data = customers.map(customer => ({
+            ...customer,
+            rangeSpending: rangeSpendingMap[customer.id] || 0
+        }));
 
         res.json({
             data,
