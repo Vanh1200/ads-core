@@ -234,6 +234,7 @@ model Account {
   spendingRecords SpendingRecord[]
 
   @@map("accounts")
+  @@index([totalSpending])
 }
 
 model AccountMIHistory {
