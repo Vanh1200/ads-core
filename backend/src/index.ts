@@ -51,16 +51,6 @@ import statsRoutes from './routes/stats.routes';
 const app = express();
 const PORT = Number(process.env.PORT) || 3001;
 
-// Immediate request logger for diagnostics
-app.use((req, res, next) => {
-    if (req.url === '/api/health') {
-        console.log(`[HEALTH] Request from ${req.ip} - ${new Date().toISOString()}`);
-    } else {
-        console.log(`[REQUEST] ${req.method} ${req.url} - from ${req.ip}`);
-    }
-    next();
-});
-
 // Middleware
 app.use(helmet({
     contentSecurityPolicy: false,
@@ -128,13 +118,9 @@ app.get('*', (req, res) => {
 
 // Bind explicitly to 0.0.0.0
 app.listen(PORT, '0.0.0.0', () => {
-    console.log(`🚀 Server running on http://0.0.0.0:${PORT}`);
-    console.log(`📊 Health check: http://0.0.0.0:${PORT}/api/health`);
-    console.log(`📂 Frontend path: ${frontendPath}`);
-    console.log(`📄 index.html exists: ${fs.existsSync(path.join(frontendPath, 'index.html'))}`);
-    console.log(`🔑 DATABASE_URL defined: ${!!process.env.DATABASE_URL}`);
-    console.log(`🔑 JWT_SECRET defined: ${!!process.env.JWT_SECRET}`);
-    console.log(`🌍 NODE_ENV: ${process.env.NODE_ENV}`);
+    console.log(`🚀 Ads Core System running on http://0.0.0.0:${PORT}`);
+    console.log(`🛠️ Health: http://0.0.0.0:${PORT}/api/health`);
+    console.log(`🌍 Environment: ${process.env.NODE_ENV}`);
 });
 
 export default app;
