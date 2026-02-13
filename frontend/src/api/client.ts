@@ -42,11 +42,6 @@ export const authApi = {
         api.post('/auth/change-password', { currentPassword, newPassword }),
 };
 
-// Dashboard API
-export const dashboardApi = {
-    getStats: () => api.get('/dashboard/stats'),
-};
-
 // Partners API
 export const partnersApi = {
     list: (params?: object) => api.get('/partners', { params }),
@@ -201,6 +196,13 @@ export const creditLinkingApi = {
         api.post('/credit-linking/suggest', { requirements }),
     execute: (data: any) =>
         api.post('/credit-linking/execute', data),
+};
+
+// Stats API
+export const statsApi = {
+    getSummary: () => api.get('/stats/summary'),
+    getTopSpenders: (limit?: number) => api.get('/stats/top-spenders', { params: { limit } }),
+    getRecentActivity: (limit?: number) => api.get('/stats/recent-activity', { params: { limit } }),
 };
 
 export default api;

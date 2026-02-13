@@ -18,10 +18,10 @@ import spendingRoutes from './routes/spending.routes';
 import importRoutes from './routes/import.routes';
 import activityLogRoutes from './routes/activityLog.routes';
 import creditLinkingRoutes from './routes/creditLinking.routes';
-import dashboardRoutes from './routes/dashboard.routes';
+import statsRoutes from './routes/stats.routes';
 
 const app = express();
-const PORT = Number(process.env.PORT || 3001);
+const PORT = process.env.PORT || 3001;
 
 // Middleware
 app.use(helmet({
@@ -57,7 +57,7 @@ app.use('/api/spending', spendingRoutes);
 app.use('/api/import', importRoutes);
 app.use('/api/activity-logs', activityLogRoutes);
 app.use('/api/credit-linking', creditLinkingRoutes);
-app.use('/api/dashboard', dashboardRoutes);
+app.use('/api/stats', statsRoutes);
 
 // Error handling middleware
 app.use((err: Error, req: express.Request, res: express.Response, next: express.NextFunction) => {
@@ -84,22 +84,9 @@ app.get('*', (req, res) => {
     res.sendFile(path.join(frontendPath, 'index.html'));
 });
 
-// Global Error Handlers - Log everything before crash
-process.on('unhandledRejection', (reason, promise) => {
-    console.error('CRITICAL: Unhandled Rejection at:', promise, 'reason:', reason);
+app.listen(PORT, () => {
+    console.log(`🚀 Server running on http://localhost:${PORT}`);
+    console.log(`📊 Health check: http://localhost:${PORT}/api/health`);
 });
-
-process.on('uncaughtException', (error) => {
-    console.error('CRITICAL: Uncaught Exception:', error);
-    process.exit(1);
-});
-
-const server = app.listen(PORT, '0.0.0.0', () => {
-    console.log(`🚀 Server running on http://0.0.0.0:${PORT}`);
-    console.log(`📊 Health check: http://0.0.0.0:${PORT}/api/health`);
-});
-
-server.keepAliveTimeout = 65000; // Ensure connection survives longer
-server.headersTimeout = 66000;
 
 export default app;
