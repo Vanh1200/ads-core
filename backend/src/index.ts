@@ -55,6 +55,14 @@ const PORT = Number(process.env.PORT) || 3001;
 app.use(helmet({
     contentSecurityPolicy: false,
 }));
+
+// Informative request logging (helpful for monitoring)
+app.use((req, res, next) => {
+    if (req.url !== '/api/health') {
+        console.log(`[REQUEST] ${req.method} ${req.url} - ${new Date().toISOString()}`);
+    }
+    next();
+});
 app.use(cors({
     origin: [
         'http://localhost:5173',
