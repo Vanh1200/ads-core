@@ -152,37 +152,73 @@ async function migrate() {
             process.stdout.write(`+`);
         }
 
-        console.log('\nStep 5: Refreshing Aggregations...');
+        console.log('\nStep 5: Refreshing Aggregations (High Performance SQL)...');
+
         // Update Account totalSpending
         await prisma.$executeRaw`
             UPDATE accounts a
-            SET total_spending = COALESCE((
-                SELECT SUM(amount) FROM spending_records s WHERE s.account_id = a.id
-            ), 0)
+            SET total_spending = s.total
+            FROM (
+                SELECT account_id, SUM(amount) as total
+                FROM spending_records
+                GROUP BY account_id
+            ) s
+            WHERE a.id = s.account_id;
         `;
 
         // Update Customer stats
         await prisma.$executeRaw`
             UPDATE customers c
-            SET total_spending = COALESCE((
-                SELECT SUM(amount) FROM spending_records s WHERE s.customer_id = c.id
-            ), 0),
-            total_accounts = (SELECT COUNT(*) FROM accounts a WHERE a.current_mc_id = c.id),
-            active_accounts = (SELECT COUNT(*) FROM accounts a WHERE a.current_mc_id = c.id AND a.status = 'ACTIVE')
+            SET 
+                total_spending = s.total,
+                total_accounts = s.count,
+                active_accounts = s.active_count
+            FROM (
+                SELECT 
+                    current_mc_id, 
+                    SUM(total_spending) as total,
+                    COUNT(*) as count,
+                    COUNT(*) FILTER (WHERE status = 'ACTIVE') as active_count
+                FROM accounts
+                WHERE current_mc_id IS NOT NULL
+                GROUP BY current_mc_id
+            ) s
+            WHERE c.id = s.current_mc_id;
         `;
 
         // Update Batch stats
         await prisma.$executeRaw`
             UPDATE account_batches b
-            SET total_accounts = (SELECT COUNT(*) FROM accounts a WHERE a.batch_id = b.id),
-            live_accounts = (SELECT COUNT(*) FROM accounts a WHERE a.batch_id = b.id AND a.status = 'ACTIVE')
+            SET 
+                total_accounts = s.count,
+                live_accounts = s.active_count
+            FROM (
+                SELECT 
+                    batch_id, 
+                    COUNT(*) as count,
+                    COUNT(*) FILTER (WHERE status = 'ACTIVE') as active_count
+                FROM accounts
+                GROUP BY batch_id
+            ) s
+            WHERE b.id = s.batch_id;
         `;
 
         // Update Invoice stats
         await prisma.$executeRaw`
             UPDATE invoice_mccs i
-            SET linked_accounts_count = (SELECT COUNT(*) FROM accounts a WHERE a.current_mi_id = i.id),
-            active_accounts_count = (SELECT COUNT(*) FROM accounts a WHERE a.current_mi_id = i.id AND a.status = 'ACTIVE')
+            SET 
+                linked_accounts_count = s.count,
+                active_accounts_count = s.active_count
+            FROM (
+                SELECT 
+                    current_mi_id, 
+                    COUNT(*) as count,
+                    COUNT(*) FILTER (WHERE status = 'ACTIVE') as active_count
+                FROM accounts
+                WHERE current_mi_id IS NOT NULL
+                GROUP BY current_mi_id
+            ) s
+            WHERE i.id = s.current_mi_id;
         `;
 
         console.log(`--- MIGRATION COMPLETE ---`);

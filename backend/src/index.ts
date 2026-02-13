@@ -21,7 +21,7 @@ import creditLinkingRoutes from './routes/creditLinking.routes';
 import dashboardRoutes from './routes/dashboard.routes';
 
 const app = express();
-const PORT = process.env.PORT || 3001;
+const PORT = Number(process.env.PORT || 3001);
 
 // Middleware
 app.use(helmet({
@@ -84,9 +84,22 @@ app.get('*', (req, res) => {
     res.sendFile(path.join(frontendPath, 'index.html'));
 });
 
-app.listen(PORT, () => {
-    console.log(`🚀 Server running on http://localhost:${PORT}`);
-    console.log(`📊 Health check: http://localhost:${PORT}/api/health`);
+// Global Error Handlers - Log everything before crash
+process.on('unhandledRejection', (reason, promise) => {
+    console.error('CRITICAL: Unhandled Rejection at:', promise, 'reason:', reason);
 });
+
+process.on('uncaughtException', (error) => {
+    console.error('CRITICAL: Uncaught Exception:', error);
+    process.exit(1);
+});
+
+const server = app.listen(PORT, '0.0.0.0', () => {
+    console.log(`🚀 Server running on http://0.0.0.0:${PORT}`);
+    console.log(`📊 Health check: http://0.0.0.0:${PORT}/api/health`);
+});
+
+server.keepAliveTimeout = 65000; // Ensure connection survives longer
+server.headersTimeout = 66000;
 
 export default app;
