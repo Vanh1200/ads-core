@@ -408,16 +408,20 @@ router.get('/chart', authenticateToken, canView, async (req: AuthRequest, res: R
             orderBy: { spendingDate: 'asc' },
         });
 
-        // Fill in missing dates with 0
+        // Fill in missing dates with 0 - Optimized with Map O(N+M)
+        const spendingMap = new Map(
+            records.map(r => [r.spendingDate.toISOString().split('T')[0], r._sum.amount])
+        );
+
         const chartData = [];
         const currentDate = new Date(start);
         while (currentDate <= end) {
             const dateStr = currentDate.toISOString().split('T')[0];
-            const record = records.find(r => r.spendingDate.toISOString().split('T')[0] === dateStr);
+            const amount = spendingMap.get(dateStr);
 
             chartData.push({
                 date: dateStr,
-                amount: Number(record?._sum.amount || 0),
+                amount: Number(amount || 0),
             });
 
             currentDate.setDate(currentDate.getDate() + 1);
@@ -430,7 +434,7 @@ router.get('/chart', authenticateToken, canView, async (req: AuthRequest, res: R
             endDate: end.toISOString().split('T')[0],
             data: chartData,
             totalAmount,
-            currency: 'USD', // Assuming USD for now or mixed
+            currency: 'USD',
         });
     } catch (error) {
         console.error('Get global chart error:', error);
