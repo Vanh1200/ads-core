@@ -1,6 +1,9 @@
 import dotenv from 'dotenv';
 dotenv.config();
 
+import fs from 'fs';
+import path from 'path';
+
 import express from 'express';
 import cors from 'cors';
 import helmet from 'helmet';
@@ -40,9 +43,15 @@ app.use(morgan('dev'));
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
-// Health check
+// Health check with logging
 app.get('/api/health', (req, res) => {
-    res.json({ status: 'ok', timestamp: new Date().toISOString() });
+    console.log(`[HEALTH] Health check request from ${req.ip} - ${new Date().toISOString()}`);
+    res.json({
+        status: 'ok',
+        timestamp: new Date().toISOString(),
+        env: process.env.NODE_ENV,
+        uptime: process.uptime()
+    });
 });
 
 // Routes
@@ -75,7 +84,6 @@ app.use('/api/*', (req, res) => {
 });
 
 // Serve static files from the React frontend app
-import path from 'path';
 const frontendPath = path.join(__dirname, '../public'); // Assumes dist is copied to public in Docker
 app.use(express.static(frontendPath));
 
@@ -87,6 +95,31 @@ app.get('*', (req, res) => {
 app.listen(PORT, () => {
     console.log(`🚀 Server running on http://localhost:${PORT}`);
     console.log(`📊 Health check: http://localhost:${PORT}/api/health`);
+    console.log(`📂 Frontend path: ${frontendPath}`);
+    console.log(`📄 index.html exists: ${fs.existsSync(path.join(frontendPath, 'index.html'))}`);
+    console.log(`🔑 DATABASE_URL defined: ${!!process.env.DATABASE_URL}`);
+    console.log(`🔑 JWT_SECRET defined: ${!!process.env.JWT_SECRET}`);
+});
+
+// Diagnostic listeners
+process.on('SIGTERM', () => {
+    console.warn('[PROCESS] SIGTERM received. Server is shutting down...');
+    process.exit(0);
+});
+
+process.on('SIGINT', () => {
+    console.warn('[PROCESS] SIGINT received. Server is shutting down...');
+    process.exit(0);
+});
+
+process.on('unhandledRejection', (reason, promise) => {
+    console.error('[PROCESS] Unhandled Rejection at:', promise, 'reason:', reason);
+});
+
+process.on('uncaughtException', (err) => {
+    console.error('[PROCESS] Uncaught Exception:', err);
+    // Give time for logs to be written
+    setTimeout(() => process.exit(1), 1000);
 });
 
 export default app;
