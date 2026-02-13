@@ -19,6 +19,11 @@ process.on('uncaughtException', (err) => {
     setTimeout(() => process.exit(1), 1000);
 });
 
+// Set default NODE_ENV if missing
+if (!process.env.NODE_ENV) {
+    process.env.NODE_ENV = 'production';
+}
+
 import dotenv from 'dotenv';
 dotenv.config();
 
