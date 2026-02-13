@@ -18,6 +18,7 @@ import spendingRoutes from './routes/spending.routes';
 import importRoutes from './routes/import.routes';
 import activityLogRoutes from './routes/activityLog.routes';
 import creditLinkingRoutes from './routes/creditLinking.routes';
+import dashboardRoutes from './routes/dashboard.routes';
 
 const app = express();
 const PORT = process.env.PORT || 3001;
@@ -56,6 +57,7 @@ app.use('/api/spending', spendingRoutes);
 app.use('/api/import', importRoutes);
 app.use('/api/activity-logs', activityLogRoutes);
 app.use('/api/credit-linking', creditLinkingRoutes);
+app.use('/api/dashboard', dashboardRoutes);
 
 // Error handling middleware
 app.use((err: Error, req: express.Request, res: express.Response, next: express.NextFunction) => {

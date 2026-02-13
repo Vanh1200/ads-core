@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
 import { Layers, FileText, Users, Database, TrendingUp, Activity, ArrowRight, Calendar } from 'lucide-react';
-import { batchesApi, invoiceMCCsApi, customersApi, accountsApi, activityLogsApi, spendingApi } from '../api/client';
+import { dashboardApi } from '../api/client';
 import { AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
 import CustomChartTooltip from '../components/ChartTooltip';
 
@@ -20,74 +20,36 @@ export default function Dashboard() {
     const navigate = useNavigate();
     const [dateRange, setDateRange] = useState('30'); // days
 
-    // Date range calculation for chart
-    const endDate = new Date().toISOString().split('T')[0];
-    const startDateDate = new Date();
-    startDateDate.setDate(startDateDate.getDate() - parseInt(dateRange));
-    const startDate = startDateDate.toISOString().split('T')[0];
-
-    const { data: batches } = useQuery({
-        queryKey: ['batches'],
-        queryFn: () => batchesApi.list({ limit: 5 }),
+    const { data: summary, isLoading } = useQuery({
+        queryKey: ['dashboardSummary', dateRange],
+        queryFn: () => dashboardApi.getSummary(dateRange).then(res => res.data),
     });
-
-    const { data: invoiceMCCs } = useQuery({
-        queryKey: ['invoiceMCCs'],
-        queryFn: () => invoiceMCCsApi.list({ limit: 5 }),
-    });
-
-    const { data: customers } = useQuery({
-        queryKey: ['customers'],
-        queryFn: () => customersApi.list({ limit: 5 }),
-    });
-
-    const { data: accounts } = useQuery({
-        queryKey: ['accounts'],
-        queryFn: () => accountsApi.list({ limit: 10 }),
-    });
-
-    const { data: topSpenders } = useQuery({
-        queryKey: ['topSpenders'],
-        queryFn: () => accountsApi.list({ sortBy: 'totalSpending', sortOrder: 'desc', limit: 5 }),
-    });
-
-    const { data: chartData } = useQuery({
-        queryKey: ['globalChart', startDate, endDate],
-        queryFn: () => spendingApi.getGlobalChart(startDate, endDate),
-    });
-
-    const { data: activityLogs } = useQuery({
-        queryKey: ['activityLogs'],
-        queryFn: () => activityLogsApi.list({ limit: 10 }),
-    });
-
-
 
     const stats = [
         {
             icon: Layers,
-            value: batches?.data?.pagination?.total || 0,
+            value: summary?.counts?.batches || 0,
             label: 'Lô tài khoản (MA)',
             color: 'primary',
             path: '/batches',
         },
         {
             icon: FileText,
-            value: invoiceMCCs?.data?.pagination?.total || 0,
+            value: summary?.counts?.invoiceMCCs || 0,
             label: 'Invoice MCC (MI)',
             color: 'secondary',
             path: '/invoice-mccs',
         },
         {
             icon: Users,
-            value: customers?.data?.pagination?.total || 0,
+            value: summary?.counts?.customers || 0,
             label: 'Khách hàng (MC)',
             color: 'warning',
             path: '/customers',
         },
         {
             icon: Database,
-            value: accounts?.data?.pagination?.total || 0,
+            value: summary?.counts?.accounts || 0,
             label: 'Tài khoản',
             color: 'danger',
             path: '/accounts',
@@ -133,7 +95,7 @@ export default function Dashboard() {
                 {stats.map((stat, index) => (
                     <div
                         key={index}
-                        className="stat-card"
+                        className={`stat-card ${isLoading ? 'skeleton' : ''}`}
                         onClick={() => stat.path && navigate(stat.path)}
                         style={{ cursor: stat.path ? 'pointer' : 'default', transition: 'transform 0.2s, box-shadow 0.2s' }}
                     >
@@ -141,7 +103,7 @@ export default function Dashboard() {
                             <stat.icon size={24} />
                         </div>
                         <div>
-                            <div className="stat-value">{stat.value}</div>
+                            <div className="stat-value">{isLoading ? '...' : stat.value}</div>
                             <div className="stat-label">{stat.label}</div>
                         </div>
                     </div>
@@ -175,7 +137,7 @@ export default function Dashboard() {
                     <div className="card-body">
                         <div style={{ marginBottom: 16 }}>
                             <span className="text-2xl font-bold" style={{ fontSize: '24px', fontWeight: 700 }}>
-                                {formatCurrency(chartData?.data?.totalAmount || 0)}
+                                {formatCurrency(summary?.chart?.totalAmount || 0)}
                             </span>
                             <span className="text-muted" style={{ marginLeft: 8, fontSize: '14px' }}>
                                 (Tổng chi tiêu)
@@ -183,7 +145,7 @@ export default function Dashboard() {
                         </div>
                         <div style={{ width: '100%', height: 300 }}>
                             <ResponsiveContainer>
-                                <AreaChart data={chartData?.data?.data || []}>
+                                <AreaChart data={summary?.chart?.data || []}>
                                     <defs>
                                         <linearGradient id="colorAmount" x1="0" y1="0" x2="0" y2="1">
                                             <stop offset="5%" stopColor="#4f46e5" stopOpacity={0.1} />
@@ -226,7 +188,7 @@ export default function Dashboard() {
                 {/* Top 5 Spenders */}
                 <div className="card">
                     <div className="card-header" onClick={() => {
-                        const topIds = topSpenders?.data?.data?.map((a: any) => a.googleAccountId).join('\n');
+                        const topIds = summary?.topSpenders?.map((a: any) => a.googleAccountId).join('\n');
                         navigate(`/accounts?ids=${encodeURIComponent(topIds || '')}`);
                     }} style={{ cursor: 'pointer' }}>
                         <h3 className="card-title">Top 5 Chi tiêu</h3>
@@ -235,9 +197,9 @@ export default function Dashboard() {
                         </div>
                     </div>
                     <div className="card-body" style={{ padding: 0 }}>
-                        {topSpenders?.data?.data && topSpenders.data.data.length > 0 ? (
+                        {summary?.topSpenders && summary.topSpenders.length > 0 ? (
                             <div className="list-group">
-                                {topSpenders.data.data.map((account: any, index: number) => (
+                                {summary.topSpenders.map((account: any, index: number) => (
                                     <div
                                         key={account.id}
                                         className="list-group-item"
@@ -300,7 +262,7 @@ export default function Dashboard() {
                     </div>
                 </div>
                 <div className="card-body" style={{ padding: 0 }}>
-                    {activityLogs?.data?.data && activityLogs.data.data.length > 0 ? (
+                    {summary?.recentActivity && summary.recentActivity.length > 0 ? (
                         <div className="table-container">
                             <table className="data-table">
                                 <thead>
@@ -312,7 +274,7 @@ export default function Dashboard() {
                                     </tr>
                                 </thead>
                                 <tbody>
-                                    {activityLogs.data.data.map((log: ActivityLog) => (
+                                    {summary.recentActivity.map((log: ActivityLog) => (
                                         <tr key={log.id} onClick={() => navigate(`/activity-logs?id=${log.id}`)} style={{ cursor: 'pointer' }}>
                                             <td style={{ color: 'var(--text-muted)' }}>{formatDate(log.createdAt)}</td>
                                             <td style={{ fontWeight: 500 }}>{log.user?.fullName}</td>

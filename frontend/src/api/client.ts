@@ -42,6 +42,11 @@ export const authApi = {
         api.post('/auth/change-password', { currentPassword, newPassword }),
 };
 
+// Dashboard API
+export const dashboardApi = {
+    getSummary: (days?: string) => api.get('/dashboard/summary', { params: { days } }),
+};
+
 // Partners API
 export const partnersApi = {
     list: (params?: object) => api.get('/partners', { params }),
