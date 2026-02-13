@@ -1,4 +1,4 @@
-import prisma from '../config/database';
+import prisma from '../infrastructure/database/prisma';
 
 import { ActivityAction } from '@prisma/client';
 

@@ -267,7 +267,7 @@ router.post('/bulk-update-status', auth_middleware_1.authenticateToken, auth_mid
             res.status(400).json({ error: 'Account IDs and status required' });
             return;
         }
-        const validStatuses = ['ACTIVE', 'SUSPENDED', 'DIED'];
+        const validStatuses = ['ACTIVE', 'INACTIVE', 'DIED'];
         if (!validStatuses.includes(status)) {
             res.status(400).json({ error: 'Invalid status' });
             return;

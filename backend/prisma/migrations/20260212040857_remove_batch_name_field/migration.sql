@@ -10,7 +10,7 @@
 */
 -- AlterEnum
 BEGIN;
-CREATE TYPE "AccountStatus_new" AS ENUM ('ACTIVE', 'SUSPENDED');
+CREATE TYPE "AccountStatus_new" AS ENUM ('ACTIVE', 'INACTIVE');
 ALTER TABLE "accounts" ALTER COLUMN "status" DROP DEFAULT;
 ALTER TABLE "accounts" ALTER COLUMN "status" TYPE "AccountStatus_new" USING ("status"::text::"AccountStatus_new");
 ALTER TYPE "AccountStatus" RENAME TO "AccountStatus_old";

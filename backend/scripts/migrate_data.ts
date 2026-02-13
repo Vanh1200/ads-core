@@ -70,7 +70,7 @@ async function migrate() {
                     allAccounts.set(accID, {
                         googleAccountId: accID,
                         accountName: row['Tên tài khoản'] ? String(row['Tên tài khoản']).trim() : 'Unnamed Account',
-                        status: row['Tình Trạng hoạt động'] === 'Đang hoạt động' ? AccountStatus.ACTIVE : AccountStatus.SUSPENDED,
+                        status: row['Tình Trạng hoạt động'] === 'Đang hoạt động' ? AccountStatus.ACTIVE : AccountStatus.INACTIVE,
                         currency: row['Đơn vị tiền tệ'] ? String(row['Đơn vị tiền tệ']).trim() : 'USD',
                         _batchID: batchID,
                         _miID: miID,

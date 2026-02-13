@@ -1,5 +1,5 @@
 export interface ParsedAccount {
-    status: 'ACTIVE' | 'SUSPENDED' | 'DIED';
+    status: 'ACTIVE' | 'INACTIVE' | 'DIED';
     accountName: string;
     googleAccountId: string;
     currency: string;

@@ -56,7 +56,7 @@ export const createAccountSchema = z.object({
     batchId: z.string().uuid('Batch ID is required'),
     currency: z.string().default('USD'),
     timezone: z.string().optional(),
-    status: z.enum(['ACTIVE', 'SUSPENDED']).default('ACTIVE'),
+    status: z.enum(['ACTIVE', 'INACTIVE']).default('ACTIVE'),
 });
 
 // Spending snapshot schemas

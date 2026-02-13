@@ -53,7 +53,7 @@ enum CustomerStatus {
 
 enum AccountStatus {
   ACTIVE
-  SUSPENDED
+  INACTIVE
 }
 
 enum HistoryReason {

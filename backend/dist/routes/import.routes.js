@@ -73,7 +73,7 @@ const parseStatus = (status) => {
     if (lower.includes('hoạt động') || lower.includes('active'))
         return 'ACTIVE';
     if (lower.includes('không') || lower.includes('inactive') || lower.includes('suspended'))
-        return 'SUSPENDED';
+        return 'INACTIVE';
     return 'ACTIVE';
 };
 // POST /api/import/accounts - Import accounts from Excel
@@ -244,7 +244,7 @@ router.post('/parse-batch', auth_middleware_1.authenticateToken, auth_middleware
             summary: {
                 total: parsed.accounts.length,
                 active: parsed.accounts.filter(a => a.status === 'ACTIVE').length,
-                suspended: parsed.accounts.filter(a => a.status === 'SUSPENDED').length,
+                suspended: parsed.accounts.filter(a => a.status === 'INACTIVE').length,
                 died: parsed.accounts.filter(a => a.status === 'DIED').length,
                 existing: existingAccounts.length,
                 new: parsed.accounts.length - existingAccounts.length,

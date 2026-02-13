@@ -101,9 +101,9 @@ export declare const createAccountSchema: z.ZodObject<{
     batchId: z.ZodString;
     currency: z.ZodDefault<z.ZodString>;
     timezone: z.ZodOptional<z.ZodString>;
-    status: z.ZodDefault<z.ZodEnum<["ACTIVE", "SUSPENDED", "DIED"]>>;
+    status: z.ZodDefault<z.ZodEnum<["ACTIVE", "INACTIVE", "DIED"]>>;
 }, "strip", z.ZodTypeAny, {
-    status: "ACTIVE" | "SUSPENDED" | "DIED";
+    status: "ACTIVE" | "INACTIVE" | "DIED";
     googleAccountId: string;
     accountName: string;
     batchId: string;
@@ -113,7 +113,7 @@ export declare const createAccountSchema: z.ZodObject<{
     googleAccountId: string;
     accountName: string;
     batchId: string;
-    status?: "ACTIVE" | "SUSPENDED" | "DIED" | undefined;
+    status?: "ACTIVE" | "INACTIVE" | "DIED" | undefined;
     currency?: string | undefined;
     timezone?: string | undefined;
 }>;

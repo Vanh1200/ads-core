@@ -175,7 +175,10 @@ router.post('/', authenticateToken, isBuyer, async (req: AuthRequest, res: Respo
         }
 
         const account = await prisma.account.create({
-            data: validation.data,
+            data: {
+                ...validation.data,
+                status: validation.data.status as any
+            },
             include: {
                 batch: { select: { id: true, mccAccountName: true } },
             },
@@ -309,7 +312,7 @@ router.post('/bulk-update-status', authenticateToken, isBuyer, async (req: AuthR
             return;
         }
 
-        const validStatuses = ['ACTIVE', 'SUSPENDED'];
+        const validStatuses = ['ACTIVE', 'INACTIVE'];
         if (!validStatuses.includes(status)) {
             res.status(400).json({ error: 'Invalid status' });
             return;

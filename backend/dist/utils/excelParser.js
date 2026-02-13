@@ -51,7 +51,7 @@ const parseStatus = (status) => {
     if (lower.includes('đang hoạt động'))
         return 'ACTIVE';
     if (lower.includes('không') || lower.includes('inactive') || lower.includes('suspended'))
-        return 'SUSPENDED';
+        return 'INACTIVE';
     if (lower.includes('chết') || lower.includes('died') || lower.includes('tắt'))
         return 'DIED';
     return 'ACTIVE';

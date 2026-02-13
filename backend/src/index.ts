@@ -34,19 +34,23 @@ import cors from 'cors';
 import helmet from 'helmet';
 import morgan from 'morgan';
 
-// Import routes
-import authRoutes from './routes/auth.routes';
-import userRoutes from './routes/user.routes';
-import partnerRoutes from './routes/partner.routes';
-import batchRoutes from './routes/batch.routes';
-import invoiceMCCRoutes from './routes/invoiceMCC.routes';
-import customerRoutes from './routes/customer.routes';
-import accountRoutes from './routes/account.routes';
-import spendingRoutes from './routes/spending.routes';
-import importRoutes from './routes/import.routes';
-import activityLogRoutes from './routes/activityLog.routes';
-import creditLinkingRoutes from './routes/creditLinking.routes';
-import statsRoutes from './routes/stats.routes';
+// Import new routes (Clean Architecture)
+import authRoutes from './web/routes/auth.routes';
+import userRoutes from './web/routes/user.routes';
+import partnerRoutes from './web/routes/partner.routes';
+import batchRoutes from './web/routes/batch.routes';
+import invoiceMCCRoutes from './web/routes/invoiceMCC.routes';
+import customerRoutes from './web/routes/customer.routes';
+import accountRoutes from './routes/account.routes'; // Note: Account routes already refactored in Wave 2
+import spendingRoutes from './web/routes/spending.routes';
+import importRoutes from './web/routes/import.routes';
+import activityLogRoutes from './web/routes/activityLog.routes';
+import creditLinkingRoutes from './web/routes/creditLinking.routes';
+import statsRoutes from './web/routes/stats.routes';
+
+// Import infrastructure
+import { requestLogger } from './infrastructure/logging/Logger';
+import { errorHandler } from './infrastructure/middleware/errorHandler';
 
 const app = express();
 const PORT = Number(process.env.PORT) || 3001;
@@ -56,13 +60,9 @@ app.use(helmet({
     contentSecurityPolicy: false,
 }));
 
-// Informative request logging (helpful for monitoring)
-app.use((req, res, next) => {
-    if (req.url !== '/api/health') {
-        console.log(`[REQUEST] ${req.method} ${req.url} - ${new Date().toISOString()}`);
-    }
-    next();
-});
+// Use structured request logger
+app.use(requestLogger);
+
 app.use(cors({
     origin: [
         'http://localhost:5173',
@@ -101,14 +101,8 @@ app.use('/api/activity-logs', activityLogRoutes);
 app.use('/api/credit-linking', creditLinkingRoutes);
 app.use('/api/stats', statsRoutes);
 
-// Error handling middleware
-app.use((err: Error, req: express.Request, res: express.Response, next: express.NextFunction) => {
-    console.error(err.stack);
-    res.status(500).json({
-        error: 'Internal Server Error',
-        message: process.env.NODE_ENV === 'development' ? err.message : undefined
-    });
-});
+// Global Error Handler
+app.use(errorHandler);
 
 // 404 handler for API routes
 app.use('/api/*', (req, res) => {

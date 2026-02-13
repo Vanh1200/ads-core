@@ -32,7 +32,7 @@ const parseAccountId = (id: string): string | null => {
 };
 
 // Helper to parse status
-const parseStatus = (status: string): 'ACTIVE' | 'SUSPENDED' => {
+const parseStatus = (status: string): 'ACTIVE' | 'INACTIVE' => {
     const lower = status?.toLowerCase() || '';
     if (lower.includes('hoạt động') || lower.includes('active') || lower.includes('đang hoạt động')) return 'ACTIVE';
     if (
@@ -46,7 +46,7 @@ const parseStatus = (status: string): 'ACTIVE' | 'SUSPENDED' => {
         lower.includes('paused') ||
         lower.includes('vô hiệu hóa') ||
         lower.includes('disabled')
-    ) return 'SUSPENDED';
+    ) return 'INACTIVE';
     return 'ACTIVE';
 };
 
@@ -138,7 +138,7 @@ router.post('/accounts', authenticateToken, isBuyer, upload.single('file'), asyn
                     // Update existing account
                     await prisma.account.update({
                         where: { id: existing.id },
-                        data: { accountName, status },
+                        data: { accountName, status: status as any },
                     });
                     results.updated++;
                 } else {
@@ -147,7 +147,7 @@ router.post('/accounts', authenticateToken, isBuyer, upload.single('file'), asyn
                         data: {
                             googleAccountId,
                             accountName,
-                            status,
+                            status: status as any,
                             currency,
                             batchId,
                             mccAccountName: batch.mccAccountName,
@@ -232,7 +232,7 @@ router.post('/parse-batch', authenticateToken, isBuyer, upload.single('file'), a
             summary: {
                 total: parsed.accounts.length,
                 active: parsed.accounts.filter(a => a.status === 'ACTIVE').length,
-                suspended: parsed.accounts.filter(a => a.status === 'SUSPENDED').length,
+                suspended: parsed.accounts.filter(a => a.status === 'INACTIVE').length,
                 existing: existingAccounts.length,
                 new: parsed.accounts.length - existingAccounts.length,
             },

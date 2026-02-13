@@ -50,7 +50,7 @@ exports.createAccountSchema = zod_1.z.object({
     batchId: zod_1.z.string().uuid('Batch ID is required'),
     currency: zod_1.z.string().default('USD'),
     timezone: zod_1.z.string().optional(),
-    status: zod_1.z.enum(['ACTIVE', 'SUSPENDED', 'DIED']).default('ACTIVE'),
+    status: zod_1.z.enum(['ACTIVE', 'INACTIVE', 'DIED']).default('ACTIVE'),
 });
 // Spending snapshot schemas
 exports.createSnapshotSchema = zod_1.z.object({
