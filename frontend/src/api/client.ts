@@ -44,7 +44,7 @@ export const authApi = {
 
 // Dashboard API
 export const dashboardApi = {
-    getSummary: (days?: string) => api.get('/dashboard/summary', { params: { days } }),
+    getStats: () => api.get('/dashboard/stats'),
 };
 
 // Partners API
