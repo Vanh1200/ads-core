@@ -5,6 +5,7 @@ import { Search, Filter, X, ChevronUp, ChevronDown, Link2, Plus, Clock, User, Ar
 import { useAuthStore, canManageBatches, canLinkMI, canAssignMC, canUpdateSpending } from '../store/authStore';
 import ConfirmModal from '../components/ConfirmModal';
 import Dropdown, { type DropdownItem } from '../components/Dropdown';
+import SearchDropdown from '../components/SearchDropdown';
 import { accountsApi, batchesApi, invoiceMCCsApi, activityLogsApi, customersApi, partnersApi } from '../api/client';
 
 interface Account {
@@ -61,7 +62,7 @@ export default function Accounts() {
     // Sorting
     const [sortField, setSortField] = useState<SortField>('googleAccountId');
     const [sortOrder, setSortOrder] = useState<SortOrder>('asc');
-    const [spendingDays, setSpendingDays] = useState(1);
+    const [spendingDays, setSpendingDays] = useState(7);
 
 
 
@@ -139,7 +140,7 @@ export default function Accounts() {
     useEffect(() => {
         const handleReset = () => {
             resetFilters();
-            setSearchQuery('');
+            // setSearchQuery(''); // Removed as searchQuery is no longer a state in Accounts
         };
         window.addEventListener('reset-accounts-filters', handleReset);
         return () => window.removeEventListener('reset-accounts-filters', handleReset);
@@ -475,7 +476,7 @@ export default function Accounts() {
         const alreadyLinked = selectedAccountsList.filter(a => a.currentMi?.id === miId);
         if (alreadyLinked.length > 0) {
             setToast({
-                message: `Lỗi: ${alreadyLinked.length} tài khoản đã thuộc về MI này rồi (${alreadyLinked.map(a => a.googleAccountId).join(', ')}). Vui lòng bỏ chọn.`,
+                message: `Lỗi: ${alreadyLinked.length} tài khoản đã thuộc về MI này rồi(${alreadyLinked.map(a => a.googleAccountId).join(', ')}).Vui lòng bỏ chọn.`,
                 type: 'error'
             });
             setTimeout(() => setToast(null), 5000);
@@ -506,7 +507,7 @@ export default function Accounts() {
         const alreadyAssigned = selectedAccountsList.filter(a => a.currentMc?.id === customerId);
         if (alreadyAssigned.length > 0) {
             setToast({
-                message: `Lỗi: ${alreadyAssigned.length} tài khoản đã được giao cho khách hàng này rồi (${alreadyAssigned.map(a => a.googleAccountId).join(', ')}). Vui lòng bỏ chọn.`,
+                message: `Lỗi: ${alreadyAssigned.length} tài khoản đã được giao cho khách hàng này rồi(${alreadyAssigned.map(a => a.googleAccountId).join(', ')}).Vui lòng bỏ chọn.`,
                 type: 'error'
             });
             setTimeout(() => setToast(null), 5000);
@@ -553,70 +554,7 @@ export default function Accounts() {
 
     // Unified Search Logic
     const [isSearchOpen, setIsSearchOpen] = useState(false);
-    const [searchQuery, setSearchQuery] = useState('');
-    const searchDropdownRef = useRef<HTMLDivElement>(null);
 
-    // Close dropdown when clicking outside
-    useEffect(() => {
-        const handleClickOutside = (event: MouseEvent) => {
-            if (searchDropdownRef.current && !searchDropdownRef.current.contains(event.target as Node)) {
-                setIsSearchOpen(false);
-            }
-        };
-
-        if (isSearchOpen) {
-            document.addEventListener('mousedown', handleClickOutside);
-        }
-        return () => {
-            document.removeEventListener('mousedown', handleClickOutside);
-        };
-    }, [isSearchOpen]);
-
-    const handleOpenSearch = () => {
-        if (idsFilter) {
-            setSearchQuery(idsFilter);
-        } else if (search) {
-            setSearchQuery(search);
-        } else {
-            setSearchQuery('');
-        }
-        setIsSearchOpen(true);
-    };
-
-    const handleApplySearch = () => {
-        const trimmed = searchQuery.trim();
-        if (!trimmed) {
-            setSearch('');
-            setIdsFilter('');
-        } else {
-            // Check if input looks like a list of IDs (multiple lines or comma separated)
-            // or if it's a single line fully matching an ID pattern or just digits/hyphens
-            const lines = trimmed.split(/[\n,]+/).map(t => t.trim()).filter(Boolean);
-
-            // Heuristic: If multiple items, treat as IDs.
-            // If single item, check if it looks like an ID (digits, dashes). 
-            // If it has letters, treat as Search (Name/ID partial).
-            const isMultiple = lines.length > 1;
-            const isIdPattern = lines.every(l => /^[\d-]+$/.test(l));
-
-            if (isMultiple || isIdPattern) {
-                setIdsFilter(lines.join('\n'));
-                setSearch('');
-            } else {
-                setSearch(trimmed);
-                setIdsFilter('');
-            }
-        }
-        setIsSearchOpen(false);
-        setPage(1);
-    };
-
-    const handleKeyDown = (e: React.KeyboardEvent) => {
-        if (e.key === 'Enter' && !e.shiftKey) {
-            e.preventDefault();
-            handleApplySearch();
-        }
-    };
 
     return (
         <div>
@@ -769,80 +707,51 @@ export default function Accounts() {
             )}
 
             <div className="card" style={{ overflow: 'visible' }}>
-                <div className="card-header" style={{ gap: '12px', flexWrap: 'wrap', justifyContent: 'flex-start' }}>
+                <div className="card-header" style={{ gap: '12px', flexWrap: 'wrap', justifyContent: 'flex-start', overflow: 'visible' }}>
                     <Filter size={18} style={{ color: 'var(--text-muted)' }} />
-                    <div style={{ position: 'relative' }} ref={searchDropdownRef}>
+                    <div style={{ position: 'relative' }}>
                         <button
-                            className={`btn ${search || idsFilter || isSearchOpen ? 'btn-primary' : 'btn-secondary'}`}
-                            onClick={handleOpenSearch}
+                            className={`btn ${search || idsFilter || isSearchOpen ? 'btn-primary' : 'btn-secondary'} `}
+                            onClick={() => setIsSearchOpen(true)}
                             style={{ gap: 8 }}
                         >
                             <Search size={16} />
-                            {search ? `Tìm: ${search}` : idsFilter ? `Lọc theo ID (${idsFilter.split(/[\n,]+/).length})` : 'Tìm kiếm'}
+                            {search ? `Tìm: ${search} ` : idsFilter ? `Lọc theo ID(${idsFilter.split(/[\n,]+/).length})` : 'Tìm kiếm'}
                             <ChevronDown size={14} />
                         </button>
 
-                        {isSearchOpen && (
-                            <div style={{
-                                position: 'absolute',
-                                top: '100%',
-                                left: 0,
-                                marginTop: 8,
-                                background: 'var(--surface)',
-                                border: '1px solid var(--border)',
-                                borderRadius: 8,
-                                padding: 16,
-                                width: 400,
-                                boxShadow: 'var(--shadow)',
-                                zIndex: 1000,
-                                display: 'flex',
-                                flexDirection: 'column',
-                                gap: 12
-                            }}>
-                                <div style={{ position: 'relative' }}>
-                                    <Search size={16} style={{ position: 'absolute', left: 12, top: 12, color: 'var(--text-muted)' }} />
-                                    <textarea
-                                        autoFocus
-                                        className="form-input"
-                                        placeholder="Nhập tên tài khoản, ID đơn lẻ, hoặc dán danh sách ID (mỗi dòng một ID)..."
-                                        style={{
-                                            width: '100%',
-                                            minHeight: 120,
-                                            paddingLeft: 36,
-                                            resize: 'vertical',
-                                            fontFamily: 'monospace'
-                                        }}
-                                        value={searchQuery}
-                                        onChange={(e) => setSearchQuery(e.target.value)}
-                                        onKeyDown={handleKeyDown}
-                                    />
-                                </div>
-                                <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 8 }}>
-                                    <button
-                                        className="btn btn-secondary btn-sm"
-                                        onClick={() => {
-                                            setSearchQuery('');
-                                            setSearch('');
-                                            setIdsFilter('');
-                                            setIsSearchOpen(false);
-                                        }}
-                                    >
-                                        Xóa lọc
-                                    </button>
-                                    <button
-                                        className="btn btn-primary btn-sm"
-                                        onClick={handleApplySearch}
-                                    >
-                                        Áp dụng
-                                    </button>
-                                </div>
-                            </div>
-                        )}
+                        <SearchDropdown
+                            isOpen={isSearchOpen}
+                            onClose={() => setIsSearchOpen(false)}
+                            onApply={(value) => {
+                                // If it looks like a list of IDs, set it to idsFilter
+                                if (value.includes('\n') || value.includes(',') || /^\d+$/.test(value.trim())) {
+                                    setIdsFilter(value.trim());
+                                    setSearch('');
+                                } else {
+                                    setSearch(value.trim());
+                                    setIdsFilter('');
+                                }
+                                setIsSearchOpen(false);
+                                setPage(1);
+                            }}
+                            onClear={() => {
+                                setSearch('');
+                                setIdsFilter('');
+                                setIsSearchOpen(false);
+                                setPage(1);
+                            }}
+                            initialValue={search || idsFilter}
+                            placeholder="Nhập tên tài khoản, ID đơn lẻ, hoặc dán danh sách ID (mỗi dòng một ID)..."
+                        />
                     </div>
+
+                    {/* Spending Days Filter */}
+
 
                     <Dropdown
                         trigger={
-                            <button className={`btn ${statusFilter ? 'btn-primary' : 'btn-secondary'}`} style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                            <button className={`btn ${statusFilter ? 'btn-primary' : 'btn-secondary'} `} style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
                                 {statusFilter ? statusLabels[statusFilter]?.label : 'Tất cả trạng thái'}
                                 <ChevronDown size={14} />
                             </button>
@@ -867,7 +776,7 @@ export default function Accounts() {
 
                     <Dropdown
                         trigger={
-                            <button className={`btn ${batchId ? 'btn-primary' : 'btn-secondary'}`} style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                            <button className={`btn ${batchId ? 'btn-primary' : 'btn-secondary'} `} style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
                                 {batchId ? (batches.find(b => b.id === batchId)?.mccAccountName || 'Lô: Đang chọn') : 'Tất cả Lô (MA)'}
                                 <ChevronDown size={14} />
                             </button>
@@ -886,7 +795,7 @@ export default function Accounts() {
                                         <span style={{ fontSize: 11, color: 'var(--text-muted)' }}>{b.mccAccountId || b.id}</span>
                                     </div>
                                 ),
-                                searchKeywords: `${b.mccAccountName} ${b.mccAccountId || ''} ${b.id}`,
+                                searchKeywords: `${b.mccAccountName} ${b.mccAccountId || ''} ${b.id} `,
                                 onClick: () => setBatchId(b.id)
                             }))
                         ]}
@@ -894,7 +803,7 @@ export default function Accounts() {
 
                     <Dropdown
                         trigger={
-                            <button className={`btn ${miId ? 'btn-primary' : 'btn-secondary'}`} style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                            <button className={`btn ${miId ? 'btn-primary' : 'btn-secondary'} `} style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
                                 {miId ? (miList.find(m => m.id === miId)?.name || 'MI: Đang chọn') : 'Tất cả MCC (MI)'}
                                 <ChevronDown size={14} />
                             </button>
@@ -913,7 +822,7 @@ export default function Accounts() {
                                         <span style={{ fontSize: 11, color: 'var(--text-muted)' }}>{m.mccInvoiceId || m.mccAccountId || m.id}</span>
                                     </div>
                                 ),
-                                searchKeywords: `${m.name} ${m.mccInvoiceId || ''} ${m.mccAccountId || ''} ${m.id}`,
+                                searchKeywords: `${m.name} ${m.mccInvoiceId || ''} ${m.mccAccountId || ''} ${m.id} `,
                                 onClick: () => setMiId(m.id)
                             }))
                         ]}
@@ -921,7 +830,7 @@ export default function Accounts() {
 
                     <Dropdown
                         trigger={
-                            <button className={`btn ${mcId ? 'btn-primary' : 'btn-secondary'}`} style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                            <button className={`btn ${mcId ? 'btn-primary' : 'btn-secondary'} `} style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
                                 {mcId ? (customerList.find((c: any) => c.id === mcId)?.name || 'MC: Đang chọn') : 'Tất cả Khách (MC)'}
                                 <ChevronDown size={14} />
                             </button>
@@ -940,9 +849,26 @@ export default function Accounts() {
                                         <span style={{ fontSize: 11, color: 'var(--text-muted)' }}>{c.id}</span>
                                     </div>
                                 ),
-                                searchKeywords: `${c.name} ${c.id}`,
+                                searchKeywords: `${c.name} ${c.id} `,
                                 onClick: () => setMcId(c.id)
                             }))
+                        ]}
+                    />
+
+                    {/* Spending Days Filter */}
+                    <Dropdown
+                        trigger={
+                            <button className="btn btn-secondary" style={{ gap: 6 }}>
+                                {spendingDays === 1 ? 'Hôm nay' : `${spendingDays} ngày`}
+                                <ChevronDown size={14} />
+                            </button>
+                        }
+                        items={[
+                            { key: '1', label: 'Hôm nay', onClick: () => setSpendingDays(1) },
+                            { key: '3', label: '3 ngày', onClick: () => setSpendingDays(3) },
+                            { key: '7', label: '7 ngày', onClick: () => setSpendingDays(7) },
+                            { key: '14', label: '14 ngày', onClick: () => setSpendingDays(14) },
+                            { key: '30', label: '30 ngày', onClick: () => setSpendingDays(30) },
                         ]}
                     />
 
@@ -998,8 +924,8 @@ export default function Accounts() {
                                         </div>
                                         <style dangerouslySetInnerHTML={{
                                             __html: `
-                                            th:hover .copy-btn { display: block !important; }
-                                        `}} />
+th: hover.copy - btn { display: block!important; }
+`}} />
                                     </div>
                                 </th>
                                 <th
@@ -1030,31 +956,8 @@ export default function Accounts() {
                                     onClick={() => handleSort('totalSpending')}
                                     style={{ cursor: 'pointer', userSelect: 'none' }}
                                 >
-                                    <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-start', gap: 2 }}>
-                                        <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
-                                            Chi phí <SortIcon field="totalSpending" />
-                                        </div>
-                                        <select
-                                            value={spendingDays}
-                                            onChange={(e) => setSpendingDays(Number(e.target.value))}
-                                            onClick={(e) => e.stopPropagation()}
-                                            style={{
-                                                fontSize: 11,
-                                                padding: '2px 4px',
-                                                border: '1px solid var(--border)',
-                                                borderRadius: 4,
-                                                background: 'var(--bg-primary)',
-                                                cursor: 'pointer',
-                                                marginLeft: 0,
-                                                width: '100%'
-                                            }}
-                                        >
-                                            <option value={1}>Hôm nay</option>
-                                            <option value={3}>3 ngày</option>
-                                            <option value={7}>7 ngày</option>
-                                            <option value={14}>14 ngày</option>
-                                            <option value={30}>30 ngày</option>
-                                        </select>
+                                    <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
+                                        Chi phí <SortIcon field="totalSpending" />
                                     </div>
                                 </th>
                                 <th
@@ -1100,7 +1003,7 @@ export default function Accounts() {
                                         onClick={() => {
                                             // Don't navigate if text is selected (user is copying)
                                             if (window.getSelection()?.toString()) return;
-                                            navigate(`/accounts/${account.id}`);
+                                            navigate(`/ accounts / ${account.id} `);
                                         }}
                                         style={{
                                             background: selectedIds.has(account.id) ? 'rgba(139, 92, 246, 0.1)' : undefined,
@@ -1125,7 +1028,7 @@ export default function Accounts() {
                                         <td><code>{account.googleAccountId}</code></td>
                                         <td>{account.accountName}</td>
                                         <td>
-                                            <span className={`badge badge-${statusLabels[account.status]?.class || 'info'}`} style={{ whiteSpace: 'nowrap' }}>
+                                            <span className={`badge badge - ${statusLabels[account.status]?.class || 'info'} `} style={{ whiteSpace: 'nowrap' }}>
                                                 {statusLabels[account.status]?.label || account.status}
                                             </span>
                                         </td>
@@ -1142,7 +1045,7 @@ export default function Accounts() {
                                                     <span
                                                         onClick={(e) => {
                                                             e.stopPropagation();
-                                                            navigate(`/batches/${account.batch!.id}`);
+                                                            navigate(`/ batches / ${account.batch!.id} `);
                                                         }}
                                                         className="hover:text-blue-400 hover:underline cursor-pointer"
                                                         style={{ color: 'var(--primary)' }}
@@ -1163,7 +1066,7 @@ export default function Accounts() {
                                                     <span
                                                         onClick={(e) => {
                                                             e.stopPropagation();
-                                                            navigate(`/invoice-mccs/${account.currentMi!.id}`);
+                                                            navigate(`/ invoice - mccs / ${account.currentMi!.id} `);
                                                         }}
                                                         className="hover:text-blue-400 hover:underline cursor-pointer"
                                                         style={{ color: 'var(--primary)' }}
@@ -1183,7 +1086,7 @@ export default function Accounts() {
                                                 <span
                                                     onClick={(e) => {
                                                         e.stopPropagation();
-                                                        navigate(`/customers/${account.currentMc!.id}`);
+                                                        navigate(`/ customers / ${account.currentMc!.id} `);
                                                     }}
                                                     className="hover:text-blue-400 hover:underline cursor-pointer"
                                                     style={{ color: 'var(--primary)' }}
@@ -1319,7 +1222,7 @@ export default function Accounts() {
                                                         </div>
                                                     )}
                                                 </div>
-                                                <span className={`badge badge-${mi.status === 'ACTIVE' ? 'success' : 'secondary'}`}>
+                                                <span className={`badge badge - ${mi.status === 'ACTIVE' ? 'success' : 'secondary'} `}>
                                                     {mi.status}
                                                 </span>
                                             </div>
@@ -1473,7 +1376,7 @@ export default function Accounts() {
                                                     )}
                                                 </div>
                                                 <div style={{ textAlign: 'right' }}>
-                                                    <span className={`badge badge-${mc.status === 'ACTIVE' ? 'success' : 'secondary'}`}>
+                                                    <span className={`badge badge - ${mc.status === 'ACTIVE' ? 'success' : 'secondary'} `}>
                                                         {mc.status === 'ACTIVE' ? 'Hoạt động' : 'Không hoạt động'}
                                                     </span>
                                                     <div style={{ fontSize: 12, color: 'var(--text-muted)', marginTop: 4 }}>
@@ -1513,7 +1416,7 @@ export default function Accounts() {
                                 }}>
                                     <h4 style={{ marginBottom: 12, display: 'flex', alignItems: 'center', gap: 8 }}>
                                         <code style={{ fontSize: 18 }}>{accountDetail.googleAccountId}</code>
-                                        <span className={`badge badge-${statusLabels[accountDetail.status]?.class || 'info'}`}>
+                                        <span className={`badge badge - ${statusLabels[accountDetail.status]?.class || 'info'} `}>
                                             {statusLabels[accountDetail.status]?.label || accountDetail.status}
                                         </span>
                                     </h4>
@@ -1539,11 +1442,11 @@ export default function Accounts() {
                                                     padding: 12,
                                                     background: 'var(--bg-secondary)',
                                                     borderRadius: 6,
-                                                    borderLeft: `3px solid ${h.unlinkedAt ? 'var(--text-muted)' : 'var(--success)'}`
+                                                    borderLeft: `3px solid ${h.unlinkedAt ? 'var(--text-muted)' : 'var(--success)'} `
                                                 }}>
                                                     <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                                                         <strong>{h.invoiceMcc?.name || 'N/A'}</strong>
-                                                        <span className={`badge badge-${h.unlinkedAt ? 'secondary' : 'success'}`}>
+                                                        <span className={`badge badge - ${h.unlinkedAt ? 'secondary' : 'success'} `}>
                                                             {h.unlinkedAt ? 'Đã hủy' : 'Hiện tại'}
                                                         </span>
                                                     </div>
@@ -1571,11 +1474,11 @@ export default function Accounts() {
                                                     padding: 12,
                                                     background: 'var(--bg-secondary)',
                                                     borderRadius: 6,
-                                                    borderLeft: `3px solid ${h.unassignedAt ? 'var(--text-muted)' : 'var(--primary)'}`
+                                                    borderLeft: `3px solid ${h.unassignedAt ? 'var(--text-muted)' : 'var(--primary)'} `
                                                 }}>
                                                     <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                                                         <strong>{h.customer?.name || 'N/A'}</strong>
-                                                        <span className={`badge badge-${h.unassignedAt ? 'secondary' : 'primary'}`}>
+                                                        <span className={`badge badge - ${h.unassignedAt ? 'secondary' : 'primary'} `}>
                                                             {h.unassignedAt ? 'Đã hủy' : 'Hiện tại'}
                                                         </span>
                                                     </div>
@@ -1710,7 +1613,7 @@ export default function Accounts() {
             {/* Toast Notification */}
             {
                 toast && (
-                    <div className={`toast toast-${toast?.type || 'info'}`}>
+                    <div className={`toast toast - ${toast?.type || 'info'} `}>
                         {toast?.type === 'success' ? '✓' : '✕'} {toast?.message}
                     </div>
                 )

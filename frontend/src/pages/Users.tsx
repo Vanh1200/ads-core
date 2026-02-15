@@ -1,6 +1,7 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { Plus, Search, Edit2, Key, UserCheck, UserX } from 'lucide-react';
+import { Plus, Search, Filter, Edit2, Key, UserCheck, UserX, ChevronDown } from 'lucide-react';
+import SearchDropdown from '../components/SearchDropdown';
 import { usersApi } from '../api/client';
 import { useAuthStore } from '../store/authStore';
 
@@ -25,6 +26,13 @@ const ROLES = {
 
 export default function Users() {
     const [search, setSearch] = useState('');
+    const [page, setPage] = useState(1);
+    const [limit, setLimit] = useState(20);
+
+    const [isSearchOpen, setIsSearchOpen] = useState(false);
+    // const [searchQuery, setSearchQuery] = useState(''); // This state is now managed by SearchDropdown
+    const searchDropdownRef = useRef<HTMLDivElement>(null); // This ref is now managed by SearchDropdown
+
     const [showModal, setShowModal] = useState(false);
     const [showPasswordModal, setShowPasswordModal] = useState(false);
     const [selectedUser, setSelectedUser] = useState<User | null>(null);
@@ -46,8 +54,8 @@ export default function Users() {
     };
 
     const { data, isLoading } = useQuery({
-        queryKey: ['users', search],
-        queryFn: () => usersApi.list({ search }),
+        queryKey: ['users', search, page, limit],
+        queryFn: () => usersApi.list({ search, page, limit }),
     });
 
     const createMutation = useMutation({
@@ -101,6 +109,7 @@ export default function Users() {
     });
 
     const users = data?.data?.data || [];
+    const pagination = data?.data?.pagination || { total: 0, pages: 0 };
 
     const handleSubmit = (e: React.FormEvent<HTMLFormElement>) => {
         e.preventDefault();
@@ -139,6 +148,40 @@ export default function Users() {
         return new Date(dateStr).toLocaleDateString('vi-VN');
     };
 
+    // Filter handlers
+    // useEffect(() => { // This useEffect is now handled by SearchDropdown
+    //     const handleClickOutside = (event: MouseEvent) => {
+    //         if (searchDropdownRef.current && !searchDropdownRef.current.contains(event.target as Node)) {
+    //             setIsSearchOpen(false);
+    //         }
+    //     };
+
+    //     if (isSearchOpen) {
+    //         document.addEventListener('mousedown', handleClickOutside);
+    //     }
+    //     return () => {
+    //         document.removeEventListener('mousedown', handleClickOutside);
+    //     };
+    // }, [isSearchOpen]);
+
+    const handleOpenSearch = () => {
+        // setSearchQuery(search); // This state is now managed by SearchDropdown
+        setIsSearchOpen(true);
+    };
+
+    // const handleApplySearch = () => { // This function is now handled by SearchDropdown
+    //     setSearch(searchQuery.trim());
+    //     setPage(1);
+    //     setIsSearchOpen(false);
+    // };
+
+    // const handleKeyDown = (e: React.KeyboardEvent) => { // This function is now handled by SearchDropdown
+    //     if (e.key === 'Enter' && !e.shiftKey) {
+    //         e.preventDefault();
+    //         handleApplySearch();
+    //     }
+    // };
+
     return (
         <div>
             <div className="page-header">
@@ -158,16 +201,35 @@ export default function Users() {
                 </button>
             </div>
 
-            <div className="card">
-                <div className="card-header">
-                    <div className="search-input">
-                        <Search />
-                        <input
-                            type="text"
-                            className="form-input"
-                            placeholder="Tìm kiếm nhân viên (tên, email)..."
-                            value={search}
-                            onChange={(e) => setSearch(e.target.value)}
+            <div className="card" style={{ overflow: 'visible' }}>
+                <div className="card-header" style={{ gap: '12px', flexWrap: 'wrap', justifyContent: 'flex-start', overflow: 'visible' }}>
+                    <Filter size={18} style={{ color: 'var(--text-muted)' }} />
+                    <div style={{ position: 'relative' }} ref={searchDropdownRef}>
+                        <button
+                            className={`btn ${search || isSearchOpen ? 'btn-primary' : 'btn-secondary'}`}
+                            onClick={handleOpenSearch}
+                            style={{ gap: 8 }}
+                        >
+                            <Search size={16} />
+                            {search ? `Tìm: ${search}` : 'Tìm kiếm'}
+                            <ChevronDown size={14} />
+                        </button>
+
+                        <SearchDropdown
+                            isOpen={isSearchOpen}
+                            onClose={() => setIsSearchOpen(false)}
+                            onApply={(value) => {
+                                setSearch(value.trim());
+                                setIsSearchOpen(false);
+                                setPage(1);
+                            }}
+                            onClear={() => {
+                                setSearch('');
+                                setIsSearchOpen(false);
+                                setPage(1);
+                            }}
+                            initialValue={search}
+                            placeholder="Nhập tên nhân viên, email hoặc dán danh sách ID (mỗi dòng một ID)..."
                         />
                     </div>
                 </div>
@@ -186,7 +248,12 @@ export default function Users() {
                         <tbody>
                             {isLoading ? (
                                 <tr>
-                                    <td colSpan={6} style={{ textAlign: 'center' }}>Đang tải...</td>
+                                    <td colSpan={6} style={{ textAlign: 'center', padding: 40 }}>
+                                        <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', gap: 12 }}>
+                                            <div className="spinner" />
+                                            <span style={{ color: 'var(--text-muted)' }}>Đang tải dữ liệu...</span>
+                                        </div>
+                                    </td>
                                 </tr>
                             ) : users.length > 0 ? (
                                 users.map((u: User) => (
@@ -246,14 +313,68 @@ export default function Users() {
                                 ))
                             ) : (
                                 <tr>
-                                    <td colSpan={6} style={{ textAlign: 'center', color: 'var(--text-muted)' }}>
-                                        Chưa có nhân viên nào
+                                    <td colSpan={6} style={{ textAlign: 'center', padding: 40, color: 'var(--text-muted)' }}>
+                                        <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 12 }}>
+                                            <Search size={32} style={{ opacity: 0.3 }} />
+                                            <span>Không tìm thấy nhân viên nào phù hợp</span>
+                                            {search && (
+                                                <button className="btn btn-secondary btn-sm" onClick={() => { setSearch(''); setPage(1); }}>
+                                                    Xóa bộ lọc
+                                                </button>
+                                            )}
+                                        </div>
                                     </td>
                                 </tr>
                             )}
                         </tbody>
                     </table>
                 </div>
+
+                {pagination.total > 0 && (
+                    <div className="pagination-container" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: 16 }}>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                            <span style={{ color: 'var(--text-muted)', fontSize: 13 }}>Số hàng hiển thị:</span>
+                            <select
+                                className="form-select"
+                                style={{ width: 'auto', padding: '4px 8px', fontSize: 13 }}
+                                value={limit}
+                                onChange={(e) => {
+                                    setLimit(Number(e.target.value));
+                                    setPage(1);
+                                }}
+                            >
+                                <option value={10}>10</option>
+                                <option value={20}>20</option>
+                                <option value={30}>30</option>
+                                <option value={50}>50</option>
+                                <option value={100}>100</option>
+                            </select>
+                            <span style={{ color: 'var(--text-muted)', fontSize: 13 }}>
+                                {((page - 1) * limit) + 1} - {Math.min(page * limit, pagination.total)} trong tổng số {pagination.total}
+                            </span>
+                        </div>
+
+                        <div className="pagination">
+                            <button
+                                className="pagination-btn"
+                                disabled={page <= 1}
+                                onClick={() => setPage(page - 1)}
+                            >
+                                ← Trước
+                            </button>
+                            <span className="pagination-info">
+                                Trang {page} / {pagination.pages}
+                            </span>
+                            <button
+                                className="pagination-btn"
+                                disabled={page >= pagination.pages}
+                                onClick={() => setPage(page + 1)}
+                            >
+                                Sau →
+                            </button>
+                        </div>
+                    </div>
+                )}
             </div>
 
             {/* Create/Edit Modal */}

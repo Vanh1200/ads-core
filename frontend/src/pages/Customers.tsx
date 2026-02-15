@@ -1,8 +1,9 @@
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useNavigate } from 'react-router-dom';
 import { Plus, Search, Filter, Edit2, Trash2, ChevronUp, ChevronDown } from 'lucide-react';
 import Dropdown from '../components/Dropdown';
+import SearchDropdown from '../components/SearchDropdown';
 import { customersApi, usersApi } from '../api/client';
 import { useAuthStore, canAssignMC } from '../store/authStore';
 
@@ -38,6 +39,8 @@ export default function Customers() {
     const [showModal, setShowModal] = useState(false);
     const [selectedCustomer, setSelectedCustomer] = useState<Customer | null>(null);
     const [deleteId, setDeleteId] = useState<string | null>(null);
+    const [page, setPage] = useState(1);
+    const [limit, setLimit] = useState(20);
     const [toast, setToast] = useState<{ message: string; type: 'success' | 'error' } | null>(null);
 
     // Sorting
@@ -45,8 +48,6 @@ export default function Customers() {
     const [sortOrder, setSortOrder] = useState<SortOrder>('desc');
 
     const [isSearchOpen, setIsSearchOpen] = useState(false);
-    const [searchQuery, setSearchQuery] = useState('');
-    const searchDropdownRef = useRef<HTMLDivElement>(null);
 
     const queryClient = useQueryClient();
 
@@ -62,10 +63,12 @@ export default function Customers() {
     };
 
     const { data, isLoading } = useQuery({
-        queryKey: ['customers', search, spendingDays, sortField, sortOrder],
+        queryKey: ['customers', search, spendingDays, page, limit, sortField, sortOrder],
         queryFn: () => customersApi.list({
             search,
             spendingDays,
+            page,
+            limit,
             sortBy: sortField,
             sortOrder
         }),
@@ -136,6 +139,7 @@ export default function Customers() {
     });
 
     const customers = data?.data?.data || [];
+    const pagination = data?.data?.pagination || { total: 0, pages: 0 };
     const users = usersData?.data?.data || [];
 
     const handleSort = (field: SortField) => {
@@ -170,38 +174,7 @@ export default function Customers() {
         }
     };
 
-    // Filter handlers
-    useEffect(() => {
-        const handleClickOutside = (event: MouseEvent) => {
-            if (searchDropdownRef.current && !searchDropdownRef.current.contains(event.target as Node)) {
-                setIsSearchOpen(false);
-            }
-        };
 
-        if (isSearchOpen) {
-            document.addEventListener('mousedown', handleClickOutside);
-        }
-        return () => {
-            document.removeEventListener('mousedown', handleClickOutside);
-        };
-    }, [isSearchOpen]);
-
-    const handleOpenSearch = () => {
-        setSearchQuery(search);
-        setIsSearchOpen(true);
-    };
-
-    const handleApplySearch = () => {
-        setSearch(searchQuery.trim());
-        setIsSearchOpen(false);
-    };
-
-    const handleKeyDown = (e: React.KeyboardEvent) => {
-        if (e.key === 'Enter' && !e.shiftKey) {
-            e.preventDefault();
-            handleApplySearch();
-        }
-    };
 
     const spendingDaysLabels: Record<number, string> = {
         1: 'Hôm nay',
@@ -233,12 +206,12 @@ export default function Customers() {
             </div>
 
             <div className="card" style={{ overflow: 'visible' }}>
-                <div className="card-header" style={{ gap: '12px', flexWrap: 'wrap', justifyContent: 'flex-start' }}>
+                <div className="card-header" style={{ gap: '12px', flexWrap: 'wrap', justifyContent: 'flex-start', overflow: 'visible' }}>
                     <Filter size={18} style={{ color: 'var(--text-muted)' }} />
-                    <div style={{ position: 'relative' }} ref={searchDropdownRef}>
+                    <div style={{ position: 'relative' }}>
                         <button
                             className={`btn ${search || isSearchOpen ? 'btn-primary' : 'btn-secondary'}`}
-                            onClick={handleOpenSearch}
+                            onClick={() => setIsSearchOpen(true)}
                             style={{ gap: 8 }}
                         >
                             <Search size={16} />
@@ -246,60 +219,22 @@ export default function Customers() {
                             <ChevronDown size={14} />
                         </button>
 
-                        {isSearchOpen && (
-                            <div style={{
-                                position: 'absolute',
-                                top: '100%',
-                                left: 0,
-                                marginTop: 8,
-                                background: 'var(--surface)',
-                                border: '1px solid var(--border)',
-                                borderRadius: 8,
-                                padding: 16,
-                                width: 400,
-                                boxShadow: 'var(--shadow)',
-                                zIndex: 1000,
-                                display: 'flex',
-                                flexDirection: 'column',
-                                gap: 12
-                            }}>
-                                <div style={{ position: 'relative' }}>
-                                    <Search size={16} style={{ position: 'absolute', left: 12, top: 12, color: 'var(--text-muted)' }} />
-                                    <textarea
-                                        autoFocus
-                                        className="form-input"
-                                        placeholder="Nhập tên khách hàng, thông tin liên hệ..."
-                                        style={{
-                                            width: '100%',
-                                            minHeight: 80,
-                                            paddingLeft: 36,
-                                            resize: 'vertical'
-                                        }}
-                                        value={searchQuery}
-                                        onChange={(e) => setSearchQuery(e.target.value)}
-                                        onKeyDown={handleKeyDown}
-                                    />
-                                </div>
-                                <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 8 }}>
-                                    <button
-                                        className="btn btn-secondary btn-sm"
-                                        onClick={() => {
-                                            setSearchQuery('');
-                                            setSearch('');
-                                            setIsSearchOpen(false);
-                                        }}
-                                    >
-                                        Xóa lọc
-                                    </button>
-                                    <button
-                                        className="btn btn-primary btn-sm"
-                                        onClick={handleApplySearch}
-                                    >
-                                        Áp dụng
-                                    </button>
-                                </div>
-                            </div>
-                        )}
+                        <SearchDropdown
+                            isOpen={isSearchOpen}
+                            onClose={() => setIsSearchOpen(false)}
+                            onApply={(value) => {
+                                setSearch(value.trim());
+                                setIsSearchOpen(false);
+                                setPage(1);
+                            }}
+                            onClear={() => {
+                                setSearch('');
+                                setIsSearchOpen(false);
+                                setPage(1);
+                            }}
+                            initialValue={search}
+                            placeholder="Nhập tên khách hàng, email hoặc dán danh sách ID (mỗi dòng một ID)..."
+                        />
                     </div>
 
                     <Dropdown
@@ -433,7 +368,7 @@ export default function Customers() {
                                             <Search size={32} style={{ opacity: 0.3 }} />
                                             <span>Không tìm thấy khách hàng nào phù hợp</span>
                                             {search && (
-                                                <button className="btn btn-secondary btn-sm" onClick={() => setSearch('')}>
+                                                <button className="btn btn-secondary btn-sm" onClick={() => { setSearch(''); setPage(1); }}>
                                                     Xóa bộ lọc
                                                 </button>
                                             )}
@@ -444,6 +379,52 @@ export default function Customers() {
                         </tbody>
                     </table>
                 </div>
+
+                {pagination.total > 0 && (
+                    <div className="pagination-container" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: 16 }}>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                            <span style={{ color: 'var(--text-muted)', fontSize: 13 }}>Số hàng hiển thị:</span>
+                            <select
+                                className="form-select"
+                                style={{ width: 'auto', padding: '4px 8px', fontSize: 13 }}
+                                value={limit}
+                                onChange={(e) => {
+                                    setLimit(Number(e.target.value));
+                                    setPage(1);
+                                }}
+                            >
+                                <option value={10}>10</option>
+                                <option value={20}>20</option>
+                                <option value={30}>30</option>
+                                <option value={50}>50</option>
+                                <option value={100}>100</option>
+                            </select>
+                            <span style={{ color: 'var(--text-muted)', fontSize: 13 }}>
+                                {((page - 1) * limit) + 1} - {Math.min(page * limit, pagination.total)} trong tổng số {pagination.total}
+                            </span>
+                        </div>
+
+                        <div className="pagination">
+                            <button
+                                className="pagination-btn"
+                                disabled={page <= 1}
+                                onClick={() => setPage(page - 1)}
+                            >
+                                ← Trước
+                            </button>
+                            <span className="pagination-info">
+                                Trang {page} / {pagination.pages}
+                            </span>
+                            <button
+                                className="pagination-btn"
+                                disabled={page >= pagination.pages}
+                                onClick={() => setPage(page + 1)}
+                            >
+                                Sau →
+                            </button>
+                        </div>
+                    </div>
+                )}
             </div>
 
             {

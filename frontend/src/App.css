@@ -12,8 +12,8 @@
   --text: #ffffff;
   --text-muted: #cbd5e1;
   --shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.3);
-  --radius: 6px;
-  --radius-sm: 4px;
+  --radius: 10px;
+  --radius-sm: 6px;
   --z-drawer: 1000;
   --z-overlay: 900;
   --z-header: 800;
@@ -87,7 +87,7 @@ body {
 }
 
 .sidebar {
-  width: 210px;
+  width: 240px;
   background: var(--surface);
   border-right: 1px solid var(--border);
   display: flex;
@@ -231,9 +231,9 @@ body {
 
 .main-content {
   flex: 1;
-  margin-left: 210px;
+  margin-left: 240px;
   padding: 20px;
-  width: calc(100% - 210px);
+  width: calc(100% - 240px);
   min-width: 0;
   box-sizing: border-box;
 }
@@ -472,6 +472,20 @@ body {
 
 .data-table td {
   font-size: 14px;
+}
+
+.description-cell {
+  max-width: 300px;
+  font-size: 13px;
+}
+
+@media (max-width: 768px) {
+  .description-cell {
+    max-width: 150px;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
 }
 
 /* Sticky first column for tables */
@@ -1209,4 +1223,35 @@ input[type="checkbox"] {
 .info-card-value {
   font-size: 15px;
   font-weight: 600;
+}
+
+/* Responsive Search Popup */
+.search-popup-responsive {
+  position: absolute;
+  top: 100%;
+  left: 0;
+  margin-top: 8px;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 16px;
+  width: 400px;
+  box-shadow: var(--shadow);
+  z-index: 1000;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+@media (max-width: 632px) {
+  .search-popup-responsive {
+    position: fixed;
+    top: 50%;
+    left: 16px;
+    right: 16px;
+    transform: translateY(-50%);
+    width: auto;
+    max-width: 400px;
+    margin: 0 auto;
+  }
 }

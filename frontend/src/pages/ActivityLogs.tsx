@@ -1,7 +1,8 @@
 import { useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
-import { Filter, X, Clock, User as UserIcon, Shield, ChevronDown } from 'lucide-react';
+import { Search, Filter, X, Clock, User as UserIcon, Shield, ChevronDown } from 'lucide-react';
 import Dropdown from '../components/Dropdown';
+import SearchDropdown from '../components/SearchDropdown';
 import { useSearchParams } from 'react-router-dom';
 import { activityLogsApi, usersApi } from '../api/client';
 
@@ -25,7 +26,10 @@ export default function ActivityLogs() {
     const [entityType, setEntityType] = useState('');
     const [action, setAction] = useState('');
     const [userId, setUserId] = useState('');
+    const [search, setSearch] = useState('');
+    const [isSearchOpen, setIsSearchOpen] = useState(false);
     const [page, setPage] = useState(1);
+    const [limit, setLimit] = useState(30);
 
     // Fetch users for filter
     const { data: usersData } = useQuery({
@@ -35,13 +39,13 @@ export default function ActivityLogs() {
     const users = usersData?.data || [];
 
     const { data, isLoading } = useQuery({
-        queryKey: ['activityLogs', entityType, action, userId, page],
+        queryKey: ['activityLogs', entityType, action, userId, page, limit],
         queryFn: () => activityLogsApi.list({
             entityType: entityType || undefined,
             action: action || undefined,
             userId: userId || undefined,
             page,
-            limit: 30,
+            limit,
         }),
     });
 
@@ -111,13 +115,43 @@ export default function ActivityLogs() {
             </div>
 
             <div className="card" style={{ overflow: 'visible' }}>
-                <div className="card-header" style={{ gap: '12px', flexWrap: 'wrap', justifyContent: 'flex-start' }}>
+                <div className="card-header" style={{ gap: '12px', flexWrap: 'wrap', justifyContent: 'flex-start', overflow: 'visible' }}>
                     <Filter size={18} style={{ color: 'var(--text-muted)' }} />
+
+                    {/* Search Input */}
+                    <div style={{ position: 'relative' }}>
+                        <button
+                            className={`btn ${search || isSearchOpen ? 'btn-primary' : 'btn-secondary'}`}
+                            onClick={() => setIsSearchOpen(true)}
+                            style={{ gap: 8 }}
+                        >
+                            <Search size={16} />
+                            {search ? `Tìm: ${search}` : 'Tìm kiếm'}
+                            <ChevronDown size={14} />
+                        </button>
+
+                        <SearchDropdown
+                            isOpen={isSearchOpen}
+                            onClose={() => setIsSearchOpen(false)}
+                            onApply={(value) => {
+                                setSearch(value.trim());
+                                setIsSearchOpen(false);
+                                setPage(1);
+                            }}
+                            onClear={() => {
+                                setSearch('');
+                                setIsSearchOpen(false);
+                                setPage(1);
+                            }}
+                            initialValue={search}
+                            placeholder="Nhập ID đối tượng, mô tả hoặc email..."
+                        />
+                    </div>
 
                     {/* User Filter */}
                     <Dropdown
                         trigger={
-                            <button className={`btn ${userId ? 'btn-primary' : 'btn-secondary'}`} style={{ gap: 6 }}>
+                            <button className={`btn ${userId ? 'btn-primary' : 'btn-secondary'} `} style={{ gap: 6 }}>
                                 {userName}
                                 <ChevronDown size={14} />
                             </button>
@@ -135,7 +169,7 @@ export default function ActivityLogs() {
                     {/* Entity Type Filter */}
                     <Dropdown
                         trigger={
-                            <button className={`btn ${entityType ? 'btn-primary' : 'btn-secondary'}`} style={{ gap: 6 }}>
+                            <button className={`btn ${entityType ? 'btn-primary' : 'btn-secondary'} `} style={{ gap: 6 }}>
                                 {entityType ? entityTypeLabels[entityType] : 'Đối tượng'}
                                 <ChevronDown size={14} />
                             </button>
@@ -155,7 +189,7 @@ export default function ActivityLogs() {
                     {/* Action Filter */}
                     <Dropdown
                         trigger={
-                            <button className={`btn ${action ? 'btn-primary' : 'btn-secondary'}`} style={{ gap: 6 }}>
+                            <button className={`btn ${action ? 'btn-primary' : 'btn-secondary'} `} style={{ gap: 6 }}>
                                 {action ? actionLabels[action]?.label : 'Hành động'}
                                 <ChevronDown size={14} />
                             </button>
@@ -237,7 +271,7 @@ export default function ActivityLogs() {
                                                 ID: {log.entityId.substring(0, 8)}...
                                             </small>
                                         </td>
-                                        <td style={{ maxWidth: '300px' }}>
+                                        <td className="description-cell">
                                             {log.description || '-'}
                                         </td>
                                     </tr>
@@ -268,25 +302,49 @@ export default function ActivityLogs() {
                         </tbody>
                     </table>
                 </div>
-                {pagination.totalPages > 1 && (
-                    <div className="pagination">
-                        <button
-                            className="pagination-btn"
-                            disabled={page <= 1}
-                            onClick={() => setPage(page - 1)}
-                        >
-                            ← Trước
-                        </button>
-                        <span style={{ color: 'var(--text-muted)' }}>
-                            Trang {page} / {pagination.totalPages} ({pagination.total} hoạt động)
-                        </span>
-                        <button
-                            className="pagination-btn"
-                            disabled={page >= pagination.totalPages}
-                            onClick={() => setPage(page + 1)}
-                        >
-                            Sau →
-                        </button>
+                {pagination.total > 0 && (
+                    <div className="pagination-container" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: 16 }}>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                            <span style={{ color: 'var(--text-muted)', fontSize: 13 }}>Số hàng hiển thị:</span>
+                            <select
+                                className="form-select"
+                                style={{ width: 'auto', padding: '4px 8px', fontSize: 13 }}
+                                value={limit}
+                                onChange={(e) => {
+                                    setLimit(Number(e.target.value));
+                                    setPage(1);
+                                }}
+                            >
+                                <option value={10}>10</option>
+                                <option value={20}>20</option>
+                                <option value={30}>30</option>
+                                <option value={50}>50</option>
+                                <option value={100}>100</option>
+                            </select>
+                            <span style={{ color: 'var(--text-muted)', fontSize: 13 }}>
+                                {((page - 1) * limit) + 1} - {Math.min(page * limit, pagination.total)} trong tổng số {pagination.total}
+                            </span>
+                        </div>
+
+                        <div className="pagination">
+                            <button
+                                className="pagination-btn"
+                                disabled={page <= 1}
+                                onClick={() => setPage(page - 1)}
+                            >
+                                ← Trước
+                            </button>
+                            <span className="pagination-info">
+                                Trang {page} / {pagination.totalPages}
+                            </span>
+                            <button
+                                className="pagination-btn"
+                                disabled={page >= pagination.totalPages}
+                                onClick={() => setPage(page + 1)}
+                            >
+                                Sau →
+                            </button>
+                        </div>
                     </div>
                 )}
             </div>

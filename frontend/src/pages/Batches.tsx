@@ -5,6 +5,7 @@ import { Plus, Search, Upload, FileSpreadsheet, CheckCircle, AlertCircle, Edit2,
 import { batchesApi, importApi, partnersApi } from '../api/client';
 import { useAuthStore, canManageBatches } from '../store/authStore';
 import Dropdown from '../components/Dropdown';
+import SearchDropdown from '../components/SearchDropdown';
 
 interface Batch {
     id: string;
@@ -75,16 +76,11 @@ export default function Batches() {
     const [spendingDays, setSpendingDays] = useState(7);
 
     const [page, setPage] = useState(1);
-    const [limit] = useState(20);
+    const [limit, setLimit] = useState(20);
 
     // Sorting
     const [sortField, setSortField] = useState<SortField>('createdAt');
     const [sortOrder, setSortOrder] = useState<SortOrder>('desc');
-
-    // Search UI State
-    const [isSearchOpen, setIsSearchOpen] = useState(false);
-    const [searchQuery, setSearchQuery] = useState('');
-    const searchDropdownRef = useRef<HTMLDivElement>(null);
 
     // Selection State
     const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
@@ -92,6 +88,7 @@ export default function Batches() {
     const [showBulkEditModal, setShowBulkEditModal] = useState(false);
     const [bulkStatus, setBulkStatus] = useState('');
     const [bulkReadiness, setBulkReadiness] = useState<number | undefined>(undefined);
+    const [isSearchOpen, setIsSearchOpen] = useState(false);
 
 
     const [showImportModal, setShowImportModal] = useState(false);
@@ -127,14 +124,8 @@ export default function Batches() {
 
     // Close search dropdown when clicking outside
     useEffect(() => {
-        const handleClickOutside = (event: MouseEvent) => {
-            if (searchDropdownRef.current && !searchDropdownRef.current.contains(event.target as Node)) {
-                setIsSearchOpen(false);
-            }
-        };
-        if (isSearchOpen) document.addEventListener('mousedown', handleClickOutside);
-        return () => document.removeEventListener('mousedown', handleClickOutside);
-    }, [isSearchOpen]);
+        // This useEffect is no longer needed as SearchDropdown handles its own state
+    }, []);
 
     // Sync URL params
     useEffect(() => {
@@ -172,51 +163,7 @@ export default function Batches() {
     const pagination = data?.data?.pagination || { total: 0, totalPages: 1 };
 
     // Handlers
-    const handleApplySearch = () => {
-        const trimmed = searchQuery.trim();
-        if (!trimmed) {
-            setSearch('');
-            setIdsFilter('');
-        } else {
-            // Check if input looks like a list of IDs (multiple lines or comma separated)
-            // or if it's a single line fully matching an ID pattern or just digits/hyphens
-            const lines = trimmed.split(/[\n,]+/).map(t => t.trim()).filter(Boolean);
 
-            // Heuristic: If multiple items, treat as IDs.
-            // If single item, check if it looks like an ID (digits, dashes). 
-            // If it has letters, treat as Search (Name/ID partial).
-            const isMultiple = lines.length > 1;
-            const isIdPattern = lines.every(l => /^[\d-]+$/.test(l));
-
-            if (isMultiple || isIdPattern) {
-                setIdsFilter(lines.join('\n'));
-                setSearch('');
-            } else {
-                setSearch(trimmed);
-                setIdsFilter('');
-            }
-        }
-        setIsSearchOpen(false);
-        setPage(1);
-    };
-
-    const handleOpenSearch = () => {
-        if (idsFilter) {
-            setSearchQuery(idsFilter);
-        } else if (search) {
-            setSearchQuery(search);
-        } else {
-            setSearchQuery('');
-        }
-        setIsSearchOpen(true);
-    };
-
-    const handleKeyDown = (e: React.KeyboardEvent) => {
-        if (e.key === 'Enter' && !e.shiftKey) {
-            e.preventDefault();
-            handleApplySearch();
-        }
-    };
 
     const resetFilters = () => {
         setSearch('');
@@ -226,7 +173,6 @@ export default function Batches() {
         setYearFilter('');
         setPartnerFilter('');
         setPage(1);
-        setSearchQuery('');
         setSearchParams({});
     };
 
@@ -506,15 +452,15 @@ export default function Batches() {
                 </div>
             )}
 
-            <div className="card">
-                <div className="card-header" style={{ gap: '12px', flexWrap: 'wrap', justifyContent: 'flex-start' }}>
+            <div className="card" style={{ overflow: 'visible' }}>
+                <div className="card-header" style={{ gap: '12px', flexWrap: 'wrap', justifyContent: 'flex-start', overflow: 'visible' }}>
                     <Filter size={18} style={{ color: 'var(--text-muted)' }} />
 
                     {/* Search Input */}
-                    <div style={{ position: 'relative' }} ref={searchDropdownRef}>
+                    <div style={{ position: 'relative' }}>
                         <button
                             className={`btn ${search || idsFilter || isSearchOpen ? 'btn-primary' : 'btn-secondary'}`}
-                            onClick={handleOpenSearch}
+                            onClick={() => setIsSearchOpen(true)}
                             style={{ gap: 8 }}
                         >
                             <Search size={16} />
@@ -522,63 +468,34 @@ export default function Batches() {
                             <ChevronDown size={14} />
                         </button>
 
-                        {isSearchOpen && (
-                            <div style={{
-                                position: 'absolute',
-                                top: '100%',
-                                left: 0,
-                                marginTop: 8,
-                                background: 'var(--surface)',
-                                border: '1px solid var(--border)',
-                                borderRadius: 8,
-                                padding: 16,
-                                width: 400,
-                                boxShadow: 'var(--shadow)',
-                                zIndex: 1000,
-                                display: 'flex',
-                                flexDirection: 'column',
-                                gap: 12
-                            }}>
-                                <div style={{ position: 'relative' }}>
-                                    <Search size={16} style={{ position: 'absolute', left: 12, top: 12, color: 'var(--text-muted)' }} />
-                                    <textarea
-                                        autoFocus
-                                        className="form-input"
-                                        placeholder="Nhập tên lô, ID, hoặc dán danh sách ID (mỗi dòng một ID)..."
-                                        style={{
-                                            width: '100%',
-                                            minHeight: 120,
-                                            paddingLeft: 36,
-                                            resize: 'vertical',
-                                            fontFamily: 'monospace'
-                                        }}
-                                        value={searchQuery}
-                                        onChange={(e) => setSearchQuery(e.target.value)}
-                                        onKeyDown={handleKeyDown}
-                                    />
-                                </div>
-                                <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 8 }}>
-                                    <button
-                                        className="btn btn-secondary btn-sm"
-                                        onClick={() => {
-                                            setSearchQuery('');
-                                            setSearch('');
-                                            setIdsFilter('');
-                                            setIsSearchOpen(false);
-                                        }}
-                                    >
-                                        Xóa lọc
-                                    </button>
-                                    <button
-                                        className="btn btn-primary btn-sm"
-                                        onClick={handleApplySearch}
-                                    >
-                                        Áp dụng
-                                    </button>
-                                </div>
-                            </div>
-                        )}
+                        <SearchDropdown
+                            isOpen={isSearchOpen}
+                            onClose={() => setIsSearchOpen(false)}
+                            onApply={(value) => {
+                                // If it looks like a list of IDs, set it to idsFilter
+                                if (value.includes('\n') || value.includes(',') || /^\d+$/.test(value.trim())) {
+                                    setIdsFilter(value.trim());
+                                    setSearch('');
+                                } else {
+                                    setSearch(value.trim());
+                                    setIdsFilter('');
+                                }
+                                setIsSearchOpen(false);
+                                setPage(1);
+                            }}
+                            onClear={() => {
+                                setSearch('');
+                                setIdsFilter('');
+                                setIsSearchOpen(false);
+                                setPage(1);
+                            }}
+                            initialValue={search || idsFilter}
+                            placeholder="Nhập tên lô, ID, hoặc dán danh sách ID (mỗi dòng một ID)..."
+                        />
                     </div>
+
+                    {/* Spending Days Filter */}
+
 
                     {/* Status Filter */}
                     <Dropdown
@@ -647,6 +564,8 @@ export default function Batches() {
                             { key: '2026', label: '2026', onClick: () => setYearFilter(2026) },
                         ]}
                     />
+
+
 
                     {/* Reset Filter Button */}
                     {(search || statusFilter || timezoneFilter || yearFilter || partnerFilter || idsFilter) && (
@@ -719,32 +638,9 @@ export default function Batches() {
                                     style={{ width: '10%', cursor: 'pointer', userSelect: 'none' }}
                                     onClick={() => handleSort('rangeSpending')}
                                 >
-                                    <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-start', gap: 2 }}>
-                                        <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
-                                            <span style={{ fontSize: 13 }}>Chi phí</span>
-                                            <SortIcon field="rangeSpending" />
-                                        </div>
-                                        <select
-                                            value={spendingDays}
-                                            onChange={(e) => setSpendingDays(Number(e.target.value))}
-                                            onClick={(e) => e.stopPropagation()}
-                                            style={{
-                                                fontSize: 11,
-                                                padding: '2px 4px',
-                                                border: '1px solid var(--border)',
-                                                borderRadius: 4,
-                                                background: 'var(--bg-primary)',
-                                                cursor: 'pointer',
-                                                marginLeft: 0,
-                                                width: '100%'
-                                            }}
-                                        >
-                                            <option value={1}>Hôm nay</option>
-                                            <option value={3}>3 ngày</option>
-                                            <option value={7}>7 ngày</option>
-                                            <option value={14}>14 ngày</option>
-                                            <option value={30}>30 ngày</option>
-                                        </select>
+                                    <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
+                                        <span style={{ fontSize: 13 }}>Chi phí</span>
+                                        <SortIcon field="rangeSpending" />
                                     </div>
                                 </th>
                                 <th
@@ -905,26 +801,49 @@ export default function Batches() {
                     </table>
                 </div>
 
-                {/* Pagination */}
-                {pagination && pagination.totalPages > 1 && (
-                    <div className="pagination" style={{ padding: '16px', borderTop: '1px solid var(--border)', display: 'flex', justifyContent: 'center', gap: 8 }}>
-                        <button
-                            className="btn btn-secondary btn-sm"
-                            disabled={page === 1}
-                            onClick={() => setPage(p => Math.max(1, p - 1))}
-                        >
-                            Trước
-                        </button>
-                        <span style={{ display: 'flex', alignItems: 'center', padding: '0 8px', fontSize: 13 }}>
-                            Trang {page} / {pagination.totalPages}
-                        </span>
-                        <button
-                            className="btn btn-secondary btn-sm"
-                            disabled={page === pagination.totalPages}
-                            onClick={() => setPage(p => Math.min(pagination.totalPages, p + 1))}
-                        >
-                            Sau
-                        </button>
+                {pagination.total > 0 && (
+                    <div className="pagination-container" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: 16 }}>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                            <span style={{ color: 'var(--text-muted)', fontSize: 13 }}>Số hàng hiển thị:</span>
+                            <select
+                                className="form-select"
+                                style={{ width: 'auto', padding: '4px 8px', fontSize: 13 }}
+                                value={limit}
+                                onChange={(e) => {
+                                    setLimit(Number(e.target.value));
+                                    setPage(1);
+                                }}
+                            >
+                                <option value={10}>10</option>
+                                <option value={20}>20</option>
+                                <option value={30}>30</option>
+                                <option value={50}>50</option>
+                                <option value={100}>100</option>
+                            </select>
+                            <span style={{ color: 'var(--text-muted)', fontSize: 13 }}>
+                                {((page - 1) * limit) + 1} - {Math.min(page * limit, pagination.total)} trong tổng số {pagination.total}
+                            </span>
+                        </div>
+
+                        <div className="pagination">
+                            <button
+                                className="pagination-btn"
+                                disabled={page <= 1}
+                                onClick={() => setPage(page - 1)}
+                            >
+                                ← Trước
+                            </button>
+                            <span className="pagination-info">
+                                Trang {page} / {pagination.totalPages}
+                            </span>
+                            <button
+                                className="pagination-btn"
+                                disabled={page >= pagination.totalPages}
+                                onClick={() => setPage(page + 1)}
+                            >
+                                Sau →
+                            </button>
+                        </div>
                     </div>
                 )}
             </div>
