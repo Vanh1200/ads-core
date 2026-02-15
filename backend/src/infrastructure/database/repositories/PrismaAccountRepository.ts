@@ -107,6 +107,8 @@ export class PrismaAccountRepository implements IAccountRepository {
         const updateData: Prisma.AccountUpdateManyMutationInput = {};
         if (data.status) updateData.status = data.status as AccountStatus;
         if (data.lastSynced) updateData.lastSynced = data.lastSynced;
+        if (data.currentMiId !== undefined) (updateData as any).currentMiId = data.currentMiId;
+        if (data.currentMcId !== undefined) (updateData as any).currentMcId = data.currentMcId;
 
         return prisma.account.updateMany({
             where: { id: { in: ids } },

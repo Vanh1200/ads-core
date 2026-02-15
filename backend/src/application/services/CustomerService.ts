@@ -1,5 +1,6 @@
 import { ICustomerRepository } from '../../domain/repositories/ICustomerRepository';
 import { customerRepository } from '../../infrastructure/database/repositories/PrismaCustomerRepository';
+import { accountRepository } from '../../infrastructure/database/repositories/PrismaAccountRepository';
 import { logActivity } from '../../infrastructure/logging/ActivityLogger';
 
 export class CustomerService {
@@ -62,6 +63,24 @@ export class CustomerService {
             ipAddress
         });
         return { message: 'Xóa khách hàng thành công' };
+    }
+
+    async assignAccounts(id: string, accountIds: string[], userId: string, ipAddress?: string) {
+        const customer = await this.customerRepo.findById(id);
+        if (!customer) throw new Error('NOT_FOUND: Khách hàng không tồn tại');
+
+        await accountRepository.updateMany(accountIds, { currentMcId: id });
+
+        await logActivity({
+            userId,
+            action: 'ASSIGN_MC',
+            entityType: 'Customer',
+            entityId: id,
+            newValues: { accountIds },
+            description: `Gán ${accountIds.length} tài khoản cho khách hàng: ${customer.name}`,
+            ipAddress
+        });
+        return { message: 'Gán tài khoản thành công' };
     }
 }
 

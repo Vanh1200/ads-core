@@ -54,6 +54,12 @@ export class InvoiceMCCController {
         const result = await invoiceMCCService.delete(req.params.id, req.user!.id, req.ip);
         res.json(result);
     });
+
+    linkAccounts = asyncHandler(async (req: any, res: any) => {
+        const { accountIds } = req.body;
+        const result = await invoiceMCCService.linkAccounts(req.params.id, accountIds, req.user!.id, req.ip);
+        res.json(result);
+    });
 }
 
 export const invoiceMCCController = new InvoiceMCCController();

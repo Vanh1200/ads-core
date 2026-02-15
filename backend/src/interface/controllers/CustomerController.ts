@@ -54,6 +54,12 @@ export class CustomerController {
         const result = await customerService.delete(req.params.id, req.user!.id, req.ip);
         res.json(result);
     });
+
+    assignAccounts = asyncHandler(async (req: any, res: any) => {
+        const { accountIds } = req.body;
+        const result = await customerService.assignAccounts(req.params.id, accountIds, req.user!.id, req.ip);
+        res.json(result);
+    });
 }
 
 export const customerController = new CustomerController();
