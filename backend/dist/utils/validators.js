@@ -100,5 +100,11 @@ exports.paginationSchema = zod_1.z.object({
     search: zod_1.z.string().optional(),
     sortBy: zod_1.z.string().optional(),
     sortOrder: zod_1.z.enum(['asc', 'desc']).default('desc'),
+    ids: zod_1.z.union([zod_1.z.string(), zod_1.z.array(zod_1.z.string())]).optional().transform(val => {
+        if (!val)
+            return undefined;
+        const array = Array.isArray(val) ? val : [val];
+        return array.flatMap(s => s.split(/[\n,]+/).map(i => i.trim()).filter(Boolean));
+    }),
 });
 //# sourceMappingURL=validators.js.map

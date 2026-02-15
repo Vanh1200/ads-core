@@ -20,12 +20,16 @@ export class PrismaBatchRepository implements IBatchRepository {
         isMixYear?: boolean;
         sortBy?: string;
         sortOrder?: 'asc' | 'desc';
+        ids?: string[];
     }): Promise<{ data: AccountBatch[]; total: number }> {
-        const { page, limit, status, year, isMixYear, sortBy, sortOrder } = params;
+        const { page, limit, status, year, isMixYear, sortBy, sortOrder, ids } = params;
         const where: any = {};
         if (status) where.status = status as BatchStatus;
         if (year) where.year = year;
         if (isMixYear !== undefined) where.isMixYear = isMixYear;
+        if (ids && ids.length > 0) {
+            where.mccAccountId = { in: ids };
+        }
 
         // Handle dynamic sorting
         const orderBy: any = {};

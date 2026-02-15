@@ -8,9 +8,9 @@ import { formatPaginationResponse } from '../../utils/pagination';
 export class AccountController {
     list = asyncHandler(async (req: any, res: any) => {
         const query = paginationSchema.safeParse(req.query);
-        const { page, limit, search, sortBy, sortOrder } = query.success
+        const { page, limit, search, sortBy, sortOrder, ids } = query.success
             ? query.data
-            : { page: 1, limit: 20, search: undefined, sortBy: undefined, sortOrder: 'desc' as const };
+            : { page: 1, limit: 20, search: undefined, sortBy: undefined, sortOrder: 'desc' as const, ids: undefined };
         const { status, batchId } = req.query;
 
         const { data, total } = await accountService.list({
@@ -21,6 +21,7 @@ export class AccountController {
             batchId: batchId as string,
             sortBy,
             sortOrder,
+            ids,
         });
 
         res.json(formatPaginationResponse(data, total, page, limit));

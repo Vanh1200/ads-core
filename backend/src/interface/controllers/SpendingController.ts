@@ -76,7 +76,12 @@ export class SpendingController {
     });
 
     getGlobalChart = asyncHandler(async (req: any, res: any) => {
-        const result = await spendingService.getGlobalChart();
+        const { days, startDate, endDate } = req.query;
+        const result = await spendingService.getGlobalChart(
+            days ? parseInt(days as string) : undefined,
+            startDate as string,
+            endDate as string
+        );
         res.json(result);
     });
 }

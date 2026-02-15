@@ -110,6 +110,11 @@ export const paginationSchema = z.object({
     search: z.string().optional(),
     sortBy: z.string().optional(),
     sortOrder: z.enum(['asc', 'desc']).default('desc'),
+    ids: z.union([z.string(), z.array(z.string())]).optional().transform(val => {
+        if (!val) return undefined;
+        const array = Array.isArray(val) ? val : [val];
+        return array.flatMap(s => s.split(/[\n,]+/).map(i => i.trim()).filter(Boolean));
+    }),
 });
 
 export type LoginInput = z.infer<typeof loginSchema>;

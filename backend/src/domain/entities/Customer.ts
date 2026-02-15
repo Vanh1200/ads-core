@@ -10,4 +10,5 @@ export interface Customer {
     assignedStaffId: string | null;
     createdAt: Date;
     updatedAt: Date;
+    rangeSpending?: number;
 }

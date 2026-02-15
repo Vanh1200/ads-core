@@ -1,6 +1,7 @@
 import { Response } from 'express';
 import { AuthRequest } from '../../infrastructure/middleware/auth';
 import { batchService } from '../../application/services/BatchService';
+import { spendingService } from '../../application/services/SpendingService';
 import { asyncHandler } from '../../infrastructure/middleware/errorHandler';
 import { paginationSchema } from '../../utils/validators';
 import { formatPaginationResponse } from '../../utils/pagination';
@@ -8,9 +9,9 @@ import { formatPaginationResponse } from '../../utils/pagination';
 export class BatchController {
     list = asyncHandler(async (req: any, res: any) => {
         const query = paginationSchema.safeParse(req.query);
-        const { page, limit, sortBy, sortOrder } = query.success
+        const { page, limit, sortBy, sortOrder, ids } = query.success
             ? query.data
-            : { page: 1, limit: 20, sortBy: undefined, sortOrder: 'desc' as const };
+            : { page: 1, limit: 20, sortBy: undefined, sortOrder: 'desc' as const, ids: undefined };
         const { status, year } = req.query;
         const { data, total } = await batchService.list({
             page,
@@ -19,8 +20,19 @@ export class BatchController {
             year: year ? parseInt(year as string) : undefined,
             sortBy,
             sortOrder,
+            ids,
         });
-        res.json(formatPaginationResponse(data, total, page, limit));
+
+        // Enrich with spending data
+        const spendingDays = req.query.spendingDays ? parseInt(req.query.spendingDays as string) : 7;
+        const spendingMap = await spendingService.getRangeSpendingMap('batch', data.map(b => b.id), spendingDays);
+
+        const enrichedData = data.map(batch => ({
+            ...batch,
+            rangeSpending: spendingMap[batch.id] || 0
+        }));
+
+        res.json(formatPaginationResponse(enrichedData, total, page, limit));
     });
 
     getById = asyncHandler(async (req: any, res: any) => {

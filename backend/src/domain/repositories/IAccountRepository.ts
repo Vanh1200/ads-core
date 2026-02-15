@@ -11,6 +11,7 @@ export interface IAccountRepository {
         batchId?: string;
         sortBy?: string;
         sortOrder?: 'asc' | 'desc';
+        ids?: string[];
     }): Promise<{ data: Account[]; total: number }>;
     create(data: Omit<Account, 'id' | 'createdAt' | 'updatedAt' | 'totalSpending'>): Promise<Account>;
     update(id: string, data: Partial<Account>): Promise<Account>;

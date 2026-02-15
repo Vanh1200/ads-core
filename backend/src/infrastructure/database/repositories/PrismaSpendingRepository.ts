@@ -44,13 +44,24 @@ export class PrismaSpendingRepository implements ISpendingRepository {
     }
 
     async getDailyStats(params: { startDate: Date; endDate: Date }): Promise<any[]> {
-        return prisma.$queryRaw`
-            SELECT spending_date as date, SUM(amount) as total
-            FROM spending_records
-            WHERE spending_date >= ${params.startDate} AND spending_date <= ${params.endDate}
-            GROUP BY spending_date
-            ORDER BY spending_date ASC
-        `;
+        const stats = await prisma.spendingRecord.groupBy({
+            by: ['spendingDate'],
+            _sum: { amount: true },
+            where: {
+                spendingDate: {
+                    gte: params.startDate,
+                    lte: params.endDate
+                }
+            },
+            orderBy: {
+                spendingDate: 'asc'
+            }
+        });
+
+        return stats.map(s => ({
+            date: s.spendingDate,
+            total: Number(s._sum.amount || 0)
+        }));
     }
 
     async getSummary(params: any): Promise<any> {

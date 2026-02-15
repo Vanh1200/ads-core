@@ -253,18 +253,21 @@ export declare const paginationSchema: z.ZodObject<{
     search: z.ZodOptional<z.ZodString>;
     sortBy: z.ZodOptional<z.ZodString>;
     sortOrder: z.ZodDefault<z.ZodEnum<["asc", "desc"]>>;
+    ids: z.ZodEffects<z.ZodOptional<z.ZodUnion<[z.ZodString, z.ZodArray<z.ZodString, "many">]>>, string[] | undefined, string | string[] | undefined>;
 }, "strip", z.ZodTypeAny, {
     page: number;
     limit: number;
     sortOrder: "asc" | "desc";
     search?: string | undefined;
     sortBy?: string | undefined;
+    ids?: string[] | undefined;
 }, {
     search?: string | undefined;
     page?: number | undefined;
     limit?: number | undefined;
     sortBy?: string | undefined;
     sortOrder?: "asc" | "desc" | undefined;
+    ids?: string | string[] | undefined;
 }>;
 export type LoginInput = z.infer<typeof loginSchema>;
 export type RegisterInput = z.infer<typeof registerSchema>;

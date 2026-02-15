@@ -1,6 +1,7 @@
 import { Response } from 'express';
 import { AuthRequest } from '../../infrastructure/middleware/auth';
 import { invoiceMCCService } from '../../application/services/InvoiceMCCService';
+import { spendingService } from '../../application/services/SpendingService';
 import { paginationSchema } from '../../interface/validators';
 import { asyncHandler } from '../../infrastructure/middleware/errorHandler';
 import { formatPaginationResponse } from '../../utils/pagination';
@@ -16,13 +17,22 @@ export class InvoiceMCCController {
         const { data, total } = await invoiceMCCService.list({
             page,
             limit,
-            q: search,
+            search: search as string,
             status: status as string,
             sortBy,
             sortOrder,
         });
 
-        res.json(formatPaginationResponse(data, total, page, limit));
+        // Enrich with spending data
+        const spendingDays = req.query.spendingDays ? parseInt(req.query.spendingDays as string) : 7;
+        const spendingMap = await spendingService.getRangeSpendingMap('invoice-mcc', data.map(i => i.id), spendingDays);
+
+        const enrichedData = data.map(mi => ({
+            ...mi,
+            rangeSpending: spendingMap[mi.id] || 0
+        }));
+
+        res.json(formatPaginationResponse(enrichedData, total, page, limit));
     });
 
     getById = asyncHandler(async (req: any, res: any) => {

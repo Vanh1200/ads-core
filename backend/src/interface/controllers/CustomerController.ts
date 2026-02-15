@@ -1,6 +1,7 @@
 import { Response } from 'express';
 import { AuthRequest } from '../../infrastructure/middleware/auth';
 import { customerService } from '../../application/services/CustomerService';
+import { spendingService } from '../../application/services/SpendingService';
 import { paginationSchema } from '../../interface/validators';
 import { asyncHandler } from '../../infrastructure/middleware/errorHandler';
 import { formatPaginationResponse } from '../../utils/pagination';
@@ -16,13 +17,22 @@ export class CustomerController {
         const { data, total } = await customerService.list({
             page,
             limit,
-            q: search,
+            q: search as string,
             status: status as string,
             sortBy,
             sortOrder,
         });
 
-        res.json(formatPaginationResponse(data, total, page, limit));
+        // Enrich with spending data
+        const spendingDays = req.query.spendingDays ? parseInt(req.query.spendingDays as string) : 7;
+        const spendingMap = await spendingService.getRangeSpendingMap('customer', data.map(c => c.id), spendingDays);
+
+        const enrichedData = data.map(customer => ({
+            ...customer,
+            rangeSpending: spendingMap[customer.id] || 0
+        }));
+
+        res.json(formatPaginationResponse(enrichedData, total, page, limit));
     });
 
     getById = asyncHandler(async (req: any, res: any) => {

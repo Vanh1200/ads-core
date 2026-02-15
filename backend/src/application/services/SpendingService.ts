@@ -19,10 +19,20 @@ export class SpendingService {
         return this.spendingRepo.getDailyStats(params);
     }
 
-    async getGlobalChart(days: number = 7) {
-        const endDate = new Date();
-        const startDate = new Date();
-        startDate.setDate(startDate.getDate() - days);
+    async getGlobalChart(days?: number, startDateParam?: string, endDateParam?: string) {
+        let startDate: Date;
+        let endDate: Date;
+
+        if (startDateParam && endDateParam) {
+            startDate = new Date(startDateParam);
+            endDate = new Date(endDateParam);
+        } else {
+            const d = days || 7;
+            endDate = new Date();
+            startDate = new Date();
+            startDate.setDate(startDate.getDate() - d);
+        }
+
         const stats = await this.spendingRepo.getDailyStats({ startDate, endDate });
 
         const data = stats.map((s: any) => ({
@@ -112,6 +122,60 @@ export class SpendingService {
 
     async listSnapshots(params: any) {
         return this.snapshotRepo.list(params);
+    }
+
+    async getRangeSpendingMap(type: 'batch' | 'customer' | 'invoice-mcc', ids: string[], days: number = 7) {
+        const startDate = new Date();
+        startDate.setDate(startDate.getDate() - days);
+
+        const where: any = {
+            spendingDate: { gte: startDate }
+        };
+
+        if (type === 'batch') {
+            where.account = { batchId: { in: ids } };
+        } else if (type === 'customer') {
+            where.customerId = { in: ids };
+        } else if (type === 'invoice-mcc') {
+            where.invoiceMccId = { in: ids };
+        }
+
+        const field = type === 'batch' ? 'batchId' : (type === 'customer' ? 'customerId' : 'invoiceMccId');
+
+        const records = await prisma.spendingRecord.groupBy({
+            by: type === 'batch' ? [] : [field as any],
+            where,
+            _sum: { amount: true },
+            ...(type === 'batch' ? {} : {}) // Special handling for batch as it's through account
+        });
+
+        // Prisma doesn't support grouping by relational fields (account.batchId) directly in groupBy
+        // If type is batch, we might need a different approach or fetch more data
+        if (type === 'batch') {
+            const batchSpends = await prisma.spendingRecord.findMany({
+                where,
+                select: {
+                    amount: true,
+                    account: { select: { batchId: true } }
+                }
+            });
+
+            const map: Record<string, number> = {};
+            batchSpends.forEach(s => {
+                const bId = s.account.batchId;
+                map[bId] = (map[bId] || 0) + Number(s.amount);
+            });
+            return map;
+        }
+
+        const map: Record<string, number> = {};
+        records.forEach((r: any) => {
+            const id = r[field];
+            if (id) {
+                map[id] = Number(r._sum.amount || 0);
+            }
+        });
+        return map;
     }
 }
 
