@@ -1,5 +1,5 @@
 import { Router } from 'express';
-import { authenticateToken, isLinker, canView } from '../../middleware/auth.middleware';
+import { authenticateToken, isLinker, canView } from '../../infrastructure/middleware/auth';
 import { invoiceMCCController } from '../../interface/controllers/InvoiceMCCController';
 
 const router = Router();

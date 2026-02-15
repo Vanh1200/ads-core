@@ -40,7 +40,7 @@ export class PrismaInvoiceMCCRepository implements IInvoiceMCCRepository {
         ]);
 
         return {
-            data: mccs.map(m => this.mapToEntity(m)!),
+            data: mccs.map((m: any) => this.mapToEntity(m)!),
             total,
         };
     }

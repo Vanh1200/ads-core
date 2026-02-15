@@ -83,8 +83,8 @@ export class PrismaBatchRepository implements IBatchRepository {
             where: { batchId: id },
             _count: true,
         });
-        const totalAccounts = accountCounts.reduce((sum, c) => sum + c._count, 0);
-        const liveAccounts = accountCounts.find(c => c.status === 'ACTIVE')?._count || 0;
+        const totalAccounts = accountCounts.reduce((sum: number, c: any) => sum + (c._count as number), 0);
+        const liveAccounts = accountCounts.find((c: any) => c.status === 'ACTIVE')?._count || 0;
         await prisma.accountBatch.update({
             where: { id },
             data: { totalAccounts, liveAccounts },

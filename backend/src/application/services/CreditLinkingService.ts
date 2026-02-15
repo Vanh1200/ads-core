@@ -56,7 +56,7 @@ export class CreditLinkingService {
     async execute(links: Array<{ accountIds: string[] }>, invoiceMccId: string | undefined, newInvoiceMcc: any | undefined, userId: string, ipAddress?: string) {
         let finalMiId = invoiceMccId;
 
-        const result = await prisma.$transaction(async (tx) => {
+        const result = await prisma.$transaction(async (tx: any) => {
             if (newInvoiceMcc) {
                 const mi = await tx.invoiceMCC.create({
                     data: { name: newInvoiceMcc.name, mccInvoiceId: newInvoiceMcc.mccInvoiceId, partnerId: newInvoiceMcc.partnerId, createdById: userId, status: 'ACTIVE' },

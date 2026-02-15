@@ -26,7 +26,7 @@ export class PrismaSpendingRepository implements ISpendingRepository {
             where: { accountId_spendingDate: { accountId: data.accountId, spendingDate: data.spendingDate } },
             create: {
                 spendingDate: data.spendingDate,
-                amount: new Prisma.Decimal(data.amount),
+                amount: data.amount as any,
                 currency: data.currency,
                 periodStart: data.periodStart,
                 periodEnd: data.periodEnd,
@@ -35,7 +35,7 @@ export class PrismaSpendingRepository implements ISpendingRepository {
                 customer: data.customerId ? { connect: { id: data.customerId } } : undefined,
             },
             update: {
-                amount: new Prisma.Decimal(data.amount),
+                amount: data.amount as any,
                 periodStart: data.periodStart,
                 periodEnd: data.periodEnd,
             },

@@ -1,5 +1,5 @@
 import { Router } from 'express';
-import { authenticateToken, isAssigner, canView } from '../../middleware/auth.middleware';
+import { authenticateToken, isAssigner, canView } from '../../infrastructure/middleware/auth';
 import { customerController } from '../../interface/controllers/CustomerController';
 
 const router = Router();

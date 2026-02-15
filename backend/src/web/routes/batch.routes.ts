@@ -1,5 +1,5 @@
 import { Router } from 'express';
-import { authenticateToken, isBuyer, canView } from '../../middleware/auth.middleware';
+import { authenticateToken, isBuyer, canView } from '../../infrastructure/middleware/auth';
 import { batchController } from '../../interface/controllers/BatchController';
 
 const router = Router();

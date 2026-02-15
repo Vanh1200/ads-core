@@ -194,7 +194,7 @@ export default function Import() {
     const getStatusBadge = (status: string) => {
         const statusMap: Record<string, { class: string; label: string }> = {
             'ACTIVE': { class: 'badge-success', label: 'Hoạt động' },
-            'SUSPENDED': { class: 'badge-secondary', label: 'Không hoạt động' },
+            'INACTIVE': { class: 'badge-secondary', label: 'Không hoạt động' },
             'NEW': { class: 'badge-info', label: 'Mới' },
         };
         const s = statusMap[status] || { class: 'badge-secondary', label: status };

@@ -41,7 +41,7 @@ import partnerRoutes from './web/routes/partner.routes';
 import batchRoutes from './web/routes/batch.routes';
 import invoiceMCCRoutes from './web/routes/invoiceMCC.routes';
 import customerRoutes from './web/routes/customer.routes';
-import accountRoutes from './routes/account.routes'; // Note: Account routes already refactored in Wave 2
+import accountRoutes from './web/routes/account.routes'; // Note: Account routes already refactored in Wave 2
 import spendingRoutes from './web/routes/spending.routes';
 import importRoutes from './web/routes/import.routes';
 import activityLogRoutes from './web/routes/activityLog.routes';

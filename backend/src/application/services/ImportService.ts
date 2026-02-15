@@ -152,7 +152,7 @@ export class ImportService {
         // We can use spendingService.createSnapshot and spendingService.calculateRecords here
         const results = { snapshots: 0, accountsAffected: new Set<string>() };
 
-        await prisma.$transaction(async (tx) => {
+        await prisma.$transaction(async (tx: any) => {
             for (const item of data.records) {
                 const snapshot = await spendingSnapshotRepository.create({
                     accountId: item.accountId,

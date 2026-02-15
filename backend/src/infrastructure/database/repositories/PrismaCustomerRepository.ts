@@ -37,7 +37,7 @@ export class PrismaCustomerRepository implements ICustomerRepository {
         ]);
 
         return {
-            data: customers.map(c => this.mapToEntity(c)!),
+            data: customers.map((c: any) => this.mapToEntity(c)!),
             total,
         };
     }

@@ -1,6 +1,6 @@
 import { Response } from 'express';
 import multer from 'multer';
-import { AuthRequest } from '../../middleware/auth.middleware';
+import { AuthRequest } from '../../infrastructure/middleware/auth';
 import { importService } from '../../application/services/ImportService';
 import { asyncHandler } from '../../infrastructure/middleware/errorHandler';
 

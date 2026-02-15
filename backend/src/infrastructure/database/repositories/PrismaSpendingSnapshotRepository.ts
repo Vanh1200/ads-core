@@ -40,7 +40,7 @@ export class PrismaSpendingSnapshotRepository implements ISpendingSnapshotReposi
         ]);
 
         return {
-            data: snapshots.map(s => this.mapToEntity(s)!),
+            data: snapshots.map((s: any) => this.mapToEntity(s)!),
             total,
         };
     }
@@ -60,7 +60,7 @@ export class PrismaSpendingSnapshotRepository implements ISpendingSnapshotReposi
             where: { accountId, spendingDate: date },
             orderBy: { snapshotAt: 'asc' },
         });
-        return snapshots.map(s => this.mapToEntity(s)!);
+        return snapshots.map((s: any) => this.mapToEntity(s)!);
     }
 
     private mapToEntity(prismaSnapshot: any): SpendingSnapshot | null {

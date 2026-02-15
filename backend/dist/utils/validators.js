@@ -28,6 +28,7 @@ exports.createBatchSchema = zod_1.z.object({
     isPrelinked: zod_1.z.boolean().default(false),
     timezone: zod_1.z.string().nullable().optional(),
     year: zod_1.z.number().nullable().optional(),
+    isMixYear: zod_1.z.boolean().default(false),
     readiness: zod_1.z.number().min(0).max(10).default(0),
     notes: zod_1.z.string().nullable().optional(),
 });

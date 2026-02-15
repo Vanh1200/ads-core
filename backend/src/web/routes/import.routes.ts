@@ -1,5 +1,5 @@
 import { Router } from 'express';
-import { authenticateToken, isBuyer, isUpdater } from '../../middleware/auth.middleware';
+import { authenticateToken, isBuyer, isUpdater } from '../../infrastructure/middleware/auth';
 import { importController, upload } from '../../interface/controllers/ImportController';
 
 const router = Router();

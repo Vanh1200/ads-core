@@ -47,7 +47,7 @@ export class PrismaAccountRepository implements IAccountRepository {
         ]);
 
         return {
-            data: accounts.map(a => this.mapToEntity(a)!),
+            data: accounts.map((a: any) => this.mapToEntity(a)!),
             total,
         };
     }
@@ -62,7 +62,7 @@ export class PrismaAccountRepository implements IAccountRepository {
                 mccAccountName: data.mccAccountName,
                 mccAccountId: data.mccAccountId,
                 status: (data.status as AccountStatus) || 'ACTIVE',
-                totalSpending: new Prisma.Decimal(0),
+                totalSpending: 0,
                 batch: { connect: { id: data.batchId } },
             },
         });
@@ -73,7 +73,7 @@ export class PrismaAccountRepository implements IAccountRepository {
         const updateData: Prisma.AccountUpdateInput = {};
         if (data.accountName) updateData.accountName = data.accountName;
         if (data.status) updateData.status = data.status as AccountStatus;
-        if (data.totalSpending !== undefined) updateData.totalSpending = new Prisma.Decimal(data.totalSpending);
+        if (data.totalSpending !== undefined) updateData.totalSpending = data.totalSpending;
         if (data.lastSynced) updateData.lastSynced = data.lastSynced;
 
         const account = await prisma.account.update({
@@ -99,7 +99,7 @@ export class PrismaAccountRepository implements IAccountRepository {
             where: { currentMiId: null, status: 'ACTIVE' },
             orderBy: { createdAt: 'desc' },
         });
-        return accounts.map(a => this.mapToEntity(a)!);
+        return accounts.map((a: any) => this.mapToEntity(a)!);
     }
 
     async findUnassigned(): Promise<Account[]> {

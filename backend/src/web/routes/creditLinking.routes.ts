@@ -1,5 +1,5 @@
 import { Router } from 'express';
-import { authenticateToken, isLinker } from '../../middleware/auth.middleware';
+import { authenticateToken, isLinker } from '../../infrastructure/middleware/auth';
 import { creditLinkingController } from '../../interface/controllers/CreditLinkingController';
 
 const router = Router();

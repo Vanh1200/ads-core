@@ -36,7 +36,7 @@ describe('CreditLinkingService', () => {
 
     describe('execute', () => {
         it('should throw error if no MI provided or created', async () => {
-            prismaMock.$transaction.mockImplementation(async (callback) => await callback(prismaMock));
+            prismaMock.$transaction.mockImplementation(async (callback: any) => await callback(prismaMock));
 
             await expect(creditLinkingService.execute([{ accountIds: ['a1'] }], undefined, undefined, 'user-1'))
                 .rejects.toThrow('BAD_REQUEST: No Invoice MCC provided or created');
@@ -44,7 +44,7 @@ describe('CreditLinkingService', () => {
 
         it('should link accounts to MI within a transaction', async () => {
             const links = [{ accountIds: ['a1', 'a2'] }];
-            prismaMock.$transaction.mockImplementation(async (callback) => await callback(prismaMock));
+            prismaMock.$transaction.mockImplementation(async (callback: any) => await callback(prismaMock));
             prismaMock.invoiceMCC.update.mockResolvedValue({ id: 'mi1' } as any);
 
             const result = await creditLinkingService.execute(links, 'mi1', undefined, 'user-1');

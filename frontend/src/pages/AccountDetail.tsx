@@ -134,7 +134,7 @@ export default function AccountDetail() {
     const getStatusBadge = (status: string) => {
         const statusMap: Record<string, { label: string; class: string }> = {
             ACTIVE: { label: 'Hoạt động', class: 'badge-success' },
-            SUSPENDED: { label: 'Không hoạt động', class: 'badge-danger' },
+            INACTIVE: { label: 'Không hoạt động', class: 'badge-danger' },
         };
         const config = statusMap[status] || { label: status, class: 'badge-default' };
         return (

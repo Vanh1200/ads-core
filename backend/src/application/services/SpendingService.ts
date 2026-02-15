@@ -48,7 +48,7 @@ export class SpendingService {
         });
 
         // Group by date
-        const grouped = records.reduce((acc: any, curr) => {
+        const grouped = records.reduce((acc: Record<string, number>, curr: any) => {
             const date = curr.spendingDate.toISOString().split('T')[0];
             acc[date] = (acc[date] || 0) + Number(curr.amount);
             return acc;

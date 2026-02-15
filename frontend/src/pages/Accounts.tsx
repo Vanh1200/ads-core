@@ -544,11 +544,6 @@ export default function Accounts() {
             class: 'success',
             color: 'var(--secondary)'
         },
-        SUSPENDED: {
-            label: 'Không hoạt động',
-            class: 'danger',
-            color: 'var(--danger)'
-        },
         INACTIVE: {
             label: 'Không hoạt động',
             class: 'danger',
@@ -862,10 +857,10 @@ export default function Accounts() {
                                 onClick: () => setStatusFilter('ACTIVE')
                             },
                             {
-                                key: 'SUSPENDED',
+                                key: 'INACTIVE',
                                 label: 'Không hoạt động',
                                 icon: <div style={{ width: 8, height: 8, borderRadius: '50%', background: '#ef4444' }} />,
-                                onClick: () => setStatusFilter('SUSPENDED')
+                                onClick: () => setStatusFilter('INACTIVE')
                             }
                         ]}
                     />
@@ -1733,8 +1728,8 @@ export default function Accounts() {
                                         <input
                                             type="radio"
                                             name="status"
-                                            value="SUSPENDED"
-                                            checked={targetStatus === 'SUSPENDED'}
+                                            value="INACTIVE"
+                                            checked={targetStatus === 'INACTIVE'}
                                             onChange={(e) => setTargetStatus(e.target.value)}
                                         />
                                         <span className="badge badge-secondary">Không hoạt động</span>

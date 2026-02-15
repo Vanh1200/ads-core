@@ -1,5 +1,5 @@
 import { Router } from 'express';
-import { authenticateToken, isAdmin, canView } from '../../middleware/auth.middleware';
+import { authenticateToken, isAdmin, canView } from '../../infrastructure/middleware/auth';
 import { userController } from '../../interface/controllers/UserController';
 
 const router = Router();

@@ -1,5 +1,5 @@
 import { Response } from 'express';
-import { AuthRequest } from '../../middleware/auth.middleware';
+import { AuthRequest } from '../../infrastructure/middleware/auth';
 import { batchService } from '../../application/services/BatchService';
 import { asyncHandler } from '../../infrastructure/middleware/errorHandler';
 import { paginationSchema } from '../../utils/validators';

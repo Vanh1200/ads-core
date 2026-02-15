@@ -17,6 +17,8 @@ COPY backend/package*.json ./
 RUN npm install
 # Copy backend source
 COPY backend/ .
+# Generate Prisma client for types during build
+RUN npx prisma generate
 # Build backend (TypeScript)
 RUN npm run build
 

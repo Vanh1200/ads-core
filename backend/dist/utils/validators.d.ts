@@ -48,11 +48,13 @@ export declare const createBatchSchema: z.ZodObject<{
     isPrelinked: z.ZodDefault<z.ZodBoolean>;
     timezone: z.ZodOptional<z.ZodNullable<z.ZodString>>;
     year: z.ZodOptional<z.ZodNullable<z.ZodNumber>>;
+    isMixYear: z.ZodDefault<z.ZodBoolean>;
     readiness: z.ZodDefault<z.ZodNumber>;
     notes: z.ZodOptional<z.ZodNullable<z.ZodString>>;
 }, "strip", z.ZodTypeAny, {
     mccAccountName: string;
     isPrelinked: boolean;
+    isMixYear: boolean;
     readiness: number;
     year?: number | null | undefined;
     notes?: string | null | undefined;
@@ -67,6 +69,7 @@ export declare const createBatchSchema: z.ZodObject<{
     partnerId?: string | null | undefined;
     isPrelinked?: boolean | undefined;
     timezone?: string | null | undefined;
+    isMixYear?: boolean | undefined;
     readiness?: number | undefined;
 }>;
 export declare const createInvoiceMCCSchema: z.ZodObject<{
