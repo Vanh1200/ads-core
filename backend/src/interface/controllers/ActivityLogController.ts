@@ -20,6 +20,23 @@ export class ActivityLogController {
 
         res.json(formatPaginationResponse(data, total, page, limit));
     });
+
+    getEntityLogs = asyncHandler(async (req: any, res: any) => {
+        const { type, id } = req.params;
+        const logs = await activityLogService.getEntityLogs(type, id);
+        res.json(logs);
+    });
+
+    getStats = asyncHandler(async (req: any, res: any) => {
+        const days = req.query.days ? parseInt(req.query.days as string) : 7;
+        const stats = await activityLogService.getStats(days);
+        res.json(stats);
+    });
+
+    getById = asyncHandler(async (req: any, res: any) => {
+        const log = await activityLogService.getById(req.params.id);
+        res.json(log);
+    });
 }
 
 export const activityLogController = new ActivityLogController();
