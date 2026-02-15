@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useNavigate } from 'react-router-dom';
-import { Plus, Search, Edit2, Trash2 } from 'lucide-react';
+import { Plus, Search, Edit2, Trash2, ChevronUp, ChevronDown } from 'lucide-react';
 import { invoiceMCCsApi, partnersApi } from '../api/client';
 import { useAuthStore, canLinkMI } from '../store/authStore';
 
@@ -25,6 +25,9 @@ interface Partner {
     name: string;
 }
 
+type SortField = 'name' | 'mccInvoiceId' | 'status' | 'creditStatus' | 'rangeSpending' | 'createdAt';
+type SortOrder = 'asc' | 'desc';
+
 export default function InvoiceMCCs() {
     const { user } = useAuthStore();
     const navigate = useNavigate();
@@ -34,6 +37,10 @@ export default function InvoiceMCCs() {
     const [selectedInvoiceMCC, setSelectedInvoiceMCC] = useState<InvoiceMCC | null>(null);
     const [deleteId, setDeleteId] = useState<string | null>(null);
     const [toast, setToast] = useState<{ message: string; type: 'success' | 'error' } | null>(null);
+
+    // Sorting
+    const [sortField, setSortField] = useState<SortField>('createdAt');
+    const [sortOrder, setSortOrder] = useState<SortOrder>('desc');
 
     const queryClient = useQueryClient();
 
@@ -49,8 +56,13 @@ export default function InvoiceMCCs() {
     };
 
     const { data, isLoading } = useQuery({
-        queryKey: ['invoiceMCCs', search, spendingDays],
-        queryFn: () => invoiceMCCsApi.list({ search, spendingDays }),
+        queryKey: ['invoiceMCCs', search, spendingDays, sortField, sortOrder],
+        queryFn: () => invoiceMCCsApi.list({
+            search,
+            spendingDays,
+            sortBy: sortField,
+            sortOrder
+        }),
     });
 
     const { data: partnersData } = useQuery({
@@ -133,6 +145,20 @@ export default function InvoiceMCCs() {
         FAILED: { label: 'Lỗi', class: 'danger' },
     };
 
+    const handleSort = (field: SortField) => {
+        if (sortField === field) {
+            setSortOrder(sortOrder === 'asc' ? 'desc' : 'asc');
+        } else {
+            setSortField(field);
+            setSortOrder('asc');
+        }
+    };
+
+    const SortIcon = ({ field }: { field: SortField }) => {
+        if (sortField !== field) return null;
+        return sortOrder === 'asc' ? <ChevronUp size={14} /> : <ChevronDown size={14} />;
+    };
+
     const handleSubmit = (e: React.FormEvent<HTMLFormElement>) => {
         e.preventDefault();
         const formData = new FormData(e.currentTarget);
@@ -198,14 +224,33 @@ export default function InvoiceMCCs() {
                     <table className="data-table">
                         <thead>
                             <tr>
-                                <th>Tên</th>
-                                <th>MCC Invoice ID</th>
-                                <th>Trạng thái</th>
-                                <th>Tín dụng</th>
+                                <th style={{ cursor: 'pointer', userSelect: 'none' }} onClick={() => handleSort('name')}>
+                                    <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
+                                        Tên <SortIcon field="name" />
+                                    </div>
+                                </th>
+                                <th style={{ cursor: 'pointer', userSelect: 'none' }} onClick={() => handleSort('mccInvoiceId')}>
+                                    <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
+                                        MCC Invoice ID <SortIcon field="mccInvoiceId" />
+                                    </div>
+                                </th>
+                                <th style={{ cursor: 'pointer', userSelect: 'none' }} onClick={() => handleSort('status')}>
+                                    <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
+                                        Trạng thái <SortIcon field="status" />
+                                    </div>
+                                </th>
+                                <th style={{ cursor: 'pointer', userSelect: 'none' }} onClick={() => handleSort('creditStatus')}>
+                                    <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
+                                        Tín dụng <SortIcon field="creditStatus" />
+                                    </div>
+                                </th>
                                 <th>Tài khoản</th>
-                                <th style={{ width: '10%' }}>
+                                <th style={{ width: '10%', cursor: 'pointer', userSelect: 'none' }} onClick={() => handleSort('rangeSpending')}>
                                     <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-start', gap: 2 }}>
-                                        <span style={{ fontSize: 13 }}>Chi phí</span>
+                                        <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
+                                            <span style={{ fontSize: 13 }}>Chi phí</span>
+                                            <SortIcon field="rangeSpending" />
+                                        </div>
                                         <select
                                             value={spendingDays}
                                             onChange={(e) => setSpendingDays(Number(e.target.value))}

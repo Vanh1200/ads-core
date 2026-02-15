@@ -8,11 +8,25 @@ export class PrismaPartnerRepository implements IPartnerRepository {
         return prisma.partner.findUnique({ where: { id } }) as Promise<Partner | null>;
     }
 
-    async list(params: { page: number; limit: number; q?: string }): Promise<{ data: Partner[]; total: number }> {
-        const { page, limit, q } = params;
+    async list(params: {
+        page: number;
+        limit: number;
+        q?: string;
+        sortBy?: string;
+        sortOrder?: 'asc' | 'desc';
+    }): Promise<{ data: Partner[]; total: number }> {
+        const { page, limit, q, sortBy, sortOrder } = params;
         const where: any = {};
         if (q) {
             where.name = { contains: q, mode: 'insensitive' };
+        }
+
+        // Handle dynamic sorting
+        const orderBy: any = {};
+        if (sortBy) {
+            orderBy[sortBy] = sortOrder || 'desc';
+        } else {
+            orderBy.createdAt = 'desc';
         }
 
         const [partners, total] = await Promise.all([
@@ -20,7 +34,7 @@ export class PrismaPartnerRepository implements IPartnerRepository {
                 where,
                 skip: (page - 1) * limit,
                 take: limit,
-                orderBy: { createdAt: 'desc' },
+                orderBy,
             }),
             prisma.partner.count({ where }),
         ]);

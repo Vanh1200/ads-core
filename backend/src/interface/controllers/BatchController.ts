@@ -8,13 +8,17 @@ import { formatPaginationResponse } from '../../utils/pagination';
 export class BatchController {
     list = asyncHandler(async (req: any, res: any) => {
         const query = paginationSchema.safeParse(req.query);
-        const { page, limit } = query.success ? query.data : { page: 1, limit: 20 };
+        const { page, limit, sortBy, sortOrder } = query.success
+            ? query.data
+            : { page: 1, limit: 20, sortBy: undefined, sortOrder: 'desc' as const };
         const { status, year } = req.query;
         const { data, total } = await batchService.list({
             page,
             limit,
             status: status as string,
             year: year ? parseInt(year as string) : undefined,
+            sortBy,
+            sortOrder,
         });
         res.json(formatPaginationResponse(data, total, page, limit));
     });

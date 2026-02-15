@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useNavigate } from 'react-router-dom';
-import { Plus, Search, Edit2, Trash2 } from 'lucide-react';
+import { Plus, Search, Edit2, Trash2, ChevronUp, ChevronDown } from 'lucide-react';
 import { partnersApi } from '../api/client';
 import { useAuthStore, canManagePartners } from '../store/authStore';
 
@@ -17,6 +17,9 @@ interface Partner {
     };
 }
 
+type SortField = 'name' | 'type' | 'createdAt';
+type SortOrder = 'asc' | 'desc';
+
 export default function Partners() {
     const { user } = useAuthStore();
     const navigate = useNavigate();
@@ -25,6 +28,10 @@ export default function Partners() {
     const [selectedPartner, setSelectedPartner] = useState<Partner | null>(null);
     const [deleteId, setDeleteId] = useState<string | null>(null);
     const [toast, setToast] = useState<{ message: string; type: 'success' | 'error' } | null>(null);
+
+    // Sorting
+    const [sortField, setSortField] = useState<SortField>('createdAt');
+    const [sortOrder, setSortOrder] = useState<SortOrder>('desc');
 
     const queryClient = useQueryClient();
 
@@ -40,8 +47,12 @@ export default function Partners() {
     };
 
     const { data, isLoading } = useQuery({
-        queryKey: ['partners', search],
-        queryFn: () => partnersApi.list({ search }),
+        queryKey: ['partners', search, sortField, sortOrder],
+        queryFn: () => partnersApi.list({
+            search,
+            sortBy: sortField,
+            sortOrder
+        }),
     });
 
     const createMutation = useMutation({
@@ -98,6 +109,20 @@ export default function Partners() {
 
     const partners = data?.data?.data || [];
 
+    const handleSort = (field: SortField) => {
+        if (sortField === field) {
+            setSortOrder(sortOrder === 'asc' ? 'desc' : 'asc');
+        } else {
+            setSortField(field);
+            setSortOrder('asc');
+        }
+    };
+
+    const SortIcon = ({ field }: { field: SortField }) => {
+        if (sortField !== field) return null;
+        return sortOrder === 'asc' ? <ChevronUp size={14} /> : <ChevronDown size={14} />;
+    };
+
     const handleSubmit = (e: React.FormEvent<HTMLFormElement>) => {
         e.preventDefault();
         const formData = new FormData(e.currentTarget);
@@ -153,8 +178,16 @@ export default function Partners() {
                     <table className="data-table">
                         <thead>
                             <tr>
-                                <th>Tên đối tác</th>
-                                <th>Loại</th>
+                                <th style={{ cursor: 'pointer', userSelect: 'none' }} onClick={() => handleSort('name')}>
+                                    <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
+                                        Tên đối tác <SortIcon field="name" />
+                                    </div>
+                                </th>
+                                <th style={{ cursor: 'pointer', userSelect: 'none' }} onClick={() => handleSort('type')}>
+                                    <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
+                                        Loại <SortIcon field="type" />
+                                    </div>
+                                </th>
                                 <th>Thông tin liên hệ</th>
                                 <th>Ghi chú</th>
                                 <th>SL Batch</th>

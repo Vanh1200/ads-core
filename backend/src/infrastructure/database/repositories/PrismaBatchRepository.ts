@@ -5,37 +5,54 @@ import { BatchStatus } from '@prisma/client';
 
 export class PrismaBatchRepository implements IBatchRepository {
     async findById(id: string): Promise<AccountBatch | null> {
-        return prisma.accountBatch.findUnique({
+        const batch = await prisma.accountBatch.findUnique({
             where: { id },
             include: { accounts: { include: { currentMi: true, currentMc: true } } },
-        }) as Promise<AccountBatch | null>;
+        });
+        return this.mapToEntity(batch);
     }
 
-    async list(params: { page: number; limit: number; status?: string; year?: number; isMixYear?: boolean }): Promise<{ data: AccountBatch[]; total: number }> {
-        const { page, limit, status, year, isMixYear } = params;
+    async list(params: {
+        page: number;
+        limit: number;
+        status?: string;
+        year?: number;
+        isMixYear?: boolean;
+        sortBy?: string;
+        sortOrder?: 'asc' | 'desc';
+    }): Promise<{ data: AccountBatch[]; total: number }> {
+        const { page, limit, status, year, isMixYear, sortBy, sortOrder } = params;
         const where: any = {};
         if (status) where.status = status as BatchStatus;
         if (year) where.year = year;
         if (isMixYear !== undefined) where.isMixYear = isMixYear;
+
+        // Handle dynamic sorting
+        const orderBy: any = {};
+        if (sortBy) {
+            orderBy[sortBy] = sortOrder || 'desc';
+        } else {
+            orderBy.createdAt = 'desc';
+        }
 
         const [batches, total] = await Promise.all([
             prisma.accountBatch.findMany({
                 where,
                 skip: (page - 1) * limit,
                 take: limit,
-                orderBy: { createdAt: 'desc' },
+                orderBy,
             }),
             prisma.accountBatch.count({ where }),
         ]);
 
         return {
-            data: batches as AccountBatch[],
+            data: batches.map(b => this.mapToEntity(b)!),
             total,
         };
     }
 
     async create(data: Omit<AccountBatch, 'id' | 'createdAt' | 'updatedAt' | 'totalAccounts' | 'liveAccounts'>): Promise<AccountBatch> {
-        return prisma.accountBatch.create({
+        const batch = await prisma.accountBatch.create({
             data: {
                 mccAccountName: data.mccAccountName,
                 mccAccountId: data.mccAccountId,
@@ -49,7 +66,8 @@ export class PrismaBatchRepository implements IBatchRepository {
                 partner: data.partnerId ? { connect: { id: data.partnerId } } : undefined,
                 createdBy: { connect: { id: data.createdById } },
             },
-        }) as Promise<AccountBatch>;
+        });
+        return this.mapToEntity(batch)!;
     }
 
     async update(id: string, data: Partial<AccountBatch>): Promise<AccountBatch> {
@@ -60,10 +78,11 @@ export class PrismaBatchRepository implements IBatchRepository {
             updateData.createdBy = { connect: { id: data.createdById } };
         }
 
-        return prisma.accountBatch.update({
+        const batch = await prisma.accountBatch.update({
             where: { id },
             data: updateData,
-        }) as Promise<AccountBatch>;
+        });
+        return this.mapToEntity(batch)!;
     }
 
     async updateMany(ids: string[], data: Partial<AccountBatch>): Promise<{ count: number }> {
@@ -107,6 +126,14 @@ export class PrismaBatchRepository implements IBatchRepository {
             prisma.account.count({ where: { batchId } }),
         ]);
         return { data: accounts, total };
+    }
+
+    private mapToEntity(prismaBatch: any): AccountBatch | null {
+        if (!prismaBatch) return null;
+        return {
+            ...prismaBatch,
+            status: prismaBatch.status as 'ACTIVE' | 'INACTIVE',
+        } as AccountBatch;
     }
 }
 

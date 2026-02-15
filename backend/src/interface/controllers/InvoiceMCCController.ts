@@ -8,7 +8,9 @@ import { formatPaginationResponse } from '../../utils/pagination';
 export class InvoiceMCCController {
     list = asyncHandler(async (req: any, res: any) => {
         const query = paginationSchema.safeParse(req.query);
-        const { page, limit, search } = query.success ? query.data : { page: 1, limit: 20, search: undefined };
+        const { page, limit, search, sortBy, sortOrder } = query.success
+            ? query.data
+            : { page: 1, limit: 20, search: undefined, sortBy: undefined, sortOrder: 'desc' as const };
         const { status } = req.query;
 
         const { data, total } = await invoiceMCCService.list({
@@ -16,6 +18,8 @@ export class InvoiceMCCController {
             limit,
             q: search,
             status: status as string,
+            sortBy,
+            sortOrder,
         });
 
         res.json(formatPaginationResponse(data, total, page, limit));

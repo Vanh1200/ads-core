@@ -17,12 +17,27 @@ export class PrismaCustomerRepository implements ICustomerRepository {
         return this.mapToEntity(customer);
     }
 
-    async list(params: { page: number; limit: number; q?: string; status?: string }): Promise<{ data: Customer[]; total: number }> {
-        const { page, limit, q, status } = params;
+    async list(params: {
+        page: number;
+        limit: number;
+        q?: string;
+        status?: string;
+        sortBy?: string;
+        sortOrder?: 'asc' | 'desc';
+    }): Promise<{ data: Customer[]; total: number }> {
+        const { page, limit, q, status, sortBy, sortOrder } = params;
         const where: Prisma.CustomerWhereInput = {};
         if (status) where.status = status as CustomerStatus;
         if (q) {
             where.name = { contains: q, mode: 'insensitive' };
+        }
+
+        // Handle dynamic sorting
+        const orderBy: any = {};
+        if (sortBy) {
+            orderBy[sortBy] = sortOrder || 'desc';
+        } else {
+            orderBy.createdAt = 'desc';
         }
 
         const [customers, total] = await Promise.all([
@@ -30,7 +45,7 @@ export class PrismaCustomerRepository implements ICustomerRepository {
                 where,
                 skip: (page - 1) * limit,
                 take: limit,
-                orderBy: { createdAt: 'desc' },
+                orderBy,
                 include: { assignedStaff: { select: { id: true, fullName: true } } },
             }),
             prisma.customer.count({ where }),

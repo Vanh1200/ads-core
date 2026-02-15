@@ -20,8 +20,16 @@ export class PrismaAccountRepository implements IAccountRepository {
         return this.mapToEntity(account);
     }
 
-    async list(params: { page: number; limit: number; q?: string; status?: string; batchId?: string }): Promise<{ data: Account[]; total: number }> {
-        const { page, limit, q, status, batchId } = params;
+    async list(params: {
+        page: number;
+        limit: number;
+        q?: string;
+        status?: string;
+        batchId?: string;
+        sortBy?: string;
+        sortOrder?: 'asc' | 'desc';
+    }): Promise<{ data: Account[]; total: number }> {
+        const { page, limit, q, status, batchId, sortBy, sortOrder } = params;
         const where: Prisma.AccountWhereInput = {};
         if (status) where.status = status as AccountStatus;
         if (batchId) where.batchId = batchId;
@@ -32,12 +40,20 @@ export class PrismaAccountRepository implements IAccountRepository {
             ];
         }
 
+        // Handle dynamic sorting
+        const orderBy: any = {};
+        if (sortBy) {
+            orderBy[sortBy] = sortOrder || 'desc';
+        } else {
+            orderBy.createdAt = 'desc';
+        }
+
         const [accounts, total] = await Promise.all([
             prisma.account.findMany({
                 where,
                 skip: (page - 1) * limit,
                 take: limit,
-                orderBy: { createdAt: 'desc' },
+                orderBy,
                 include: {
                     currentMi: { select: { id: true, name: true } },
                     currentMc: { select: { id: true, name: true } },

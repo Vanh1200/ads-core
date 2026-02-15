@@ -17,8 +17,15 @@ export class PrismaInvoiceMCCRepository implements IInvoiceMCCRepository {
         return this.mapToEntity(mcc);
     }
 
-    async list(params: { page: number; limit: number; q?: string; status?: string }): Promise<{ data: InvoiceMCC[]; total: number }> {
-        const { page, limit, q, status } = params;
+    async list(params: {
+        page: number;
+        limit: number;
+        q?: string;
+        status?: string;
+        sortBy?: string;
+        sortOrder?: 'asc' | 'desc';
+    }): Promise<{ data: InvoiceMCC[]; total: number }> {
+        const { page, limit, q, status, sortBy, sortOrder } = params;
         const where: Prisma.InvoiceMCCWhereInput = {};
         if (status) where.status = status as InvoiceMCCStatus;
         if (q) {
@@ -28,12 +35,20 @@ export class PrismaInvoiceMCCRepository implements IInvoiceMCCRepository {
             ];
         }
 
+        // Handle dynamic sorting
+        const orderBy: any = {};
+        if (sortBy) {
+            orderBy[sortBy] = sortOrder || 'desc';
+        } else {
+            orderBy.createdAt = 'desc';
+        }
+
         const [mccs, total] = await Promise.all([
             prisma.invoiceMCC.findMany({
                 where,
                 skip: (page - 1) * limit,
                 take: limit,
-                orderBy: { createdAt: 'desc' },
+                orderBy,
                 include: { partner: { select: { id: true, name: true } } },
             }),
             prisma.invoiceMCC.count({ where }),

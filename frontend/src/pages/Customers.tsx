@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useNavigate } from 'react-router-dom';
-import { Plus, Search, Edit2, Trash2 } from 'lucide-react';
+import { Plus, Search, Edit2, Trash2, ChevronUp, ChevronDown } from 'lucide-react';
 import { customersApi, usersApi } from '../api/client';
 import { useAuthStore, canAssignMC } from '../store/authStore';
 
@@ -26,6 +26,9 @@ interface User {
     email: string;
 }
 
+type SortField = 'name' | 'status' | 'totalSpending' | 'totalAccounts' | 'rangeSpending' | 'createdAt';
+type SortOrder = 'asc' | 'desc';
+
 export default function Customers() {
     const { user } = useAuthStore();
     const navigate = useNavigate();
@@ -35,6 +38,10 @@ export default function Customers() {
     const [selectedCustomer, setSelectedCustomer] = useState<Customer | null>(null);
     const [deleteId, setDeleteId] = useState<string | null>(null);
     const [toast, setToast] = useState<{ message: string; type: 'success' | 'error' } | null>(null);
+
+    // Sorting
+    const [sortField, setSortField] = useState<SortField>('createdAt');
+    const [sortOrder, setSortOrder] = useState<SortOrder>('desc');
 
     const queryClient = useQueryClient();
 
@@ -50,8 +57,13 @@ export default function Customers() {
     };
 
     const { data, isLoading } = useQuery({
-        queryKey: ['customers', search, spendingDays],
-        queryFn: () => customersApi.list({ search, spendingDays }),
+        queryKey: ['customers', search, spendingDays, sortField, sortOrder],
+        queryFn: () => customersApi.list({
+            search,
+            spendingDays,
+            sortBy: sortField,
+            sortOrder
+        }),
     });
 
     const { data: usersData } = useQuery({
@@ -121,6 +133,20 @@ export default function Customers() {
     const customers = data?.data?.data || [];
     const users = usersData?.data?.data || [];
 
+    const handleSort = (field: SortField) => {
+        if (sortField === field) {
+            setSortOrder(sortOrder === 'asc' ? 'desc' : 'asc');
+        } else {
+            setSortField(field);
+            setSortOrder('asc');
+        }
+    };
+
+    const SortIcon = ({ field }: { field: SortField }) => {
+        if (sortField !== field) return null;
+        return sortOrder === 'asc' ? <ChevronUp size={14} /> : <ChevronDown size={14} />;
+    };
+
     const handleSubmit = (e: React.FormEvent<HTMLFormElement>) => {
         e.preventDefault();
         const formData = new FormData(e.currentTarget);
@@ -177,13 +203,32 @@ export default function Customers() {
                     <table className="data-table">
                         <thead>
                             <tr>
-                                <th>Tên khách hàng</th>
-                                <th>Trạng thái</th>
-                                <th>Tài khoản</th>
-                                <th>Tổng chi phí</th>
-                                <th style={{ width: '10%' }}>
+                                <th style={{ cursor: 'pointer', userSelect: 'none' }} onClick={() => handleSort('name')}>
+                                    <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
+                                        Tên khách hàng <SortIcon field="name" />
+                                    </div>
+                                </th>
+                                <th style={{ cursor: 'pointer', userSelect: 'none' }} onClick={() => handleSort('status')}>
+                                    <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
+                                        Trạng thái <SortIcon field="status" />
+                                    </div>
+                                </th>
+                                <th style={{ cursor: 'pointer', userSelect: 'none' }} onClick={() => handleSort('totalAccounts')}>
+                                    <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
+                                        Tài khoản <SortIcon field="totalAccounts" />
+                                    </div>
+                                </th>
+                                <th style={{ cursor: 'pointer', userSelect: 'none' }} onClick={() => handleSort('totalSpending')}>
+                                    <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
+                                        Tổng chi phí <SortIcon field="totalSpending" />
+                                    </div>
+                                </th>
+                                <th style={{ width: '10%', cursor: 'pointer', userSelect: 'none' }} onClick={() => handleSort('rangeSpending')}>
                                     <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-start', gap: 2 }}>
-                                        <span style={{ fontSize: 13 }}>Chi phí</span>
+                                        <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
+                                            <span style={{ fontSize: 13 }}>Chi phí</span>
+                                            <SortIcon field="rangeSpending" />
+                                        </div>
                                         <select
                                             value={spendingDays}
                                             onChange={(e) => setSpendingDays(Number(e.target.value))}
