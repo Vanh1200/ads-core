@@ -70,6 +70,7 @@ export class CustomerService {
         if (!customer) throw new Error('NOT_FOUND: Khách hàng không tồn tại');
 
         await accountRepository.updateMany(accountIds, { currentMcId: id });
+        await this.customerRepo.syncCounts(id);
 
         await logActivity({
             userId,

@@ -96,6 +96,21 @@ export class PrismaInvoiceMCCRepository implements IInvoiceMCCRepository {
         await prisma.invoiceMCC.delete({ where: { id } });
     }
 
+    async syncCounts(id: string): Promise<void> {
+        const [total, active] = await Promise.all([
+            prisma.account.count({ where: { currentMiId: id } }),
+            prisma.account.count({ where: { currentMiId: id, status: 'ACTIVE' } }),
+        ]);
+
+        await prisma.invoiceMCC.update({
+            where: { id },
+            data: {
+                linkedAccountsCount: total,
+                activeAccountsCount: active,
+            },
+        });
+    }
+
     private mapToEntity(prismaMcc: any): InvoiceMCC | null {
         if (!prismaMcc) return null;
         return prismaMcc as InvoiceMCC;

@@ -91,6 +91,21 @@ export class PrismaCustomerRepository implements ICustomerRepository {
         await prisma.customer.delete({ where: { id } });
     }
 
+    async syncCounts(id: string): Promise<void> {
+        const [total, active] = await Promise.all([
+            prisma.account.count({ where: { currentMcId: id } }),
+            prisma.account.count({ where: { currentMcId: id, status: 'ACTIVE' } }),
+        ]);
+
+        await prisma.customer.update({
+            where: { id },
+            data: {
+                totalAccounts: total,
+                activeAccounts: active,
+            },
+        });
+    }
+
     private mapToEntity(prismaCustomer: any): Customer | null {
         if (!prismaCustomer) return null;
         return {

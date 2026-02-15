@@ -1123,16 +1123,93 @@ input[type="checkbox"] {
   }
 }
 
+/* Activity Timeline */
+.activity-timeline {
+  position: relative;
+  padding-left: 24px;
+  margin-top: 16px;
+}
+
+.activity-timeline::before {
+  content: '';
+  position: absolute;
+  left: 3px;
+  top: 0;
+  bottom: 0;
+  width: 2px;
+  background: var(--border);
+}
+
+.activity-item {
+  position: relative;
+  padding-bottom: 20px;
+}
+
+.activity-item:last-child {
+  padding-bottom: 0;
+}
+
+.activity-dot {
+  position: absolute;
+  left: -24px;
+  top: 4px;
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: var(--primary);
+  border: 2px solid var(--surface);
+  z-index: 1;
+}
+
 .activity-content {
-  flex: 1;
+  background: var(--surface-hover);
+  padding: 10px 14px;
+  border-radius: var(--radius-sm);
+  border: 1px solid var(--border);
 }
 
 .activity-action {
-  font-size: 14px;
+  font-weight: 500;
+  font-size: 13px;
   margin-bottom: 4px;
 }
 
 .activity-meta {
-  font-size: 12px;
+  font-size: 11px;
   color: var(--text-muted);
+}
+
+/* Info Cards in Grid */
+.info-card {
+  background: var(--surface-hover);
+  padding: 12px 16px;
+  border-radius: var(--radius);
+  border: 1px solid var(--border);
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.info-card-icon {
+  width: 36px;
+  height: 36px;
+  background: rgba(99, 102, 241, 0.1);
+  color: var(--primary);
+  border-radius: var(--radius-sm);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.info-card-label {
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: var(--text-muted);
+  margin-bottom: 2px;
+}
+
+.info-card-value {
+  font-size: 14px;
+  font-weight: 600;
 }

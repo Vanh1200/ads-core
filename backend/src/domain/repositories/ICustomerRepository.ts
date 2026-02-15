@@ -14,4 +14,5 @@ export interface ICustomerRepository {
     create(data: Omit<Customer, 'id' | 'createdAt' | 'updatedAt' | 'totalSpending' | 'totalAccounts' | 'activeAccounts'>): Promise<Customer>;
     update(id: string, data: Partial<Customer>): Promise<Customer>;
     delete(id: string): Promise<void>;
+    syncCounts(id: string): Promise<void>;
 }

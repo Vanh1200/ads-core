@@ -11,7 +11,7 @@ export class AccountController {
         const { page, limit, search, sortBy, sortOrder, ids } = query.success
             ? query.data
             : { page: 1, limit: 20, search: undefined, sortBy: undefined, sortOrder: 'desc' as const, ids: undefined };
-        const { status, batchId } = req.query;
+        const { status, batchId, miId, mcId } = req.query;
 
         const { data, total } = await accountService.list({
             page,
@@ -19,6 +19,8 @@ export class AccountController {
             q: search,
             status: status as string,
             batchId: batchId as string,
+            miId: miId as string,
+            mcId: mcId as string,
             sortBy,
             sortOrder,
             ids,

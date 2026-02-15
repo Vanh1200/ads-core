@@ -14,4 +14,5 @@ export interface IInvoiceMCCRepository {
     create(data: Omit<InvoiceMCC, 'id' | 'createdAt' | 'updatedAt' | 'linkedAccountsCount' | 'activeAccountsCount'>): Promise<InvoiceMCC>;
     update(id: string, data: Partial<InvoiceMCC>): Promise<InvoiceMCC>;
     delete(id: string): Promise<void>;
+    syncCounts(id: string): Promise<void>;
 }

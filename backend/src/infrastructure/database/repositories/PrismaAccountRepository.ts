@@ -27,14 +27,18 @@ export class PrismaAccountRepository implements IAccountRepository {
         q?: string;
         status?: string;
         batchId?: string;
+        miId?: string;
+        mcId?: string;
         sortBy?: string;
         sortOrder?: 'asc' | 'desc';
         ids?: string[];
     }): Promise<{ data: Account[]; total: number }> {
-        const { page, limit, q, status, batchId, sortBy, sortOrder, ids } = params;
+        const { page, limit, q, status, batchId, miId, mcId, sortBy, sortOrder, ids } = params;
         const where: Prisma.AccountWhereInput = {};
         if (status) where.status = status as AccountStatus;
         if (batchId) where.batchId = batchId;
+        if (miId) where.currentMiId = miId;
+        if (mcId) where.currentMcId = mcId;
         if (ids && ids.length > 0) {
             where.googleAccountId = { in: ids };
         }

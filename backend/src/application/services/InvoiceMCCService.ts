@@ -70,6 +70,7 @@ export class InvoiceMCCService {
         if (!mi) throw new Error('NOT_FOUND: Invoice MCC không tồn tại');
 
         await accountRepository.updateMany(accountIds, { currentMiId: id });
+        await this.invoiceMCCRepo.syncCounts(id);
 
         await logActivity({
             userId,
