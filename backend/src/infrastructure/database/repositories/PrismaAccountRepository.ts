@@ -8,6 +8,7 @@ export class PrismaAccountRepository implements IAccountRepository {
         const account = await prisma.account.findUnique({
             where: { id },
             include: {
+                batch: { select: { id: true, mccAccountName: true } },
                 currentMi: { select: { id: true, name: true } },
                 currentMc: { select: { id: true, name: true } },
             },

@@ -45,26 +45,42 @@ export class SpendingService {
         return { totalAmount, data };
     }
 
-    async getAccountChart(accountId: string, days: number = 7) {
-        const startDate = new Date();
-        startDate.setDate(startDate.getDate() - days);
+    async getAccountChart(accountId: string, startDateParam?: string, endDateParam?: string) {
+        let startDate: Date;
+        let endDate: Date;
+
+        if (startDateParam && endDateParam) {
+            startDate = new Date(startDateParam);
+            endDate = new Date(endDateParam);
+        } else {
+            endDate = new Date();
+            startDate = new Date();
+            startDate.setDate(startDate.getDate() - 7);
+        }
 
         const records = await prisma.spendingRecord.findMany({
             where: {
                 accountId,
-                spendingDate: { gte: startDate }
+                spendingDate: { gte: startDate, lte: endDate }
+            },
+            include: {
+                invoiceMcc: { select: { name: true } },
+                customer: { select: { name: true } }
             },
             orderBy: { spendingDate: 'asc' }
         });
 
-        // Group by date
-        const grouped = records.reduce((acc: Record<string, number>, curr: any) => {
-            const date = curr.spendingDate.toISOString().split('T')[0];
-            acc[date] = (acc[date] || 0) + Number(curr.amount);
-            return acc;
-        }, {});
+        const data = records.map((r: any) => ({
+            date: r.spendingDate.toISOString().split('T')[0],
+            amount: Number(r.amount),
+            miName: r.invoiceMcc?.name || null,
+            mcName: r.customer?.name || null,
+            createdAt: r.createdAt
+        }));
 
-        return Object.entries(grouped).map(([date, amount]) => ({ date, amount }));
+        const totalAmount = data.reduce((sum, item) => sum + item.amount, 0);
+
+        return { totalAmount, data };
     }
 
     async calculateRecords(accountId: string, spendingDate: string) {

@@ -71,7 +71,12 @@ export class SpendingController {
     });
 
     getAccountChart = asyncHandler(async (req: any, res: any) => {
-        const result = await spendingService.getAccountChart(req.params.id);
+        const { startDate, endDate } = req.query;
+        const result = await spendingService.getAccountChart(
+            req.params.id,
+            startDate as string,
+            endDate as string
+        );
         res.json(result);
     });
 
