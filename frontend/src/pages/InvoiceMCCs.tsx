@@ -120,6 +120,13 @@ export default function InvoiceMCCs() {
     const invoiceMCCs = data?.data?.data || [];
     const partners = partnersData?.data?.data || [];
 
+    const statusLabels: Record<string, { label: string; class: string }> = {
+        ACTIVE: { label: 'Hoạt động', class: 'success' },
+        PENDING: { label: 'Chờ kết nối', class: 'warning' },
+        EXHAUSTED: { label: 'Hết tín dụng', class: 'danger' },
+        INACTIVE: { label: 'Không hoạt động', class: 'danger' },
+    };
+
     const creditStatusLabels: Record<string, { label: string; class: string }> = {
         PENDING: { label: 'Chờ kết nối', class: 'warning' },
         CONNECTED: { label: 'Đã kết nối', class: 'success' },
@@ -245,8 +252,8 @@ export default function InvoiceMCCs() {
                                         <td><strong>{mi.name}</strong></td>
                                         <td><code>{mi.mccInvoiceId}</code></td>
                                         <td>
-                                            <span className={`badge badge-${mi.status === 'ACTIVE' ? 'success' : 'danger'}`} style={{ whiteSpace: 'nowrap' }}>
-                                                {mi.status === 'ACTIVE' ? 'Hoạt động' : 'Không hoạt động'}
+                                            <span className={`badge badge-${statusLabels[mi.status]?.class || 'info'}`} style={{ whiteSpace: 'nowrap' }}>
+                                                {statusLabels[mi.status]?.label || mi.status}
                                             </span>
                                         </td>
                                         <td>
@@ -382,8 +389,10 @@ export default function InvoiceMCCs() {
                                                     className="form-select"
                                                     defaultValue={selectedInvoiceMCC.status}
                                                 >
-                                                    <option value="ACTIVE">Hoạt động (Active)</option>
-                                                    <option value="INACTIVE">Không hoạt động (Inactive)</option>
+                                                    <option value="ACTIVE">Hoạt động</option>
+                                                    <option value="PENDING">Chờ kết nối</option>
+                                                    <option value="EXHAUSTED">Hết tín dụng</option>
+                                                    <option value="INACTIVE">Không hoạt động</option>
                                                 </select>
                                             </div>
                                             <div className="form-group">

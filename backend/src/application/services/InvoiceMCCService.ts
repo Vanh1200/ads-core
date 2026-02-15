@@ -16,7 +16,7 @@ export class InvoiceMCCService {
     }
 
     async create(data: any, userId: string, ipAddress?: string) {
-        const mi = await this.invoiceMCCRepo.create(data);
+        const mi = await this.invoiceMCCRepo.create({ ...data, createdById: userId });
         await logActivity({
             userId,
             action: 'CREATE',
