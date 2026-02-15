@@ -70,9 +70,18 @@ const parseAccountId = (id) => {
 // Helper to parse status
 const parseStatus = (status) => {
     const lower = status?.toLowerCase() || '';
-    if (lower.includes('hoạt động') || lower.includes('active'))
+    if (lower.includes('hoạt động') || lower.includes('active') || lower.includes('đang hoạt động'))
         return 'ACTIVE';
-    if (lower.includes('không') || lower.includes('inactive') || lower.includes('suspended'))
+    if (lower.includes('không') ||
+        lower.includes('inactive') ||
+        lower.includes('suspended') ||
+        lower.includes('chết') ||
+        lower.includes('died') ||
+        lower.includes('tắt') ||
+        lower.includes('tạm dừng') ||
+        lower.includes('paused') ||
+        lower.includes('vô hiệu hóa') ||
+        lower.includes('disabled'))
         return 'INACTIVE';
     return 'ACTIVE';
 };
@@ -157,7 +166,7 @@ router.post('/accounts', auth_middleware_1.authenticateToken, auth_middleware_1.
                     // Update existing account
                     await database_1.default.account.update({
                         where: { id: existing.id },
-                        data: { accountName, status },
+                        data: { accountName, status: status },
                     });
                     results.updated++;
                 }
@@ -167,7 +176,7 @@ router.post('/accounts', auth_middleware_1.authenticateToken, auth_middleware_1.
                         data: {
                             googleAccountId,
                             accountName,
-                            status,
+                            status: status,
                             currency,
                             batchId,
                             mccAccountName: batch.mccAccountName,
@@ -188,11 +197,10 @@ router.post('/accounts', auth_middleware_1.authenticateToken, auth_middleware_1.
             _count: true,
         });
         const totalAccounts = accountCounts.reduce((sum, c) => sum + c._count, 0);
-        const liveAccounts = accountCounts.find((c) => c.status !== 'DIED')?._count || 0;
-        const diedAccounts = accountCounts.find((c) => c.status === 'DIED')?._count || 0;
+        const liveAccounts = accountCounts.find((c) => c.status === 'ACTIVE')?._count || 0;
         await database_1.default.accountBatch.update({
             where: { id: batchId },
-            data: { totalAccounts, liveAccounts, diedAccounts },
+            data: { totalAccounts, liveAccounts },
         });
         await (0, activityLogger_1.default)({
             userId: req.user.id,
@@ -200,7 +208,7 @@ router.post('/accounts', auth_middleware_1.authenticateToken, auth_middleware_1.
             entityType: 'AccountBatch',
             entityId: batchId,
             newValues: results,
-            description: `Import tài khoản vào Lô ${batch.name}: ${results.created} tạo mới, ${results.updated} cập nhật`,
+            description: `Import tài khoản vào Lô ${batch.mccAccountName}: ${results.created} tạo mới, ${results.updated} cập nhật`,
             ipAddress: req.ip,
         });
         res.json({
@@ -236,19 +244,17 @@ router.post('/parse-batch', auth_middleware_1.authenticateToken, auth_middleware
             existingBatchId: existingMap.get(account.googleAccountId)?.batchId || null,
         }));
         res.json({
-            batchName: parsed.batchName,
             mccAccountId: parsed.mccAccountId,
-            mccAccountName: parsed.batchName, // Use same as batch name initially
+            mccAccountName: parsed.batchName, // Use batchName from parser as mccAccountName
             dateRange: parsed.dateRange,
             accounts: accountsWithStatus,
             summary: {
                 total: parsed.accounts.length,
                 active: parsed.accounts.filter(a => a.status === 'ACTIVE').length,
                 suspended: parsed.accounts.filter(a => a.status === 'INACTIVE').length,
-                died: parsed.accounts.filter(a => a.status === 'DIED').length,
                 existing: existingAccounts.length,
                 new: parsed.accounts.length - existingAccounts.length,
-            }
+            },
         });
     }
     catch (error) {
@@ -259,17 +265,19 @@ router.post('/parse-batch', auth_middleware_1.authenticateToken, auth_middleware
 // POST /api/import/create-batch-with-accounts - Create batch and accounts from confirmed data
 router.post('/create-batch-with-accounts', auth_middleware_1.authenticateToken, auth_middleware_1.isBuyer, async (req, res) => {
     try {
-        const { batchName, mccAccountId, mccAccountName, accounts } = req.body;
-        if (!batchName || !accounts || !Array.isArray(accounts)) {
-            res.status(400).json({ error: 'Missing required fields: batchName, accounts' });
+        const { mccAccountId, mccAccountName, timezone, year, readiness, accounts } = req.body;
+        if (!mccAccountName || !accounts || !Array.isArray(accounts)) {
+            res.status(400).json({ error: 'Missing required fields: mccAccountName, accounts' });
             return;
         }
         // Create batch
         const batch = await database_1.default.accountBatch.create({
             data: {
-                name: batchName,
                 mccAccountId: mccAccountId || null,
                 mccAccountName: mccAccountName || null,
+                timezone: timezone || null,
+                year: year ? parseInt(year.toString()) : null,
+                readiness: readiness ? parseInt(readiness.toString()) : 0,
                 status: 'ACTIVE',
                 createdById: req.user.id,
             }
@@ -330,31 +338,28 @@ router.post('/create-batch-with-accounts', auth_middleware_1.authenticateToken, 
             _count: true,
         });
         const totalAccounts = accountCounts.reduce((sum, c) => sum + c._count, 0);
-        const liveAccounts = accountCounts.filter((c) => c.status !== 'DIED').reduce((sum, c) => sum + c._count, 0);
-        const diedAccounts = accountCounts.find((c) => c.status === 'DIED')?._count || 0;
+        const liveAccounts = accountCounts.find((c) => c.status === 'ACTIVE')?._count || 0;
         await database_1.default.accountBatch.update({
             where: { id: batch.id },
-            data: { totalAccounts, liveAccounts, diedAccounts },
+            data: { totalAccounts, liveAccounts },
         });
         await (0, activityLogger_1.default)({
             userId: req.user.id,
             action: 'CREATE',
             entityType: 'AccountBatch',
             entityId: batch.id,
-            newValues: { batchName, accountsCreated: results.created, accountsUpdated: results.updated },
-            description: `Tạo Lô "${batchName}" với ${results.created + results.updated} tài khoản`,
+            newValues: { mccAccountName, accountsCreated: results.created, accountsUpdated: results.updated },
+            description: `Tạo Lô "${mccAccountName}" với ${results.created + results.updated} tài khoản`,
             ipAddress: req.ip,
         });
         res.json({
             message: 'Batch created successfully',
             batch: {
                 id: batch.id,
-                name: batch.name,
                 mccAccountId: batch.mccAccountId,
                 mccAccountName: batch.mccAccountName,
                 totalAccounts,
                 liveAccounts,
-                diedAccounts,
             },
             results,
         });
@@ -526,7 +531,7 @@ router.post('/spending/preview', auth_middleware_1.authenticateToken, auth_middl
             res.status(400).json({ error: 'No file uploaded' });
             return;
         }
-        const { spendingDate } = req.body;
+        const { spendingDate, miId } = req.body;
         if (!spendingDate) {
             res.status(400).json({ error: 'Spending date is required' });
             return;
@@ -534,15 +539,48 @@ router.post('/spending/preview', auth_middleware_1.authenticateToken, auth_middl
         const date = new Date(spendingDate);
         // Use same parser as batch creation
         const parsed = (0, excelParser_1.default)(req.file.buffer);
-        // Find or identify batch by name
-        const batch = await database_1.default.accountBatch.findFirst({
-            where: { name: parsed.batchName },
-        });
-        // Get all existing accounts for this batch
-        const existingAccounts = await database_1.default.account.findMany({
-            where: batch ? { batchId: batch.id } : { googleAccountId: { in: parsed.accounts.map(a => a.googleAccountId) } },
-            include: { currentMi: true, currentMc: true },
-        });
+        // Find or identify MI/Batch automatically from file
+        let batch = null;
+        let mi = null;
+        if (miId) {
+            mi = await database_1.default.invoiceMCC.findUnique({ where: { id: miId } });
+            if (!mi) {
+                res.status(404).json({ error: 'Invoice MCC (MI) không tồn tại' });
+                return;
+            }
+        }
+        else if (parsed.mccAccountId) {
+            // Auto-detect MI by MCC ID from file
+            mi = await database_1.default.invoiceMCC.findFirst({
+                where: { mccInvoiceId: parsed.mccAccountId }
+            });
+        }
+        // If still no MI, try to find Batch by name
+        if (!mi) {
+            batch = await database_1.default.accountBatch.findFirst({
+                where: { mccAccountName: parsed.batchName },
+            });
+        }
+        // Get all existing accounts
+        let existingAccounts;
+        if (mi) {
+            existingAccounts = await database_1.default.account.findMany({
+                where: { currentMiId: mi.id },
+                include: { currentMi: true, currentMc: true },
+            });
+        }
+        else if (batch) {
+            existingAccounts = await database_1.default.account.findMany({
+                where: { batchId: batch.id },
+                include: { currentMi: true, currentMc: true },
+            });
+        }
+        else {
+            existingAccounts = await database_1.default.account.findMany({
+                where: { googleAccountId: { in: parsed.accounts.map(a => a.googleAccountId) } },
+                include: { currentMi: true, currentMc: true },
+            });
+        }
         const accountMap = new Map(existingAccounts.map(a => [a.googleAccountId, a]));
         // Check for existing spending records
         const existingRecords = await database_1.default.spendingRecord.findMany({
@@ -561,6 +599,10 @@ router.post('/spending/preview', auth_middleware_1.authenticateToken, auth_middl
         let existingCount = 0;
         for (const item of parsed.accounts) {
             const existingAccount = accountMap.get(item.googleAccountId);
+            // If importing by MI, only show accounts that belong to this MI or are NEW (if we want to allow auto-assigning to MI? No, better only existing accounts for that MI)
+            // But the user might want to import spending for accounts that ARE in this MI.
+            if (mi && !existingAccount)
+                continue;
             const existingAmount = existingAccount ? existingSpendingMap.get(existingAccount.id) : undefined;
             const hasExisting = existingAmount !== undefined;
             const hasConflict = hasExisting && Number(existingAmount) !== item.spending;
@@ -579,14 +621,16 @@ router.post('/spending/preview', auth_middleware_1.authenticateToken, auth_middl
                 hasExisting,
                 isNewAccount: !existingAccount,
                 accountId: existingAccount?.id || null,
-                miName: existingAccount?.currentMi?.name || null,
+                miName: existingAccount?.currentMi?.name || (mi?.name || null),
                 mcName: existingAccount?.currentMc?.name || null,
             });
         }
         res.json({
             spendingDate: date.toISOString().split('T')[0],
-            batchName: parsed.batchName,
+            batchName: batch?.mccAccountName || parsed.batchName,
             batchId: batch?.id || null,
+            miId: mi?.id || null,
+            miName: mi?.name || null,
             dateRange: parsed.dateRange,
             totalItems: preview.length,
             conflictCount,
@@ -606,7 +650,7 @@ router.post('/spending/preview', auth_middleware_1.authenticateToken, auth_middl
 // POST /api/import/spending/confirm - Confirm spending import with account status updates
 router.post('/spending/confirm', auth_middleware_1.authenticateToken, auth_middleware_1.isUpdater, async (req, res) => {
     try {
-        const { spendingDate, batchId, data, overwrite } = req.body;
+        const { spendingDate, batchId, miId, data, overwrite } = req.body;
         if (!spendingDate || !data || !Array.isArray(data)) {
             res.status(400).json({ error: 'Missing required fields' });
             return;
@@ -742,10 +786,10 @@ router.post('/spending/confirm', auth_middleware_1.authenticateToken, auth_middl
                 _count: true,
             });
             const totalAccounts = accountCounts.reduce((sum, c) => sum + c._count, 0);
-            const diedAccounts = accountCounts.find((c) => c.status === 'DIED')?._count || 0;
+            const liveAccounts = accountCounts.find((c) => c.status === 'ACTIVE')?._count || 0;
             await database_1.default.accountBatch.update({
                 where: { id: batch.id },
-                data: { totalAccounts, diedAccounts, liveAccounts: totalAccounts - diedAccounts },
+                data: { totalAccounts, liveAccounts },
             });
         }
         await (0, activityLogger_1.default)({

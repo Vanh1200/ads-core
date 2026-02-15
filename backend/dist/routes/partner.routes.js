@@ -72,7 +72,7 @@ router.get('/:id', auth_middleware_1.authenticateToken, auth_middleware_1.canVie
         const partner = await database_1.default.partner.findUnique({
             where: { id: req.params.id },
             include: {
-                batches: { select: { id: true, name: true, status: true } },
+                batches: { select: { id: true, mccAccountName: true, status: true } },
                 invoiceMCCs: { select: { id: true, name: true, mccInvoiceId: true, status: true } },
             },
         });

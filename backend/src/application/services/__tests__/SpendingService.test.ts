@@ -64,8 +64,7 @@ describe('SpendingService', () => {
             prismaMock.spendingSnapshot.create.mockResolvedValue({ id: 'snap-1', accountId: 'acc-1' } as any);
 
             const result = await spendingService.createSnapshot(
-                { accountId: 'acc-1', spendingDate: '2026-02-13', cumulativeAmount: 500, snapshotType: 'MANUAL' },
-                'user-1'
+                { accountId: 'acc-1', spendingDate: '2026-02-13', cumulativeAmount: 500, snapshotType: 'MANUAL' }
             );
 
             expect(prismaMock.spendingSnapshot.create).toHaveBeenCalled();

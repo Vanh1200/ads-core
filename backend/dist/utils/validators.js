@@ -1,6 +1,6 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.paginationSchema = exports.assignMCSchema = exports.linkMISchema = exports.createSnapshotSchema = exports.createAccountSchema = exports.createCustomerSchema = exports.createInvoiceMCCSchema = exports.createBatchSchema = exports.createPartnerSchema = exports.registerSchema = exports.loginSchema = void 0;
+exports.paginationSchema = exports.quickLinkExecuteSchema = exports.quickLinkSuggestSchema = exports.assignMCSchema = exports.linkMISchema = exports.createSnapshotSchema = exports.createAccountSchema = exports.createCustomerSchema = exports.createInvoiceMCCSchema = exports.createBatchSchema = exports.createPartnerSchema = exports.registerSchema = exports.loginSchema = void 0;
 const zod_1 = require("zod");
 // Auth schemas
 exports.loginSchema = zod_1.z.object({
@@ -22,11 +22,13 @@ exports.createPartnerSchema = zod_1.z.object({
 });
 // AccountBatch (MA) schemas
 exports.createBatchSchema = zod_1.z.object({
-    name: zod_1.z.string().min(2, 'Batch name is required'),
-    mccAccountName: zod_1.z.string().nullable().optional(),
+    mccAccountName: zod_1.z.string().min(2, 'MCC Account name is required'),
     mccAccountId: zod_1.z.string().nullable().optional(),
     partnerId: zod_1.z.string().uuid().nullable().optional(),
     isPrelinked: zod_1.z.boolean().default(false),
+    timezone: zod_1.z.string().nullable().optional(),
+    year: zod_1.z.number().nullable().optional(),
+    readiness: zod_1.z.number().min(0).max(10).default(0),
     notes: zod_1.z.string().nullable().optional(),
 });
 // InvoiceMCC (MI) schemas
@@ -50,7 +52,7 @@ exports.createAccountSchema = zod_1.z.object({
     batchId: zod_1.z.string().uuid('Batch ID is required'),
     currency: zod_1.z.string().default('USD'),
     timezone: zod_1.z.string().optional(),
-    status: zod_1.z.enum(['ACTIVE', 'INACTIVE', 'DIED']).default('ACTIVE'),
+    status: zod_1.z.enum(['ACTIVE', 'INACTIVE']).default('ACTIVE'),
 });
 // Spending snapshot schemas
 exports.createSnapshotSchema = zod_1.z.object({
@@ -67,6 +69,28 @@ exports.linkMISchema = zod_1.z.object({
 exports.assignMCSchema = zod_1.z.object({
     accountIds: zod_1.z.array(zod_1.z.string().uuid()).min(1, 'At least one account required'),
     customerId: zod_1.z.string().uuid('Customer ID is required'),
+});
+// Quick Link schemas
+exports.quickLinkSuggestSchema = zod_1.z.object({
+    requirements: zod_1.z.array(zod_1.z.object({
+        timezone: zod_1.z.string(),
+        currency: zod_1.z.string(),
+        year: zod_1.z.number(),
+        count: zod_1.z.number().min(1),
+    })).min(1, 'At least one requirement required'),
+});
+exports.quickLinkExecuteSchema = zod_1.z.object({
+    links: zod_1.z.array(zod_1.z.object({
+        requirementId: zod_1.z.string(), // To match with suggestions if needed
+        batchId: zod_1.z.string().uuid(),
+        accountIds: zod_1.z.array(zod_1.z.string().uuid()).min(1),
+    })).min(1),
+    invoiceMccId: zod_1.z.string().uuid().optional(), // Existing MI
+    newInvoiceMcc: zod_1.z.object({
+        name: zod_1.z.string().min(2),
+        mccInvoiceId: zod_1.z.string().min(10),
+        partnerId: zod_1.z.string().uuid().nullable().optional(),
+    }).optional(),
 });
 // Pagination schema
 exports.paginationSchema = zod_1.z.object({

@@ -208,14 +208,23 @@ router.get('/records', auth_middleware_1.authenticateToken, auth_middleware_1.ca
 // GET /api/spending/summary/customer/:id
 router.get('/summary/customer/:id', auth_middleware_1.authenticateToken, auth_middleware_1.canView, async (req, res) => {
     try {
+        const { startDate, endDate } = req.query;
+        const where = { customerId: req.params.id };
+        if (startDate || endDate) {
+            where.spendingDate = {};
+            if (startDate)
+                where.spendingDate.gte = new Date(startDate);
+            if (endDate)
+                where.spendingDate.lte = new Date(endDate);
+        }
         const records = await database_1.default.spendingRecord.groupBy({
             by: ['spendingDate'],
-            where: { customerId: req.params.id },
+            where,
             _sum: { amount: true },
             orderBy: { spendingDate: 'desc' },
         });
         const totalSum = await database_1.default.spendingRecord.aggregate({
-            where: { customerId: req.params.id },
+            where,
             _sum: { amount: true },
         });
         res.json({
@@ -231,14 +240,23 @@ router.get('/summary/customer/:id', auth_middleware_1.authenticateToken, auth_mi
 // GET /api/spending/summary/invoice-mcc/:id
 router.get('/summary/invoice-mcc/:id', auth_middleware_1.authenticateToken, auth_middleware_1.canView, async (req, res) => {
     try {
+        const { startDate, endDate } = req.query;
+        const where = { invoiceMccId: req.params.id };
+        if (startDate || endDate) {
+            where.spendingDate = {};
+            if (startDate)
+                where.spendingDate.gte = new Date(startDate);
+            if (endDate)
+                where.spendingDate.lte = new Date(endDate);
+        }
         const records = await database_1.default.spendingRecord.groupBy({
             by: ['spendingDate'],
-            where: { invoiceMccId: req.params.id },
+            where,
             _sum: { amount: true },
             orderBy: { spendingDate: 'desc' },
         });
         const totalSum = await database_1.default.spendingRecord.aggregate({
-            where: { invoiceMccId: req.params.id },
+            where,
             _sum: { amount: true },
         });
         res.json({
@@ -248,6 +266,38 @@ router.get('/summary/invoice-mcc/:id', auth_middleware_1.authenticateToken, auth
     }
     catch (error) {
         console.error('Get invoice MCC summary error:', error);
+        res.status(500).json({ error: 'Internal server error' });
+    }
+});
+// GET /api/spending/summary/batch/:id
+router.get('/summary/batch/:id', auth_middleware_1.authenticateToken, auth_middleware_1.canView, async (req, res) => {
+    try {
+        const { startDate, endDate } = req.query;
+        const where = { account: { batchId: req.params.id } };
+        if (startDate || endDate) {
+            where.spendingDate = {};
+            if (startDate)
+                where.spendingDate.gte = new Date(startDate);
+            if (endDate)
+                where.spendingDate.lte = new Date(endDate);
+        }
+        const records = await database_1.default.spendingRecord.groupBy({
+            by: ['spendingDate'],
+            where,
+            _sum: { amount: true },
+            orderBy: { spendingDate: 'desc' },
+        });
+        const totalSum = await database_1.default.spendingRecord.aggregate({
+            where,
+            _sum: { amount: true },
+        });
+        res.json({
+            dailySpending: records,
+            totalSpending: totalSum._sum.amount || 0,
+        });
+    }
+    catch (error) {
+        console.error('Get batch summary error:', error);
         res.status(500).json({ error: 'Internal server error' });
     }
 });

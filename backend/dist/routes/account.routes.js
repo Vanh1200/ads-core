@@ -54,21 +54,29 @@ router.get('/', auth_middleware_1.authenticateToken, auth_middleware_1.canView, 
         }
         const where = conditions.length > 0 ? { AND: conditions } : {};
         // Build orderBy based on sortBy and sortOrder
-        const validSortFields = ['googleAccountId', 'accountName', 'status', 'currency', 'createdAt', 'totalSpending'];
-        const field = validSortFields.includes(sortBy) ? sortBy : 'createdAt';
-        const order = sortOrder === 'asc' || sortOrder === 'desc' ? sortOrder : 'desc';
-        const orderBy = { [field]: order };
+        const validSortFields = ['googleAccountId', 'accountName', 'status', 'currency', 'totalSpending', 'createdAt'];
+        const order = sortOrder === 'asc' ? 'asc' : 'desc';
+        let orderBy = {};
+        if (sortBy === 'batch') {
+            orderBy = { batch: { mccAccountName: order } };
+        }
+        else if (sortBy === 'currentMi') {
+            orderBy = { currentMi: { name: order } };
+        }
+        else if (sortBy === 'currentMc') {
+            orderBy = { currentMc: { name: order } };
+        }
+        else {
+            const field = validSortFields.includes(sortBy) ? sortBy : 'createdAt';
+            orderBy = { [field]: order };
+        }
         const [accounts, total] = await Promise.all([
             database_1.default.account.findMany({
                 where,
                 include: {
-                    batch: { select: { id: true, name: true } },
+                    batch: { select: { id: true, mccAccountName: true, mccAccountId: true } },
                     currentMi: { select: { id: true, name: true, mccInvoiceId: true } },
                     currentMc: { select: { id: true, name: true } },
-                    spendingRecords: {
-                        where: { spendingDate: { gte: spendingStart } },
-                        select: { amount: true }
-                    }
                 },
                 skip: (page - 1) * limit,
                 take: limit,
@@ -76,10 +84,27 @@ router.get('/', auth_middleware_1.authenticateToken, auth_middleware_1.canView, 
             }),
             database_1.default.account.count({ where }),
         ]);
-        const accountsWithSpending = accounts.map(acc => ({
+        // Optimized Aggregation: Fetch spending sums using groupBy
+        const accountIds = accounts.map(a => a.id);
+        let rangeSpendingMap = {};
+        if (accountIds.length > 0) {
+            const spendingAggs = await database_1.default.spendingRecord.groupBy({
+                by: ['accountId'],
+                where: {
+                    accountId: { in: accountIds },
+                    spendingDate: { gte: spendingStart }
+                },
+                _sum: {
+                    amount: true
+                }
+            });
+            spendingAggs.forEach(agg => {
+                rangeSpendingMap[agg.accountId] = Number(agg._sum.amount || 0);
+            });
+        }
+        const accountsWithSpending = accounts.map((acc) => ({
             ...acc,
-            rangeSpending: acc.spendingRecords.reduce((sum, r) => sum + Number(r.amount), 0),
-            spendingRecords: undefined // remove heavy list
+            rangeSpending: rangeSpendingMap[acc.id] || 0
         }));
         res.json({
             data: accountsWithSpending,
@@ -97,7 +122,7 @@ router.get('/unlinked', auth_middleware_1.authenticateToken, auth_middleware_1.c
         const accounts = await database_1.default.account.findMany({
             where: { currentMiId: null, status: 'ACTIVE' },
             include: {
-                batch: { select: { id: true, name: true } },
+                batch: { select: { id: true, mccAccountName: true } },
             },
             orderBy: { createdAt: 'desc' },
         });
@@ -114,7 +139,7 @@ router.get('/unassigned', auth_middleware_1.authenticateToken, auth_middleware_1
         const accounts = await database_1.default.account.findMany({
             where: { currentMcId: null, status: 'ACTIVE' },
             include: {
-                batch: { select: { id: true, name: true } },
+                batch: { select: { id: true, mccAccountName: true } },
                 currentMi: { select: { id: true, name: true } },
             },
             orderBy: { createdAt: 'desc' },
@@ -143,9 +168,12 @@ router.post('/', auth_middleware_1.authenticateToken, auth_middleware_1.isBuyer,
             return;
         }
         const account = await database_1.default.account.create({
-            data: validation.data,
+            data: {
+                ...validation.data,
+                status: validation.data.status
+            },
             include: {
-                batch: { select: { id: true, name: true } },
+                batch: { select: { id: true, mccAccountName: true } },
             },
         });
         // Update batch counts
@@ -229,16 +257,16 @@ router.put('/:id', auth_middleware_1.authenticateToken, auth_middleware_1.isBuye
         });
         // Update batch counts if status changed
         if (status && status !== existing.status) {
-            if (status === 'DIED' && existing.status !== 'DIED') {
+            if (status === 'ACTIVE') {
                 await database_1.default.accountBatch.update({
                     where: { id: existing.batchId },
-                    data: { liveAccounts: { decrement: 1 }, diedAccounts: { increment: 1 } },
+                    data: { liveAccounts: { increment: 1 } },
                 });
             }
-            else if (status !== 'DIED' && existing.status === 'DIED') {
+            else if (existing.status === 'ACTIVE') {
                 await database_1.default.accountBatch.update({
                     where: { id: existing.batchId },
-                    data: { liveAccounts: { increment: 1 }, diedAccounts: { decrement: 1 } },
+                    data: { liveAccounts: { decrement: 1 } },
                 });
             }
         }
@@ -267,7 +295,7 @@ router.post('/bulk-update-status', auth_middleware_1.authenticateToken, auth_mid
             res.status(400).json({ error: 'Account IDs and status required' });
             return;
         }
-        const validStatuses = ['ACTIVE', 'INACTIVE', 'DIED'];
+        const validStatuses = ['ACTIVE', 'INACTIVE'];
         if (!validStatuses.includes(status)) {
             res.status(400).json({ error: 'Invalid status' });
             return;
@@ -283,16 +311,16 @@ router.post('/bulk-update-status', auth_middleware_1.authenticateToken, auth_mid
             });
             // Update batch counts if status changed
             if (status !== existing.status) {
-                if (status === 'DIED' && existing.status !== 'DIED') {
+                if (status === 'ACTIVE') {
                     await database_1.default.accountBatch.update({
                         where: { id: existing.batchId },
-                        data: { liveAccounts: { decrement: 1 }, diedAccounts: { increment: 1 } },
+                        data: { liveAccounts: { increment: 1 } },
                     });
                 }
-                else if (status !== 'DIED' && existing.status === 'DIED') {
+                else if (existing.status === 'ACTIVE') {
                     await database_1.default.accountBatch.update({
                         where: { id: existing.batchId },
-                        data: { liveAccounts: { increment: 1 }, diedAccounts: { decrement: 1 } },
+                        data: { liveAccounts: { decrement: 1 } },
                     });
                 }
             }

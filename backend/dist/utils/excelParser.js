@@ -46,33 +46,23 @@ const parseAccountId = (id) => {
 // Helper to parse status
 const parseStatus = (status) => {
     const lower = status?.toLowerCase() || '';
-    if (lower.includes('hoạt động') || lower.includes('active'))
+    if (lower.includes('hoạt động') || lower.includes('active') || lower.includes('đang hoạt động'))
         return 'ACTIVE';
-    if (lower.includes('đang hoạt động'))
-        return 'ACTIVE';
-    if (lower.includes('không') || lower.includes('inactive') || lower.includes('suspended'))
+    if (lower.includes('không') ||
+        lower.includes('inactive') ||
+        lower.includes('suspended') ||
+        lower.includes('chết') ||
+        lower.includes('died') ||
+        lower.includes('tắt') ||
+        lower.includes('tạm dừng') ||
+        lower.includes('paused') ||
+        lower.includes('vô hiệu hóa') ||
+        lower.includes('disabled'))
         return 'INACTIVE';
-    if (lower.includes('chết') || lower.includes('died') || lower.includes('tắt'))
-        return 'DIED';
     return 'ACTIVE';
 };
 /**
  * Parse Excel file to extract batch info and accounts
- *
- * Excel format:
- * Row 1: Title "Báo cáo hiệu suất"
- * Row 2: Date range "12 tháng 1, 2026 - 8 tháng 2, 2026"
- * Row 3: Headers
- * Row 4+: Account data
- *
- * Columns (0-indexed):
- * A (0): Tình trạng (Status)
- * B (1): Tên tài khoản (Account Name)
- * C (2): ID khách hàng bên ngoài (Account ID) → Google Ads Customer ID
- * D (3): Tên người quản lý (Manager Name) → Batch Name
- * E (4): Mã khách hàng của người quản lý (Manager ID) → MCC Account ID
- * K (10): Mã đơn vị tiền tệ (Currency)
- * M (12): Chi phí (Spending)
  */
 function parseBatchExcel(buffer) {
     const workbook = XLSX.read(buffer, { type: 'buffer' });
@@ -81,18 +71,60 @@ function parseBatchExcel(buffer) {
     const data = XLSX.utils.sheet_to_json(worksheet, { header: 1 });
     // Extract date range from row 2
     const dateRange = data[1]?.[0]?.toString() || '';
-    // Find header row (usually row 3, index 2)
-    let headerRowIndex = 2;
-    for (let i = 0; i < Math.min(5, data.length); i++) {
+    // Keywords mapping
+    const keywords = {
+        status: ['tình trạng', 'status'],
+        accountName: ['tên tài khoản', 'account name', 'account'],
+        googleAccountId: ['id khách hàng bên ngoài', 'customer id', 'mã khách hàng'],
+        batchName: ['tên người quản lý', 'manager name', 'tên người quản lý trực tiếp'],
+        mccAccountId: ['mã khách hàng của người quản lý', 'manager customer id', 'mã khách hàng của người quản lý trực tiếp'],
+        currency: ['mã đơn vị tiền tệ', 'currency'],
+        spending: ['chi phi', 'chi phí', 'cost', 'spending'] // Note: "chi phi" without accent for safety
+    };
+    // Auto-detect header row and column indices
+    let headerRowIndex = -1;
+    const indices = {
+        status: 0,
+        accountName: 1,
+        googleAccountId: 2,
+        batchName: 3,
+        mccAccountId: 4,
+        currency: 10,
+        spending: 12
+    };
+    // Scan first 10 rows for headers
+    for (let i = 0; i < Math.min(10, data.length); i++) {
         const row = data[i];
-        if (row && row.some((cell) => cell?.toString().includes('Tình trạng') ||
-            cell?.toString().includes('Tên tài khoản'))) {
+        if (!row)
+            continue;
+        let foundKeywordsInRow = 0;
+        const tempIndices = {};
+        row.forEach((cell, cellIndex) => {
+            if (!cell)
+                return;
+            const cellText = cell.toString().toLowerCase();
+            for (const [key, searchTerms] of Object.entries(keywords)) {
+                if (searchTerms.some(term => cellText.includes(term.toLowerCase()))) {
+                    tempIndices[key] = cellIndex;
+                    foundKeywordsInRow++;
+                    break;
+                }
+            }
+        });
+        // If we found at least 3 key columns, assume this is the header row
+        if (foundKeywordsInRow >= 3) {
             headerRowIndex = i;
+            // Merge found indices with defaults
+            Object.assign(indices, tempIndices);
             break;
         }
     }
+    if (headerRowIndex === -1) {
+        // Fallback or throw error? For now, assume row 3 as fallback index 2
+        headerRowIndex = 2;
+    }
     const dataRows = data.slice(headerRowIndex + 1);
-    // Extract batch info from first data row
+    // Extract batch info
     let batchName = '';
     let mccAccountId = '';
     for (const row of dataRows) {
@@ -101,13 +133,11 @@ function parseBatchExcel(buffer) {
         const firstCell = row[0]?.toString() || '';
         if (firstCell.includes('Tổng số') || !firstCell)
             continue;
-        // Column D (index 3): Tên người quản lý (Batch Name)
-        if (!batchName && row[3]) {
-            batchName = row[3].toString().trim();
+        if (!batchName && row[indices.batchName]) {
+            batchName = row[indices.batchName].toString().trim();
         }
-        // Column E (index 4): Mã khách hàng của người quản lý (MCC ID)
-        if (!mccAccountId && row[4]) {
-            const parsedMccId = parseAccountId(row[4].toString());
+        if (!mccAccountId && row[indices.mccAccountId]) {
+            const parsedMccId = parseAccountId(row[indices.mccAccountId].toString());
             if (parsedMccId) {
                 mccAccountId = parsedMccId;
             }
@@ -122,33 +152,31 @@ function parseBatchExcel(buffer) {
         if (!row || row.length === 0)
             continue;
         const firstCell = row[0]?.toString() || '';
-        if (firstCell.includes('Tổng số') || !firstCell)
+        // Skip summary rows
+        if (firstCell.toLowerCase().includes('tổng số') ||
+            firstCell.toLowerCase().includes('total') ||
+            !row[indices.googleAccountId])
             continue;
-        // Column C (index 2): ID khách hàng bên ngoại (Account ID)
-        const rawAccountId = row[2]?.toString();
-        const googleAccountId = parseAccountId(rawAccountId);
+        const googleAccountId = parseAccountId(row[indices.googleAccountId]?.toString());
         if (!googleAccountId || seenAccountIds.has(googleAccountId)) {
             continue;
         }
         seenAccountIds.add(googleAccountId);
-        // Column A (index 0): Tình trạng (Status)
-        const status = parseStatus(row[0]?.toString());
-        // Column B (index 1): Tên tài khoản (Account Name)
-        const accountName = row[1]?.toString()?.trim() || 'Unknown';
-        // Column K (index 10): Mã đơn vị tiền tệ (Currency)
+        const status = parseStatus(row[indices.status]?.toString());
+        const accountName = row[indices.accountName]?.toString()?.trim() || 'Unknown';
+        // Detect currency
         let currency = 'USD';
-        const currencyCell = row[10]?.toString() || '';
+        const currencyCell = row[indices.currency]?.toString() || '';
         if (currencyCell.includes('VND'))
             currency = 'VND';
         else if (currencyCell.includes('USD'))
             currency = 'USD';
         else if (currencyCell)
             currency = currencyCell.trim();
-        // Column M (index 12): Chi phí (Spending)
+        // Parse spending
         let spending = 0;
-        const spendingCell = row[12]?.toString() || '';
+        const spendingCell = row[indices.spending]?.toString() || '';
         if (spendingCell) {
-            // Parse spending: remove currency symbols, handle comma/dot as decimal
             const cleaned = spendingCell.replace(/[^\d,.-]/g, '').replace(/,/g, '.');
             spending = parseFloat(cleaned) || 0;
         }

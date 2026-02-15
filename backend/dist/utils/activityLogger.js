@@ -4,10 +4,10 @@ var __importDefault = (this && this.__importDefault) || function (mod) {
 };
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.logActivity = void 0;
-const database_1 = __importDefault(require("../config/database"));
+const prisma_1 = __importDefault(require("../infrastructure/database/prisma"));
 const logActivity = async (params) => {
     try {
-        await database_1.default.activityLog.create({
+        await prisma_1.default.activityLog.create({
             data: {
                 userId: params.userId,
                 action: params.action,

@@ -15,7 +15,7 @@ router.get('/', auth_middleware_1.authenticateToken, auth_middleware_1.canView, 
         const validation = validators_1.paginationSchema.safeParse(req.query);
         const { page, limit } = validation.success ? validation.data : { page: 1, limit: 20 };
         const { search, spendingDays } = req.query;
-        const days = spendingDays ? parseInt(spendingDays) : 1;
+        const days = spendingDays ? parseInt(spendingDays) : 7;
         const startDate = new Date();
         startDate.setHours(0, 0, 0, 0);
         startDate.setDate(startDate.getDate() - (days - 1));
@@ -32,12 +32,6 @@ router.get('/', auth_middleware_1.authenticateToken, auth_middleware_1.canView, 
                     partner: { select: { id: true, name: true } },
                     createdBy: { select: { id: true, fullName: true } },
                     _count: { select: { accounts: true } },
-                    spendingRecords: {
-                        where: {
-                            spendingDate: { gte: startDate }
-                        },
-                        select: { amount: true }
-                    }
                 },
                 skip: (page - 1) * limit,
                 take: limit,
@@ -45,14 +39,30 @@ router.get('/', auth_middleware_1.authenticateToken, auth_middleware_1.canView, 
             }),
             database_1.default.invoiceMCC.count({ where }),
         ]);
-        const data = invoiceMCCs.map(mi => {
-            const rangeSpending = mi.spendingRecords.reduce((sum, record) => sum + Number(record.amount), 0);
-            const { spendingRecords, ...rest } = mi;
-            return {
-                ...rest,
-                rangeSpending
-            };
-        });
+        // Optimized Aggregation: Fetch spending sums using groupBy
+        const miIds = invoiceMCCs.map(mi => mi.id);
+        let rangeSpendingMap = {};
+        if (miIds.length > 0) {
+            const spendingAggs = await database_1.default.spendingRecord.groupBy({
+                by: ['invoiceMccId'],
+                where: {
+                    invoiceMccId: { in: miIds },
+                    spendingDate: { gte: startDate }
+                },
+                _sum: {
+                    amount: true
+                }
+            });
+            spendingAggs.forEach(agg => {
+                if (agg.invoiceMccId) {
+                    rangeSpendingMap[agg.invoiceMccId] = Number(agg._sum.amount || 0);
+                }
+            });
+        }
+        const data = invoiceMCCs.map(mi => ({
+            ...mi,
+            rangeSpending: rangeSpendingMap[mi.id] || 0
+        }));
         res.json({
             data,
             pagination: { page, limit, total, totalPages: Math.ceil(total / limit) },

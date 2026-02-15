@@ -16,13 +16,13 @@ export declare const registerSchema: z.ZodObject<{
     role: z.ZodOptional<z.ZodEnum<["ADMIN", "MANAGER", "BUYER", "LINKER", "ASSIGNER", "UPDATER", "VIEWER"]>>;
 }, "strip", z.ZodTypeAny, {
     email: string;
-    password: string;
     fullName: string;
+    password: string;
     role?: "ADMIN" | "MANAGER" | "BUYER" | "LINKER" | "ASSIGNER" | "UPDATER" | "VIEWER" | undefined;
 }, {
     email: string;
-    password: string;
     fullName: string;
+    password: string;
     role?: "ADMIN" | "MANAGER" | "BUYER" | "LINKER" | "ASSIGNER" | "UPDATER" | "VIEWER" | undefined;
 }>;
 export declare const createPartnerSchema: z.ZodObject<{
@@ -31,37 +31,43 @@ export declare const createPartnerSchema: z.ZodObject<{
     type: z.ZodEnum<["ACCOUNT_SUPPLIER", "INVOICE_PROVIDER", "BOTH"]>;
     notes: z.ZodOptional<z.ZodNullable<z.ZodString>>;
 }, "strip", z.ZodTypeAny, {
-    type: "ACCOUNT_SUPPLIER" | "INVOICE_PROVIDER" | "BOTH";
     name: string;
+    type: "ACCOUNT_SUPPLIER" | "INVOICE_PROVIDER" | "BOTH";
     contactInfo?: string | null | undefined;
     notes?: string | null | undefined;
 }, {
-    type: "ACCOUNT_SUPPLIER" | "INVOICE_PROVIDER" | "BOTH";
     name: string;
+    type: "ACCOUNT_SUPPLIER" | "INVOICE_PROVIDER" | "BOTH";
     contactInfo?: string | null | undefined;
     notes?: string | null | undefined;
 }>;
 export declare const createBatchSchema: z.ZodObject<{
-    name: z.ZodString;
-    mccAccountName: z.ZodOptional<z.ZodNullable<z.ZodString>>;
+    mccAccountName: z.ZodString;
     mccAccountId: z.ZodOptional<z.ZodNullable<z.ZodString>>;
     partnerId: z.ZodOptional<z.ZodNullable<z.ZodString>>;
     isPrelinked: z.ZodDefault<z.ZodBoolean>;
+    timezone: z.ZodOptional<z.ZodNullable<z.ZodString>>;
+    year: z.ZodOptional<z.ZodNullable<z.ZodNumber>>;
+    readiness: z.ZodDefault<z.ZodNumber>;
     notes: z.ZodOptional<z.ZodNullable<z.ZodString>>;
 }, "strip", z.ZodTypeAny, {
-    name: string;
+    mccAccountName: string;
     isPrelinked: boolean;
+    readiness: number;
+    year?: number | null | undefined;
     notes?: string | null | undefined;
-    mccAccountName?: string | null | undefined;
     mccAccountId?: string | null | undefined;
     partnerId?: string | null | undefined;
+    timezone?: string | null | undefined;
 }, {
-    name: string;
+    mccAccountName: string;
+    year?: number | null | undefined;
     notes?: string | null | undefined;
-    mccAccountName?: string | null | undefined;
     mccAccountId?: string | null | undefined;
     partnerId?: string | null | undefined;
     isPrelinked?: boolean | undefined;
+    timezone?: string | null | undefined;
+    readiness?: number | undefined;
 }>;
 export declare const createInvoiceMCCSchema: z.ZodObject<{
     name: z.ZodString;
@@ -101,9 +107,9 @@ export declare const createAccountSchema: z.ZodObject<{
     batchId: z.ZodString;
     currency: z.ZodDefault<z.ZodString>;
     timezone: z.ZodOptional<z.ZodString>;
-    status: z.ZodDefault<z.ZodEnum<["ACTIVE", "INACTIVE", "DIED"]>>;
+    status: z.ZodDefault<z.ZodEnum<["ACTIVE", "INACTIVE"]>>;
 }, "strip", z.ZodTypeAny, {
-    status: "ACTIVE" | "INACTIVE" | "DIED";
+    status: "ACTIVE" | "INACTIVE";
     googleAccountId: string;
     accountName: string;
     batchId: string;
@@ -113,9 +119,9 @@ export declare const createAccountSchema: z.ZodObject<{
     googleAccountId: string;
     accountName: string;
     batchId: string;
-    status?: "ACTIVE" | "INACTIVE" | "DIED" | undefined;
-    currency?: string | undefined;
+    status?: "ACTIVE" | "INACTIVE" | undefined;
     timezone?: string | undefined;
+    currency?: string | undefined;
 }>;
 export declare const createSnapshotSchema: z.ZodObject<{
     accountId: z.ZodString;
@@ -152,6 +158,91 @@ export declare const assignMCSchema: z.ZodObject<{
 }, {
     accountIds: string[];
     customerId: string;
+}>;
+export declare const quickLinkSuggestSchema: z.ZodObject<{
+    requirements: z.ZodArray<z.ZodObject<{
+        timezone: z.ZodString;
+        currency: z.ZodString;
+        year: z.ZodNumber;
+        count: z.ZodNumber;
+    }, "strip", z.ZodTypeAny, {
+        year: number;
+        timezone: string;
+        currency: string;
+        count: number;
+    }, {
+        year: number;
+        timezone: string;
+        currency: string;
+        count: number;
+    }>, "many">;
+}, "strip", z.ZodTypeAny, {
+    requirements: {
+        year: number;
+        timezone: string;
+        currency: string;
+        count: number;
+    }[];
+}, {
+    requirements: {
+        year: number;
+        timezone: string;
+        currency: string;
+        count: number;
+    }[];
+}>;
+export declare const quickLinkExecuteSchema: z.ZodObject<{
+    links: z.ZodArray<z.ZodObject<{
+        requirementId: z.ZodString;
+        batchId: z.ZodString;
+        accountIds: z.ZodArray<z.ZodString, "many">;
+    }, "strip", z.ZodTypeAny, {
+        batchId: string;
+        accountIds: string[];
+        requirementId: string;
+    }, {
+        batchId: string;
+        accountIds: string[];
+        requirementId: string;
+    }>, "many">;
+    invoiceMccId: z.ZodOptional<z.ZodString>;
+    newInvoiceMcc: z.ZodOptional<z.ZodObject<{
+        name: z.ZodString;
+        mccInvoiceId: z.ZodString;
+        partnerId: z.ZodOptional<z.ZodNullable<z.ZodString>>;
+    }, "strip", z.ZodTypeAny, {
+        name: string;
+        mccInvoiceId: string;
+        partnerId?: string | null | undefined;
+    }, {
+        name: string;
+        mccInvoiceId: string;
+        partnerId?: string | null | undefined;
+    }>>;
+}, "strip", z.ZodTypeAny, {
+    links: {
+        batchId: string;
+        accountIds: string[];
+        requirementId: string;
+    }[];
+    invoiceMccId?: string | undefined;
+    newInvoiceMcc?: {
+        name: string;
+        mccInvoiceId: string;
+        partnerId?: string | null | undefined;
+    } | undefined;
+}, {
+    links: {
+        batchId: string;
+        accountIds: string[];
+        requirementId: string;
+    }[];
+    invoiceMccId?: string | undefined;
+    newInvoiceMcc?: {
+        name: string;
+        mccInvoiceId: string;
+        partnerId?: string | null | undefined;
+    } | undefined;
 }>;
 export declare const paginationSchema: z.ZodObject<{
     page: z.ZodDefault<z.ZodNumber>;
