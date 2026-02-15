@@ -62,7 +62,7 @@ export default function Accounts() {
     // Sorting
     const [sortField, setSortField] = useState<SortField>('googleAccountId');
     const [sortOrder, setSortOrder] = useState<SortOrder>('asc');
-    const [spendingDays, setSpendingDays] = useState(7);
+    const [spendingDays] = useState(7);
 
 
 

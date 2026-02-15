@@ -73,7 +73,7 @@ export default function Batches() {
     const [yearFilter, setYearFilter] = useState<number | 'mix' | ''>(searchParams.get('year') ? (searchParams.get('year') === 'mix' ? 'mix' : parseInt(searchParams.get('year')!)) : '');
     const [partnerFilter, setPartnerFilter] = useState(searchParams.get('partnerId') || '');
 
-    const [spendingDays, setSpendingDays] = useState(7);
+    const [spendingDays] = useState(7);
 
     const [page, setPage] = useState(1);
     const [limit, setLimit] = useState(20);
