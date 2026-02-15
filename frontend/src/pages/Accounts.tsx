@@ -855,20 +855,17 @@ export default function Accounts() {
                         ]}
                     />
 
-                    {/* Spending Days Filter */}
-                    <Dropdown
 
-
-                        {(search || statusFilter || idsFilter || batchId || miId || mcId) && (
-                            <button
-                                className="btn btn-secondary"
-                                onClick={resetFilters}
-                                title="Xóa tất cả bộ lọc"
-                                style={{ color: 'var(--danger)' }}
-                            >
-                                <X size={16} /> Xóa lọc
-                            </button>
-                        )}
+                    {(search || statusFilter || idsFilter || batchId || miId || mcId) && (
+                        <button
+                            className="btn btn-secondary"
+                            onClick={resetFilters}
+                            title="Xóa tất cả bộ lọc"
+                            style={{ color: 'var(--danger)' }}
+                        >
+                            <X size={16} /> Xóa lọc
+                        </button>
+                    )}
                 </div>
 
                 <div className="table-container">
