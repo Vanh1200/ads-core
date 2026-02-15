@@ -31,7 +31,7 @@ export class UserService {
             prisma.user.count({ where }),
         ]);
 
-        return { data: users, pagination: { page, limit, total, totalPages: Math.ceil(total / limit) } };
+        return { data: users, total };
     }
 
     async getById(id: string) {

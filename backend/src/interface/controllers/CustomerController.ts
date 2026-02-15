@@ -3,6 +3,7 @@ import { AuthRequest } from '../../infrastructure/middleware/auth';
 import { customerService } from '../../application/services/CustomerService';
 import { paginationSchema } from '../../interface/validators';
 import { asyncHandler } from '../../infrastructure/middleware/errorHandler';
+import { formatPaginationResponse } from '../../utils/pagination';
 
 export class CustomerController {
     list = asyncHandler(async (req: any, res: any) => {
@@ -10,14 +11,14 @@ export class CustomerController {
         const { page, limit, search } = query.success ? query.data : { page: 1, limit: 20, search: undefined };
         const { status } = req.query;
 
-        const result = await customerService.list({
+        const { data, total } = await customerService.list({
             page,
             limit,
             q: search,
             status: status as string,
         });
 
-        res.json(result);
+        res.json(formatPaginationResponse(data, total, page, limit));
     });
 
     getById = asyncHandler(async (req: any, res: any) => {

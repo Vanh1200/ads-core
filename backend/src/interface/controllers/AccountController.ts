@@ -3,6 +3,7 @@ import { AuthRequest } from '../../infrastructure/middleware/auth';
 import { accountService } from '../../application/services/AccountService';
 import { paginationSchema, createAccountSchema } from '../../interface/validators';
 import { asyncHandler } from '../../infrastructure/middleware/errorHandler';
+import { formatPaginationResponse } from '../../utils/pagination';
 
 export class AccountController {
     list = asyncHandler(async (req: any, res: any) => {
@@ -10,7 +11,7 @@ export class AccountController {
         const { page, limit, search } = query.success ? query.data : { page: 1, limit: 20, search: undefined };
         const { status, batchId } = req.query;
 
-        const result = await accountService.list({
+        const { data, total } = await accountService.list({
             page,
             limit,
             q: search,
@@ -18,7 +19,7 @@ export class AccountController {
             batchId: batchId as string,
         });
 
-        res.json(result);
+        res.json(formatPaginationResponse(data, total, page, limit));
     });
 
     getById = asyncHandler(async (req: AuthRequest, res: Response) => {

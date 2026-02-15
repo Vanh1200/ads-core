@@ -3,19 +3,20 @@ import { AuthRequest } from '../../infrastructure/middleware/auth';
 import { batchService } from '../../application/services/BatchService';
 import { asyncHandler } from '../../infrastructure/middleware/errorHandler';
 import { paginationSchema } from '../../utils/validators';
+import { formatPaginationResponse } from '../../utils/pagination';
 
 export class BatchController {
     list = asyncHandler(async (req: any, res: any) => {
         const query = paginationSchema.safeParse(req.query);
         const { page, limit } = query.success ? query.data : { page: 1, limit: 20 };
         const { status, year } = req.query;
-        const result = await batchService.list({
+        const { data, total } = await batchService.list({
             page,
             limit,
             status: status as string,
             year: year ? parseInt(year as string) : undefined,
         });
-        res.json(result);
+        res.json(formatPaginationResponse(data, total, page, limit));
     });
 
     getById = asyncHandler(async (req: any, res: any) => {
@@ -45,8 +46,10 @@ export class BatchController {
     });
 
     getAccounts = asyncHandler(async (req: any, res: any) => {
-        const result = await batchService.getAccountsByBatchId(req.params.id as string, req.query);
-        res.json(result);
+        const query = paginationSchema.safeParse(req.query);
+        const { page, limit } = query.success ? query.data : { page: 1, limit: 20 };
+        const { data, total } = await batchService.getAccountsByBatchId(req.params.id as string, { page, limit });
+        res.json(formatPaginationResponse(data, total, page, limit));
     });
 }
 

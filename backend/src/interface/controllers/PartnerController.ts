@@ -3,13 +3,14 @@ import { AuthRequest } from '../../infrastructure/middleware/auth';
 import { partnerService } from '../../application/services/PartnerService';
 import { asyncHandler } from '../../infrastructure/middleware/errorHandler';
 import { paginationSchema } from '../../utils/validators';
+import { formatPaginationResponse } from '../../utils/pagination';
 
 export class PartnerController {
     list = asyncHandler(async (req: any, res: any) => {
         const query = paginationSchema.safeParse(req.query);
         const { page, limit, search } = query.success ? query.data : { page: 1, limit: 20, search: undefined };
-        const result = await partnerService.list({ page, limit, q: search });
-        res.json(result);
+        const { data, total } = await partnerService.list({ page, limit, q: search });
+        res.json(formatPaginationResponse(data, total, page, limit));
     });
 
     getById = asyncHandler(async (req: any, res: any) => {

@@ -3,6 +3,7 @@ import { AuthRequest } from '../../infrastructure/middleware/auth';
 import { userService } from '../../application/services/UserService';
 import { asyncHandler } from '../../infrastructure/middleware/errorHandler';
 import { paginationSchema } from '../../utils/validators';
+import { formatPaginationResponse } from '../../utils/pagination';
 
 export class UserController {
     listSimple = asyncHandler(async (req: AuthRequest, res: Response) => {
@@ -13,8 +14,8 @@ export class UserController {
     list = asyncHandler(async (req: AuthRequest, res: Response) => {
         const query = paginationSchema.safeParse(req.query);
         const { page, limit, search } = query.success ? query.data : { page: 1, limit: 20, search: undefined };
-        const result = await userService.list({ page, limit, search });
-        res.json(result);
+        const { data, total } = await userService.list({ page, limit, search });
+        res.json(formatPaginationResponse(data, total, page, limit));
     });
 
     getById = asyncHandler(async (req: AuthRequest, res: Response) => {

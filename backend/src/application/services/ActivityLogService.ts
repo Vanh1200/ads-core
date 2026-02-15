@@ -24,7 +24,7 @@ export class ActivityLogService {
             prisma.activityLog.count({ where }),
         ]);
 
-        return { data: logs, pagination: { page, limit, total, totalPages: Math.ceil(total / limit) } };
+        return { data: logs, total };
     }
 
     async getById(id: string) {

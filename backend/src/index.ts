@@ -51,15 +51,9 @@ import statsRoutes from './web/routes/stats.routes';
 // Import infrastructure
 import { requestLogger } from './infrastructure/logging/Logger';
 import { errorHandler } from './infrastructure/middleware/errorHandler';
-import { syncDatabase } from './infrastructure/database/sync';
 
 const app = express();
 const PORT = Number(process.env.PORT) || 3001;
-
-// Initialize Database Sync (async but non-blocking startup for now)
-syncDatabase().catch(err => {
-    console.error('Initial DB Sync failed but continuing server startup...', err);
-});
 
 // Middleware
 app.use(helmet({
