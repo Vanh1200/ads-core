@@ -1086,7 +1086,12 @@ export default function Accounts() {
                         <tbody>
                             {isLoading ? (
                                 <tr>
-                                    <td colSpan={8} style={{ textAlign: 'center' }}>Đang tải...</td>
+                                    <td colSpan={10} style={{ textAlign: 'center', padding: 40 }}>
+                                        <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', gap: 12 }}>
+                                            <div className="spinner" />
+                                            <span style={{ color: 'var(--text-muted)' }}>Đang tải dữ liệu...</span>
+                                        </div>
+                                    </td>
                                 </tr>
                             ) : accounts.length > 0 ? (
                                 accounts.map((account: Account, index: number) => (
@@ -1191,8 +1196,16 @@ export default function Accounts() {
                                 ))
                             ) : (
                                 <tr>
-                                    <td colSpan={8} style={{ textAlign: 'center', color: 'var(--text-muted)' }}>
-                                        Không tìm thấy tài khoản nào
+                                    <td colSpan={10} style={{ textAlign: 'center', padding: 40, color: 'var(--text-muted)' }}>
+                                        <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 12 }}>
+                                            <Search size={32} style={{ opacity: 0.3 }} />
+                                            <span>Không tìm thấy tài khoản nào phù hợp</span>
+                                            {(search || statusFilter || idsFilter || batchId || miId || mcId) && (
+                                                <button className="btn btn-secondary btn-sm" onClick={resetFilters}>
+                                                    Xóa bộ lọc
+                                                </button>
+                                            )}
+                                        </div>
                                     </td>
                                 </tr>
                             )}

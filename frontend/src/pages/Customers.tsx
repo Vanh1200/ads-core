@@ -1,7 +1,8 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useNavigate } from 'react-router-dom';
-import { Plus, Search, Edit2, Trash2, ChevronUp, ChevronDown } from 'lucide-react';
+import { Plus, Search, Filter, Edit2, Trash2, ChevronUp, ChevronDown } from 'lucide-react';
+import Dropdown from '../components/Dropdown';
 import { customersApi, usersApi } from '../api/client';
 import { useAuthStore, canAssignMC } from '../store/authStore';
 
@@ -42,6 +43,10 @@ export default function Customers() {
     // Sorting
     const [sortField, setSortField] = useState<SortField>('createdAt');
     const [sortOrder, setSortOrder] = useState<SortOrder>('desc');
+
+    const [isSearchOpen, setIsSearchOpen] = useState(false);
+    const [searchQuery, setSearchQuery] = useState('');
+    const searchDropdownRef = useRef<HTMLDivElement>(null);
 
     const queryClient = useQueryClient();
 
@@ -165,6 +170,47 @@ export default function Customers() {
         }
     };
 
+    // Filter handlers
+    useEffect(() => {
+        const handleClickOutside = (event: MouseEvent) => {
+            if (searchDropdownRef.current && !searchDropdownRef.current.contains(event.target as Node)) {
+                setIsSearchOpen(false);
+            }
+        };
+
+        if (isSearchOpen) {
+            document.addEventListener('mousedown', handleClickOutside);
+        }
+        return () => {
+            document.removeEventListener('mousedown', handleClickOutside);
+        };
+    }, [isSearchOpen]);
+
+    const handleOpenSearch = () => {
+        setSearchQuery(search);
+        setIsSearchOpen(true);
+    };
+
+    const handleApplySearch = () => {
+        setSearch(searchQuery.trim());
+        setIsSearchOpen(false);
+    };
+
+    const handleKeyDown = (e: React.KeyboardEvent) => {
+        if (e.key === 'Enter' && !e.shiftKey) {
+            e.preventDefault();
+            handleApplySearch();
+        }
+    };
+
+    const spendingDaysLabels: Record<number, string> = {
+        1: 'Hôm nay',
+        3: '3 ngày',
+        7: '7 ngày',
+        14: '14 ngày',
+        30: '30 ngày'
+    };
+
     return (
         <div>
             <div className="page-header">
@@ -186,18 +232,91 @@ export default function Customers() {
                 )}
             </div>
 
-            <div className="card">
-                <div className="card-header">
-                    <div className="search-input">
-                        <Search />
-                        <input
-                            type="text"
-                            className="form-input"
-                            placeholder="Tìm kiếm khách hàng..."
-                            value={search}
-                            onChange={(e) => setSearch(e.target.value)}
-                        />
+            <div className="card" style={{ overflow: 'visible' }}>
+                <div className="card-header" style={{ gap: '12px', flexWrap: 'wrap', justifyContent: 'flex-start' }}>
+                    <Filter size={18} style={{ color: 'var(--text-muted)' }} />
+                    <div style={{ position: 'relative' }} ref={searchDropdownRef}>
+                        <button
+                            className={`btn ${search || isSearchOpen ? 'btn-primary' : 'btn-secondary'}`}
+                            onClick={handleOpenSearch}
+                            style={{ gap: 8 }}
+                        >
+                            <Search size={16} />
+                            {search ? `Tìm: ${search}` : 'Tìm kiếm'}
+                            <ChevronDown size={14} />
+                        </button>
+
+                        {isSearchOpen && (
+                            <div style={{
+                                position: 'absolute',
+                                top: '100%',
+                                left: 0,
+                                marginTop: 8,
+                                background: 'var(--surface)',
+                                border: '1px solid var(--border)',
+                                borderRadius: 8,
+                                padding: 16,
+                                width: 400,
+                                boxShadow: 'var(--shadow)',
+                                zIndex: 1000,
+                                display: 'flex',
+                                flexDirection: 'column',
+                                gap: 12
+                            }}>
+                                <div style={{ position: 'relative' }}>
+                                    <Search size={16} style={{ position: 'absolute', left: 12, top: 12, color: 'var(--text-muted)' }} />
+                                    <textarea
+                                        autoFocus
+                                        className="form-input"
+                                        placeholder="Nhập tên khách hàng, thông tin liên hệ..."
+                                        style={{
+                                            width: '100%',
+                                            minHeight: 80,
+                                            paddingLeft: 36,
+                                            resize: 'vertical'
+                                        }}
+                                        value={searchQuery}
+                                        onChange={(e) => setSearchQuery(e.target.value)}
+                                        onKeyDown={handleKeyDown}
+                                    />
+                                </div>
+                                <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 8 }}>
+                                    <button
+                                        className="btn btn-secondary btn-sm"
+                                        onClick={() => {
+                                            setSearchQuery('');
+                                            setSearch('');
+                                            setIsSearchOpen(false);
+                                        }}
+                                    >
+                                        Xóa lọc
+                                    </button>
+                                    <button
+                                        className="btn btn-primary btn-sm"
+                                        onClick={handleApplySearch}
+                                    >
+                                        Áp dụng
+                                    </button>
+                                </div>
+                            </div>
+                        )}
                     </div>
+
+                    <Dropdown
+                        trigger={
+                            <button className="btn btn-secondary" style={{ gap: 6 }}>
+                                {spendingDaysLabels[spendingDays]}
+                                <ChevronDown size={14} />
+                            </button>
+                        }
+                        items={[
+                            { key: '1', label: 'Hôm nay', onClick: () => setSpendingDays(1) },
+                            { key: '3', label: '3 ngày', onClick: () => setSpendingDays(3) },
+                            { key: '7', label: '7 ngày', onClick: () => setSpendingDays(7) },
+                            { key: '14', label: '14 ngày', onClick: () => setSpendingDays(14) },
+                            { key: '30', label: '30 ngày', onClick: () => setSpendingDays(30) },
+                        ]}
+                    />
                 </div>
                 <div className="table-container">
                     <table className="data-table">
@@ -224,32 +343,8 @@ export default function Customers() {
                                     </div>
                                 </th>
                                 <th style={{ width: '10%', cursor: 'pointer', userSelect: 'none' }} onClick={() => handleSort('rangeSpending')}>
-                                    <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-start', gap: 2 }}>
-                                        <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
-                                            <span style={{ fontSize: 13 }}>Chi phí</span>
-                                            <SortIcon field="rangeSpending" />
-                                        </div>
-                                        <select
-                                            value={spendingDays}
-                                            onChange={(e) => setSpendingDays(Number(e.target.value))}
-                                            onClick={(e) => e.stopPropagation()}
-                                            style={{
-                                                fontSize: 11,
-                                                padding: '2px 4px',
-                                                border: '1px solid var(--border)',
-                                                borderRadius: 4,
-                                                background: 'var(--bg-primary)',
-                                                cursor: 'pointer',
-                                                marginLeft: 0,
-                                                width: '100%'
-                                            }}
-                                        >
-                                            <option value={1}>Hôm nay</option>
-                                            <option value={3}>3 ngày</option>
-                                            <option value={7}>7 ngày</option>
-                                            <option value={14}>14 ngày</option>
-                                            <option value={30}>30 ngày</option>
-                                        </select>
+                                    <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
+                                        Chi phí <SortIcon field="rangeSpending" />
                                     </div>
                                 </th>
                                 <th style={{ width: '15%' }}>NV phụ trách</th>
@@ -259,7 +354,12 @@ export default function Customers() {
                         <tbody>
                             {isLoading ? (
                                 <tr>
-                                    <td colSpan={7} style={{ textAlign: 'center' }}>Đang tải...</td>
+                                    <td colSpan={7} style={{ textAlign: 'center', padding: 40 }}>
+                                        <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', gap: 12 }}>
+                                            <div className="spinner" />
+                                            <span style={{ color: 'var(--text-muted)' }}>Đang tải dữ liệu...</span>
+                                        </div>
+                                    </td>
                                 </tr>
                             ) : customers.length > 0 ? (
                                 customers.map((customer: Customer) => (
@@ -328,8 +428,16 @@ export default function Customers() {
                                 ))
                             ) : (
                                 <tr>
-                                    <td colSpan={7} style={{ textAlign: 'center', color: 'var(--text-muted)' }}>
-                                        Chưa có khách hàng nào
+                                    <td colSpan={7} style={{ textAlign: 'center', padding: 40, color: 'var(--text-muted)' }}>
+                                        <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 12 }}>
+                                            <Search size={32} style={{ opacity: 0.3 }} />
+                                            <span>Không tìm thấy khách hàng nào phù hợp</span>
+                                            {search && (
+                                                <button className="btn btn-secondary btn-sm" onClick={() => setSearch('')}>
+                                                    Xóa bộ lọc
+                                                </button>
+                                            )}
+                                        </div>
                                     </td>
                                 </tr>
                             )}

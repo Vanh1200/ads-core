@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
-import { Filter, X, Clock, User as UserIcon, Shield } from 'lucide-react';
+import { Filter, X, Clock, User as UserIcon, Shield, ChevronDown } from 'lucide-react';
+import Dropdown from '../components/Dropdown';
 import { useSearchParams } from 'react-router-dom';
 import { activityLogsApi, usersApi } from '../api/client';
 
@@ -98,6 +99,8 @@ export default function ActivityLogs() {
         });
     };
 
+    const userName = userId ? users.find((u: any) => u.id === userId)?.fullName : 'Người thực hiện';
+
     return (
         <div>
             <div className="page-header">
@@ -107,76 +110,83 @@ export default function ActivityLogs() {
                 </div>
             </div>
 
-            <div className="card">
-                <div className="card-header" style={{ gap: '16px' }}>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}>
-                        <Filter size={18} style={{ color: 'var(--text-muted)' }} />
-                        <select
-                            className="form-select"
-                            style={{ width: 'auto' }}
-                            value={userId}
-                            onChange={(e) => {
-                                setUserId(e.target.value);
-                                setPage(1);
-                            }}
-                        >
-                            <option value="">Tất cả người thực hiện</option>
-                            {users.map((u: any) => (
-                                <option key={u.id} value={u.id}>{u.fullName}</option>
-                            ))}
-                        </select>
-                        <select
-                            className="form-select"
-                            style={{ width: 'auto' }}
-                            value={entityType}
-                            onChange={(e) => {
-                                setEntityType(e.target.value);
-                                setPage(1);
-                            }}
-                        >
-                            <option value="">Tất cả đối tượng</option>
-                            <option value="User">Người dùng</option>
-                            <option value="AccountBatch">Lô TK (MA)</option>
-                            <option value="InvoiceMCC">Invoice MCC (MI)</option>
-                            <option value="Customer">Khách hàng (MC)</option>
-                            <option value="Account">Tài khoản</option>
-                            <option value="SpendingSnapshot">Chi phí (Snapshot)</option>
-                            <option value="SpendingRecord">Chi phí (Import)</option>
-                        </select>
-                        <select
-                            className="form-select"
-                            style={{ width: 'auto' }}
-                            value={action}
-                            onChange={(e) => {
-                                setAction(e.target.value);
-                                setPage(1);
-                            }}
-                        >
-                            <option value="">Tất cả hành động</option>
-                            <option value="CREATE">Tạo mới</option>
-                            <option value="UPDATE">Cập nhật</option>
-                            <option value="DELETE">Xóa</option>
-                            <option value="LINK_MI">Link MI</option>
-                            <option value="ASSIGN_MC">Giao MC</option>
-                            <option value="IMPORT">Import</option>
-                            <option value="IMPORT_SPENDING">Import chi phí</option>
-                        </select>
-                        {(entityType || action || userId) && (
-                            <button
-                                className="btn btn-secondary"
-                                onClick={() => {
-                                    setEntityType('');
-                                    setAction('');
-                                    setUserId('');
-                                    setPage(1);
-                                }}
-                                style={{ display: 'flex', alignItems: 'center', gap: 4, height: 38 }}
-                            >
-                                <X size={14} />
-                                Xóa bộ lọc
+            <div className="card" style={{ overflow: 'visible' }}>
+                <div className="card-header" style={{ gap: '12px', flexWrap: 'wrap', justifyContent: 'flex-start' }}>
+                    <Filter size={18} style={{ color: 'var(--text-muted)' }} />
+
+                    {/* User Filter */}
+                    <Dropdown
+                        trigger={
+                            <button className={`btn ${userId ? 'btn-primary' : 'btn-secondary'}`} style={{ gap: 6 }}>
+                                {userName}
+                                <ChevronDown size={14} />
                             </button>
-                        )}
-                    </div>
+                        }
+                        items={[
+                            { key: 'all', label: 'Tất cả người thực hiện', onClick: () => { setUserId(''); setPage(1); } },
+                            ...users.map((u: any) => ({
+                                key: u.id,
+                                label: u.fullName,
+                                onClick: () => { setUserId(u.id); setPage(1); }
+                            }))
+                        ]}
+                    />
+
+                    {/* Entity Type Filter */}
+                    <Dropdown
+                        trigger={
+                            <button className={`btn ${entityType ? 'btn-primary' : 'btn-secondary'}`} style={{ gap: 6 }}>
+                                {entityType ? entityTypeLabels[entityType] : 'Đối tượng'}
+                                <ChevronDown size={14} />
+                            </button>
+                        }
+                        items={[
+                            { key: 'all', label: 'Tất cả đối tượng', onClick: () => { setEntityType(''); setPage(1); } },
+                            { key: 'User', label: 'Người dùng', onClick: () => { setEntityType('User'); setPage(1); } },
+                            { key: 'AccountBatch', label: 'Lô TK (MA)', onClick: () => { setEntityType('AccountBatch'); setPage(1); } },
+                            { key: 'InvoiceMCC', label: 'Invoice MCC (MI)', onClick: () => { setEntityType('InvoiceMCC'); setPage(1); } },
+                            { key: 'Customer', label: 'Khách hàng (MC)', onClick: () => { setEntityType('Customer'); setPage(1); } },
+                            { key: 'Account', label: 'Tài khoản', onClick: () => { setEntityType('Account'); setPage(1); } },
+                            { key: 'SpendingSnapshot', label: 'Chi phí (Snapshot)', onClick: () => { setEntityType('SpendingSnapshot'); setPage(1); } },
+                            { key: 'SpendingRecord', label: 'Chi phí (Import)', onClick: () => { setEntityType('SpendingRecord'); setPage(1); } },
+                        ]}
+                    />
+
+                    {/* Action Filter */}
+                    <Dropdown
+                        trigger={
+                            <button className={`btn ${action ? 'btn-primary' : 'btn-secondary'}`} style={{ gap: 6 }}>
+                                {action ? actionLabels[action]?.label : 'Hành động'}
+                                <ChevronDown size={14} />
+                            </button>
+                        }
+                        items={[
+                            { key: 'all', label: 'Tất cả hành động', onClick: () => { setAction(''); setPage(1); } },
+                            { key: 'CREATE', label: 'Tạo mới', onClick: () => { setAction('CREATE'); setPage(1); } },
+                            { key: 'UPDATE', label: 'Cập nhật', onClick: () => { setAction('UPDATE'); setPage(1); } },
+                            { key: 'DELETE', label: 'Xóa', onClick: () => { setAction('DELETE'); setPage(1); } },
+                            { key: 'LINK_MI', label: 'Link MI', onClick: () => { setAction('LINK_MI'); setPage(1); } },
+                            { key: 'ASSIGN_MC', label: 'Giao MC', onClick: () => { setAction('ASSIGN_MC'); setPage(1); } },
+                            { key: 'IMPORT', label: 'Import', onClick: () => { setAction('IMPORT'); setPage(1); } },
+                            { key: 'IMPORT_SPENDING', label: 'Import chi phí', onClick: () => { setAction('IMPORT_SPENDING'); setPage(1); } },
+                        ]}
+                    />
+
+                    {(entityType || action || userId) && (
+                        <button
+                            className="btn btn-secondary"
+                            onClick={() => {
+                                setEntityType('');
+                                setAction('');
+                                setUserId('');
+                                setPage(1);
+                            }}
+                            style={{ display: 'flex', alignItems: 'center', gap: 4, height: 38 }}
+                        >
+                            <X size={14} />
+                            Xóa bộ lọc
+                        </button>
+                    )}
                 </div>
                 <div className="table-container">
                     <table className="data-table">
@@ -192,7 +202,12 @@ export default function ActivityLogs() {
                         <tbody>
                             {isLoading ? (
                                 <tr>
-                                    <td colSpan={5} style={{ textAlign: 'center' }}>Đang tải...</td>
+                                    <td colSpan={5} style={{ textAlign: 'center', padding: 40 }}>
+                                        <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', gap: 12 }}>
+                                            <div className="spinner" />
+                                            <span style={{ color: 'var(--text-muted)' }}>Đang tải dữ liệu...</span>
+                                        </div>
+                                    </td>
                                 </tr>
                             ) : logs.length > 0 ? (
                                 logs.map((log: ActivityLog) => (
@@ -229,8 +244,24 @@ export default function ActivityLogs() {
                                 ))
                             ) : (
                                 <tr>
-                                    <td colSpan={5} style={{ textAlign: 'center', color: 'var(--text-muted)' }}>
-                                        Không có hoạt động nào
+                                    <td colSpan={5} style={{ textAlign: 'center', padding: 40, color: 'var(--text-muted)' }}>
+                                        <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 12 }}>
+                                            <Clock size={32} style={{ opacity: 0.3 }} />
+                                            <span>Không có hoạt động nào phù hợp</span>
+                                            {(entityType || action || userId) && (
+                                                <button
+                                                    className="btn btn-secondary btn-sm"
+                                                    onClick={() => {
+                                                        setEntityType('');
+                                                        setAction('');
+                                                        setUserId('');
+                                                        setPage(1);
+                                                    }}
+                                                >
+                                                    Xóa bộ lọc
+                                                </button>
+                                            )}
+                                        </div>
                                     </td>
                                 </tr>
                             )}
