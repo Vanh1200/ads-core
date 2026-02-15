@@ -140,17 +140,6 @@ export class SpendingService {
             where.invoiceMccId = { in: ids };
         }
 
-        const field = type === 'batch' ? 'batchId' : (type === 'customer' ? 'customerId' : 'invoiceMccId');
-
-        const records = await prisma.spendingRecord.groupBy({
-            by: type === 'batch' ? [] : [field as any],
-            where,
-            _sum: { amount: true },
-            ...(type === 'batch' ? {} : {}) // Special handling for batch as it's through account
-        });
-
-        // Prisma doesn't support grouping by relational fields (account.batchId) directly in groupBy
-        // If type is batch, we might need a different approach or fetch more data
         if (type === 'batch') {
             const batchSpends = await prisma.spendingRecord.findMany({
                 where,
@@ -162,11 +151,21 @@ export class SpendingService {
 
             const map: Record<string, number> = {};
             batchSpends.forEach(s => {
-                const bId = s.account.batchId;
-                map[bId] = (map[bId] || 0) + Number(s.amount);
+                if (s.account?.batchId) {
+                    const bId = s.account.batchId;
+                    map[bId] = (map[bId] || 0) + Number(s.amount);
+                }
             });
             return map;
         }
+
+        // For customer and invoice-mcc, we can use groupBy
+        const field = type === 'customer' ? 'customerId' : 'invoiceMccId';
+        const records = await prisma.spendingRecord.groupBy({
+            by: [field as any],
+            where,
+            _sum: { amount: true }
+        });
 
         const map: Record<string, number> = {};
         records.forEach((r: any) => {
