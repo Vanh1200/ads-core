@@ -47,8 +47,13 @@ const stats_routes_1 = __importDefault(require("./web/routes/stats.routes"));
 // Import infrastructure
 const Logger_1 = require("./infrastructure/logging/Logger");
 const errorHandler_1 = require("./infrastructure/middleware/errorHandler");
+const sync_1 = require("./infrastructure/database/sync");
 const app = (0, express_1.default)();
 const PORT = Number(process.env.PORT) || 3001;
+// Initialize Database Sync (async but non-blocking startup for now)
+(0, sync_1.syncDatabase)().catch(err => {
+    console.error('Initial DB Sync failed but continuing server startup...', err);
+});
 // Middleware
 app.use((0, helmet_1.default)({
     contentSecurityPolicy: false,

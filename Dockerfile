@@ -47,5 +47,5 @@ RUN npx prisma generate
 # Expose port
 EXPOSE 3001
 
-# Start the server with migrations
-CMD ["sh", "-c", "npx prisma migrate deploy && node dist/index.js"]
+# Start the server
+CMD ["node", "dist/index.js"]
