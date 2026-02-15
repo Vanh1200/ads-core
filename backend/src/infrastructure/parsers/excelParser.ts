@@ -58,11 +58,11 @@ export function parseBatchExcel(buffer: Buffer): ParsedBatchData {
     const keywords: Record<string, string[]> = {
         status: ['tình trạng', 'status'],
         accountName: ['tên tài khoản', 'account name', 'account'],
-        googleAccountId: ['id khách hàng bên ngoài', 'customer id', 'mã khách hàng'],
+        googleAccountId: ['id khách hàng bên ngoài', 'customer id'], // Removed 'mã khách hàng' to avoid collision with MCC ID
         batchName: ['tên người quản lý', 'manager name', 'tên người quản lý trực tiếp'],
-        mccAccountId: ['mã khách hàng của người quản lý', 'manager customer id', 'mã khách hàng của người quản lý trực tiếp'],
+        mccAccountId: ['mã khách hàng của người quản lý', 'manager customer id', 'mã khách hàng của người quản lý trực tiếp', 'mã khách hàng'],
         currency: ['mã đơn vị tiền tệ', 'currency'],
-        spending: ['chi phi', 'chi phí', 'cost', 'spending'] // Note: "chi phi" without accent for safety
+        spending: ['chi phi', 'chi phí', 'cost', 'spending']
     };
 
     // Auto-detect header row and column indices
@@ -77,6 +77,9 @@ export function parseBatchExcel(buffer: Buffer): ParsedBatchData {
         spending: 12
     };
 
+    // Track "best match" score per key (length of the matched term)
+    const matchScores: Record<string, number> = {};
+
     // Scan first 10 rows for headers
     for (let i = 0; i < Math.min(10, data.length); i++) {
         const row = data[i];
@@ -84,24 +87,34 @@ export function parseBatchExcel(buffer: Buffer): ParsedBatchData {
 
         let foundKeywordsInRow = 0;
         const tempIndices: Record<string, number> = {};
+        const tempScores: Record<string, number> = {};
 
         row.forEach((cell, cellIndex) => {
             if (!cell) return;
             const cellText = cell.toString().toLowerCase();
 
             for (const [key, searchTerms] of Object.entries(keywords)) {
-                if (searchTerms.some(term => cellText.includes(term.toLowerCase()))) {
-                    tempIndices[key] = cellIndex;
-                    foundKeywordsInRow++;
-                    break;
+                for (const term of searchTerms) {
+                    if (cellText.includes(term.toLowerCase())) {
+                        const score = term.length;
+                        // Only update if this match is "better" (longer term) than previous ones for this key in this row
+                        if (!tempScores[key] || score > tempScores[key]) {
+                            tempIndices[key] = cellIndex;
+                            tempScores[key] = score;
+                            if (!tempScores[key]) foundKeywordsInRow++;
+                        }
+                        break; // Found a match for this key in this cell
+                    }
                 }
             }
         });
 
+        // Count how many unique keys were found in this row
+        const uniqueKeysFound = Object.keys(tempIndices).length;
+
         // If we found at least 3 key columns, assume this is the header row
-        if (foundKeywordsInRow >= 3) {
+        if (uniqueKeysFound >= 3) {
             headerRowIndex = i;
-            // Merge found indices with defaults
             Object.assign(indices, tempIndices);
             break;
         }

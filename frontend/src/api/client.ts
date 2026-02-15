@@ -148,6 +148,7 @@ export const importApi = {
         mccAccountName: string;
         timezone?: string | null;
         year?: number | null;
+        isMixYear?: boolean;
         readiness?: number;
         accounts: Array<{
             googleAccountId: string;

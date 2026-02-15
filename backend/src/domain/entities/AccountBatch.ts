@@ -8,6 +8,7 @@ export interface AccountBatch {
     liveAccounts: number;
     timezone?: string | null;
     year?: number | null;
+    isMixYear: boolean;
     readiness: number;
     notes?: string | null;
     partnerId?: string | null;

@@ -11,11 +11,12 @@ export class PrismaBatchRepository implements IBatchRepository {
         }) as Promise<AccountBatch | null>;
     }
 
-    async list(params: { page: number; limit: number; status?: string; year?: number }): Promise<{ data: AccountBatch[]; total: number }> {
-        const { page, limit, status, year } = params;
+    async list(params: { page: number; limit: number; status?: string; year?: number; isMixYear?: boolean }): Promise<{ data: AccountBatch[]; total: number }> {
+        const { page, limit, status, year, isMixYear } = params;
         const where: any = {};
         if (status) where.status = status as BatchStatus;
         if (year) where.year = year;
+        if (isMixYear !== undefined) where.isMixYear = isMixYear;
 
         const [batches, total] = await Promise.all([
             prisma.accountBatch.findMany({
@@ -41,6 +42,7 @@ export class PrismaBatchRepository implements IBatchRepository {
                 isPrelinked: data.isPrelinked,
                 timezone: data.timezone,
                 year: data.year,
+                isMixYear: data.isMixYear,
                 readiness: data.readiness,
                 notes: data.notes,
                 status: data.status as BatchStatus,

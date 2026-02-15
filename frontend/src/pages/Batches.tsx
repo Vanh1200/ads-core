@@ -17,6 +17,7 @@ interface Batch {
     partnerId?: string | null;
     timezone?: string | null;
     year?: number | null;
+    isMixYear: boolean;
     readiness: number;
     notes?: string | null;
     createdAt: string;
@@ -25,7 +26,7 @@ interface Batch {
 }
 
 const TIMEZONES = [
-    'UTC-12', 'UTC-11', 'UTC-10', 'UTC-9', 'UTC-8', 'UTC-7', 'UTC-6', 'UTC-5', 'UTC-4', 'UTC-3', 'UTC-2', 'UTC-1',
+    'Mix', 'UTC-12', 'UTC-11', 'UTC-10', 'UTC-9', 'UTC-8', 'UTC-7', 'UTC-6', 'UTC-5', 'UTC-4', 'UTC-3', 'UTC-2', 'UTC-1',
     'UTC+0', 'UTC+1', 'UTC+2', 'UTC+3', 'UTC+4', 'UTC+5', 'UTC+6', 'UTC+7', 'UTC+8', 'UTC+9', 'UTC+10', 'UTC+11', 'UTC+12'
 ];
 
@@ -68,7 +69,7 @@ export default function Batches() {
     const [idsFilter, setIdsFilter] = useState(searchParams.get('ids') || '');
     const [statusFilter, setStatusFilter] = useState(searchParams.get('status') || '');
     const [timezoneFilter, setTimezoneFilter] = useState(searchParams.get('timezone') || '');
-    const [yearFilter, setYearFilter] = useState(searchParams.get('year') || '');
+    const [yearFilter, setYearFilter] = useState<number | 'mix' | ''>(searchParams.get('year') ? (searchParams.get('year') === 'mix' ? 'mix' : parseInt(searchParams.get('year')!)) : '');
     const [partnerFilter, setPartnerFilter] = useState(searchParams.get('partnerId') || '');
 
     const [spendingDays, setSpendingDays] = useState(7);
@@ -101,8 +102,8 @@ export default function Batches() {
     const [editedMccAccountId, setEditedMccAccountId] = useState('');
     const [editedMccAccountName, setEditedMccAccountName] = useState('');
     const [editedTimezone, setEditedTimezone] = useState('');
-    const [editedYear, setEditedYear] = useState<number | ''>('');
-    const [editedReadiness, setEditedReadiness] = useState(0);
+    const [editedYear, setEditedYear] = useState<string>('');
+    const [editedReadiness, setEditedReadiness] = useState(5);
     const [parseError, setParseError] = useState<string | null>(null);
 
     // CRUD State
@@ -143,7 +144,7 @@ export default function Batches() {
             if (idsFilter) next.set('ids', idsFilter); else next.delete('ids');
             if (statusFilter) next.set('status', statusFilter); else next.delete('status');
             if (timezoneFilter) next.set('timezone', timezoneFilter); else next.delete('timezone');
-            if (yearFilter) next.set('year', yearFilter); else next.delete('year');
+            if (yearFilter) next.set('year', yearFilter.toString()); else next.delete('year');
             if (partnerFilter) next.set('partnerId', partnerFilter); else next.delete('partnerId');
             return next;
         }, { replace: true });
@@ -157,7 +158,8 @@ export default function Batches() {
             ids: idsFilter || undefined,
             status: statusFilter || undefined,
             timezone: timezoneFilter || undefined,
-            year: yearFilter || undefined,
+            year: typeof yearFilter === 'number' ? yearFilter : undefined,
+            isMixYear: yearFilter === 'mix' ? true : undefined,
             partnerId: partnerFilter || undefined,
             page,
             limit,
@@ -324,7 +326,7 @@ export default function Batches() {
             setEditedMccAccountName(data.mccAccountName || '');
             setEditedTimezone('');
             setEditedYear('');
-            setEditedReadiness(0);
+            setEditedReadiness(5); // Default to 5 on FE
             setModalStep('preview');
             setParseError(null);
         },
@@ -339,6 +341,7 @@ export default function Batches() {
             mccAccountName: string;
             timezone?: string | null;
             year?: number | null;
+            isMixYear: boolean;
             readiness?: number;
             accounts: ParsedAccount[];
         }) => importApi.createBatchWithAccounts(data),
@@ -411,7 +414,8 @@ export default function Batches() {
             mccAccountId: editedMccAccountId || null,
             mccAccountName: editedMccAccountName,
             timezone: editedTimezone || null,
-            year: editedYear !== '' ? editedYear : null,
+            year: editedYear === 'Mix' ? null : (editedYear !== '' ? parseInt(editedYear) : null),
+            isMixYear: editedYear === 'Mix',
             readiness: editedReadiness,
             accounts: parsedData.accounts,
         });
@@ -429,7 +433,8 @@ export default function Batches() {
                 partnerId: formData.get('partnerId') || null,
                 status: formData.get('status'),
                 timezone: formData.get('timezone'),
-                year: formData.get('year') ? parseInt(formData.get('year') as string) : null,
+                year: formData.get('year') === 'Mix' ? null : (formData.get('year') ? parseInt(formData.get('year') as string) : null),
+                isMixYear: formData.get('year') === 'Mix',
                 readiness: parseInt(formData.get('readiness') as string) || 0,
                 notes: formData.get('notes'),
             },
@@ -446,7 +451,7 @@ export default function Batches() {
         setEditedMccAccountName('');
         setEditedTimezone('');
         setEditedYear('');
-        setEditedReadiness(0);
+        setEditedReadiness(5);
     };
 
     const statusLabels: Record<string, { label: string; class: string }> = {
@@ -618,6 +623,7 @@ export default function Batches() {
                         }
                         items={[
                             { key: 'all', label: 'Tất cả múi giờ', onClick: () => setTimezoneFilter('') },
+                            { key: 'mix', label: 'Mix', onClick: () => setTimezoneFilter('Mix') },
                             { key: 'utc8', label: 'UTC+8', onClick: () => setTimezoneFilter('UTC+8') },
                             { key: 'utc7', label: 'UTC+7', onClick: () => setTimezoneFilter('UTC+7') },
                             { key: 'utc-3', label: 'UTC-3', onClick: () => setTimezoneFilter('UTC-3') },
@@ -635,9 +641,10 @@ export default function Batches() {
                         }
                         items={[
                             { key: 'all', label: 'Tất cả', onClick: () => setYearFilter('') },
-                            { key: '2024', label: '2024', onClick: () => setYearFilter('2024') },
-                            { key: '2025', label: '2025', onClick: () => setYearFilter('2025') },
-                            { key: '2026', label: '2026', onClick: () => setYearFilter('2026') },
+                            { key: 'mix', label: 'Năm hỗn hợp (Mix)', onClick: () => setYearFilter('mix') },
+                            { key: '2024', label: '2024', onClick: () => setYearFilter(2024) },
+                            { key: '2025', label: '2025', onClick: () => setYearFilter(2025) },
+                            { key: '2026', label: '2026', onClick: () => setYearFilter(2026) },
                         ]}
                     />
 
@@ -810,7 +817,11 @@ export default function Batches() {
                                             {batch.timezone || '-'}
                                         </td>
                                         <td>
-                                            {batch.year || '-'}
+                                            {batch.isMixYear ? (
+                                                <span className="badge badge-warning" style={{ background: 'rgba(245, 158, 11, 0.2)', color: '#f59e0b', fontSize: '11px' }}>Mix</span>
+                                            ) : (
+                                                batch.year || '-'
+                                            )}
                                         </td>
                                         <td>
                                             <span
@@ -1040,14 +1051,18 @@ export default function Batches() {
                                                 </div>
                                                 <div className="form-group" style={{ margin: 0 }}>
                                                     <label className="form-label">Năm tạo (Year) *</label>
-                                                    <input
-                                                        type="number"
-                                                        className={`form-input ${!editedYear ? 'border-danger' : ''}`}
+                                                    <select
+                                                        className={`form-select ${!editedYear ? 'border-danger' : ''}`}
                                                         style={!editedYear ? { borderColor: 'var(--danger)' } : {}}
                                                         value={editedYear}
-                                                        onChange={(e) => setEditedYear(e.target.value === '' ? '' : parseInt(e.target.value))}
-                                                        placeholder="2025"
-                                                    />
+                                                        onChange={(e) => setEditedYear(e.target.value)}
+                                                    >
+                                                        <option value="">-- Năm --</option>
+                                                        <option value="Mix">Mix</option>
+                                                        <option value="2024">2024</option>
+                                                        <option value="2025">2025</option>
+                                                        <option value="2026">2026</option>
+                                                    </select>
                                                 </div>
                                                 <div className="form-group" style={{ margin: 0 }}>
                                                     <label className="form-label">Readiness (0-10) *</label>
@@ -1205,12 +1220,17 @@ export default function Batches() {
                                         </div>
                                         <div className="form-group">
                                             <label className="form-label">Năm tạo (Year)</label>
-                                            <input
+                                            <select
                                                 name="year"
-                                                type="number"
-                                                className="form-input"
-                                                defaultValue={selectedBatch.year || 2025}
-                                            />
+                                                className="form-select"
+                                                defaultValue={selectedBatch.isMixYear ? 'Mix' : (selectedBatch.year || '')}
+                                            >
+                                                <option value="">-- Chọn năm --</option>
+                                                <option value="Mix">Mix</option>
+                                                <option value="2024">2024</option>
+                                                <option value="2025">2025</option>
+                                                <option value="2026">2026</option>
+                                            </select>
                                         </div>
                                     </div>
                                     <div className="form-group">

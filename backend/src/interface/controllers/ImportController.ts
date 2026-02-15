@@ -35,9 +35,8 @@ export class ImportController {
     });
 
     createBatchWithAccounts = asyncHandler(async (req: any, res: any) => {
-        // This was a complex usecase, for now let's assume it's moved to a service method if needed
-        // but looking at existing controllers, most logic is already in services
-        res.status(501).json({ error: 'Not implemented in simplified architecture yet' });
+        const result = await importService.createBatchWithAccounts(req.body, req.user!.id, req.ip);
+        res.json(result);
     });
 
     previewSpending = asyncHandler(async (req: any, res: any) => {

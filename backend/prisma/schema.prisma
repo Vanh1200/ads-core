@@ -54,6 +54,7 @@ enum CustomerStatus {
 enum AccountStatus {
   ACTIVE
   INACTIVE
+  SUSPENDED
 }
 
 enum HistoryReason {
@@ -135,6 +136,7 @@ model AccountBatch {
   liveAccounts   Int         @default(0) @map("live_accounts")
   timezone       String?     // UTC+8, UTC-3, etc.
   year           Int?        // Năm tạo tài khoản (2024, 2025, etc.)
+  isMixYear      Boolean     @default(false) @map("is_mix_year")
   readiness      Int         @default(0) // Mức độ readiness (0-10)
   notes          String?
   createdAt      DateTime    @default(now()) @map("created_at")

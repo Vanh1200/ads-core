@@ -29,6 +29,7 @@ export const createBatchSchema = z.object({
     isPrelinked: z.boolean().default(false),
     timezone: z.string().nullable().optional(),
     year: z.number().nullable().optional(),
+    isMixYear: z.boolean().default(false),
     readiness: z.number().min(0).max(10).default(0),
     notes: z.string().nullable().optional(),
 });
