@@ -172,7 +172,8 @@ export default function InvoiceMCCDetail() {
                     {activeTab === 'info' && (
                         <div>
                             {/* Information Grid */}
-                            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '20px', width: '100%' }}>
+                            {/* Information Grid */}
+                            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))', gap: '20px', width: '100%' }}>
                                 <div className="info-card">
                                     <div className="info-card-icon">
                                         <FileText size={20} />

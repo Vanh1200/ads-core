@@ -474,17 +474,18 @@ body {
   font-size: 14px;
 }
 
-.description-cell {
+.data-table .description-cell {
   max-width: 300px;
   font-size: 13px;
 }
 
 @media (max-width: 768px) {
-  .description-cell {
+  .data-table .description-cell {
     max-width: 150px;
     white-space: nowrap;
     overflow: hidden;
     text-overflow: ellipsis;
+    font-size: 12px;
   }
 }
 

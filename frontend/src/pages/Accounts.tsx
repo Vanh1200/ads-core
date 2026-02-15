@@ -1003,7 +1003,7 @@ th: hover.copy - btn { display: block!important; }
                                         onClick={() => {
                                             // Don't navigate if text is selected (user is copying)
                                             if (window.getSelection()?.toString()) return;
-                                            navigate(`/ accounts / ${account.id} `);
+                                            navigate(`/accounts/${account.id}`);
                                         }}
                                         style={{
                                             background: selectedIds.has(account.id) ? 'rgba(139, 92, 246, 0.1)' : undefined,
@@ -1045,7 +1045,7 @@ th: hover.copy - btn { display: block!important; }
                                                     <span
                                                         onClick={(e) => {
                                                             e.stopPropagation();
-                                                            navigate(`/ batches / ${account.batch!.id} `);
+                                                            navigate(`/batches/${account.batch!.id}`);
                                                         }}
                                                         className="hover:text-blue-400 hover:underline cursor-pointer"
                                                         style={{ color: 'var(--primary)' }}
@@ -1066,7 +1066,7 @@ th: hover.copy - btn { display: block!important; }
                                                     <span
                                                         onClick={(e) => {
                                                             e.stopPropagation();
-                                                            navigate(`/ invoice - mccs / ${account.currentMi!.id} `);
+                                                            navigate(`/invoice-mccs/${account.currentMi!.id}`);
                                                         }}
                                                         className="hover:text-blue-400 hover:underline cursor-pointer"
                                                         style={{ color: 'var(--primary)' }}
@@ -1086,7 +1086,7 @@ th: hover.copy - btn { display: block!important; }
                                                 <span
                                                     onClick={(e) => {
                                                         e.stopPropagation();
-                                                        navigate(`/ customers / ${account.currentMc!.id} `);
+                                                        navigate(`/customers/${account.currentMc!.id}`);
                                                     }}
                                                     className="hover:text-blue-400 hover:underline cursor-pointer"
                                                     style={{ color: 'var(--primary)' }}
