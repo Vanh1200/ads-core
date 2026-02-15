@@ -176,7 +176,28 @@ export default function Dashboard() {
                             </div>
                             <div style={{ width: '100%', height: 300 }}>
                                 <ResponsiveContainer>
-                                    <AreaChart data={chartData?.data?.data || []}>
+                                    <AreaChart data={(() => {
+                                        if (!chartData?.data?.data) return [];
+                                        const rawData = chartData.data.data;
+                                        const map = new Map();
+                                        rawData.forEach((item: any) => {
+                                            const d = new Date(item.date).toISOString().split('T')[0];
+                                            map.set(d, item.amount);
+                                        });
+
+                                        const result = [];
+                                        const curr = new Date(startDate);
+                                        const end = new Date(endDate);
+                                        while (curr <= end) {
+                                            const dStr = curr.toISOString().split('T')[0];
+                                            result.push({
+                                                date: dStr,
+                                                amount: map.get(dStr) || 0
+                                            });
+                                            curr.setDate(curr.getDate() + 1);
+                                        }
+                                        return result;
+                                    })()}>
                                         <defs>
                                             <linearGradient id="colorAmount" x1="0" y1="0" x2="0" y2="1">
                                                 <stop offset="5%" stopColor="#4f46e5" stopOpacity={0.1} />
