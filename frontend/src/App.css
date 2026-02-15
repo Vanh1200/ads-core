@@ -9,8 +9,8 @@
   --surface: #1e293b;
   --surface-hover: #334155;
   --border: #334155;
-  --text: #f1f5f9;
-  --text-muted: #94a3b8;
+  --text: #ffffff;
+  --text-muted: #cbd5e1;
   --shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.3);
   --radius: 8px;
   --radius-sm: 6px;
@@ -249,10 +249,7 @@ body {
 .page-title {
   font-size: 24px;
   font-weight: 700;
-  background: linear-gradient(135deg, var(--text), var(--text-muted));
-  -webkit-background-clip: text;
-  background-clip: text;
-  -webkit-text-fill-color: transparent;
+  color: var(--text);
 }
 
 .page-subtitle {
