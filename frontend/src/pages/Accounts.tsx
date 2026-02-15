@@ -62,7 +62,7 @@ export default function Accounts() {
     // Sorting
     const [sortField, setSortField] = useState<SortField>('googleAccountId');
     const [sortOrder, setSortOrder] = useState<SortOrder>('asc');
-    const [spendingDays] = useState(7);
+    const [spendingDays, setSpendingDays] = useState(7);
 
 
 
@@ -856,6 +856,23 @@ export default function Accounts() {
                     />
 
 
+                    {/* Spending Days Filter */}
+                    <Dropdown
+                        trigger={
+                            <button className="btn btn-secondary" style={{ gap: 6 }}>
+                                {spendingDays === 1 ? 'Hôm nay' : `${spendingDays} ngày`}
+                                <ChevronDown size={14} />
+                            </button>
+                        }
+                        items={[
+                            { key: '1', label: 'Hôm nay', onClick: () => setSpendingDays(1) },
+                            { key: '3', label: '3 ngày', onClick: () => setSpendingDays(3) },
+                            { key: '7', label: '7 ngày', onClick: () => setSpendingDays(7) },
+                            { key: '14', label: '14 ngày', onClick: () => setSpendingDays(14) },
+                            { key: '30', label: '30 ngày', onClick: () => setSpendingDays(30) },
+                        ]}
+                    />
+
                     {(search || statusFilter || idsFilter || batchId || miId || mcId) && (
                         <button
                             className="btn btn-secondary"
@@ -1018,8 +1035,8 @@ th: hover.copy - btn { display: block!important; }
                                         </td>
                                         <td>{account.currency}</td>
                                         <td>
-                                            <span style={{ fontWeight: 600, fontSize: 13, color: (account.rangeSpending || 0) > 0 ? '#059669' : 'inherit' }}>
-                                                {new Intl.NumberFormat('en-US', { style: 'currency', currency: account.currency }).format(account.rangeSpending || 0)}
+                                            <span style={{ fontWeight: 600, fontSize: 13, color: (account.totalSpending || 0) > 0 ? '#059669' : 'inherit' }}>
+                                                {new Intl.NumberFormat('en-US', { style: 'currency', currency: account.currency }).format(account.totalSpending || 0)}
                                             </span>
                                         </td>
 

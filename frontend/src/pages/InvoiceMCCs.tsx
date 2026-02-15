@@ -322,7 +322,7 @@ export default function InvoiceMCCs() {
                                         key={mi.id}
                                         onClick={() => {
                                             if (window.getSelection()?.toString()) return;
-                                            navigate(`/ invoice - mccs / ${mi.id} `);
+                                            navigate(`/invoice-mccs/${mi.id}`);
                                         }}
                                         style={{ cursor: 'pointer' }}
                                         className="clickable-row"
@@ -344,7 +344,7 @@ export default function InvoiceMCCs() {
                                                 className="link"
                                                 onClick={(e) => {
                                                     e.stopPropagation();
-                                                    navigate(`/ accounts ? miId = ${mi.id} `);
+                                                    navigate(`/accounts?miId=${mi.id}`);
                                                 }}
                                                 style={{ color: 'var(--primary)', cursor: 'pointer', fontWeight: 500 }}
                                             >
@@ -362,7 +362,7 @@ export default function InvoiceMCCs() {
                                                     className="link"
                                                     onClick={(e) => {
                                                         e.stopPropagation();
-                                                        navigate(`/ partners ? search = ${mi.partner?.name} `);
+                                                        navigate(`/partners/${mi.partner?.id}`);
                                                     }}
                                                     style={{ color: 'var(--primary)', cursor: 'pointer', fontWeight: 500 }}
                                                 >

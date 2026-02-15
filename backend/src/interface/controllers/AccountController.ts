@@ -11,7 +11,16 @@ export class AccountController {
         const { page, limit, search, sortBy, sortOrder, ids } = query.success
             ? query.data
             : { page: 1, limit: 20, search: undefined, sortBy: undefined, sortOrder: 'desc' as const, ids: undefined };
-        const { status, batchId, miId, mcId } = req.query;
+        const { status, batchId, miId, mcId, spendingDays } = req.query;
+
+        let startDate: Date | undefined;
+        let endDate: Date | undefined;
+
+        if (spendingDays) {
+            endDate = new Date();
+            startDate = new Date();
+            startDate.setDate(endDate.getDate() - Number(spendingDays));
+        }
 
         const { data, total } = await accountService.list({
             page,
@@ -24,6 +33,8 @@ export class AccountController {
             sortBy,
             sortOrder,
             ids,
+            startDate,
+            endDate,
         });
 
         res.json(formatPaginationResponse(data, total, page, limit));

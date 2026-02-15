@@ -73,7 +73,7 @@ export default function Batches() {
     const [yearFilter, setYearFilter] = useState<number | 'mix' | ''>(searchParams.get('year') ? (searchParams.get('year') === 'mix' ? 'mix' : parseInt(searchParams.get('year')!)) : '');
     const [partnerFilter, setPartnerFilter] = useState(searchParams.get('partnerId') || '');
 
-    const [spendingDays] = useState(7);
+    const [spendingDays, setSpendingDays] = useState(7);
 
     const [page, setPage] = useState(1);
     const [limit, setLimit] = useState(20);
@@ -566,6 +566,23 @@ export default function Batches() {
                     />
 
 
+
+                    {/* Spending Days Filter */}
+                    <Dropdown
+                        trigger={
+                            <button className="btn btn-secondary" style={{ gap: 6 }}>
+                                {spendingDays === 1 ? 'Hôm nay' : `${spendingDays} ngày`}
+                                <ChevronDown size={14} />
+                            </button>
+                        }
+                        items={[
+                            { key: '1', label: 'Hôm nay', onClick: () => setSpendingDays(1) },
+                            { key: '3', label: '3 ngày', onClick: () => setSpendingDays(3) },
+                            { key: '7', label: '7 ngày', onClick: () => setSpendingDays(7) },
+                            { key: '14', label: '14 ngày', onClick: () => setSpendingDays(14) },
+                            { key: '30', label: '30 ngày', onClick: () => setSpendingDays(30) },
+                        ]}
+                    />
 
                     {/* Reset Filter Button */}
                     {(search || statusFilter || timezoneFilter || yearFilter || partnerFilter || idsFilter) && (

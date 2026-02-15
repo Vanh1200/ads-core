@@ -32,9 +32,12 @@ export class PrismaAccountRepository implements IAccountRepository {
         sortBy?: string;
         sortOrder?: 'asc' | 'desc';
         ids?: string[];
+        startDate?: Date;
+        endDate?: Date;
     }): Promise<{ data: Account[]; total: number }> {
-        const { page, limit, q, status, batchId, miId, mcId, sortBy, sortOrder, ids } = params;
+        const { page, limit, q, status, batchId, miId, mcId, sortBy, sortOrder, ids, startDate, endDate } = params;
         const where: Prisma.AccountWhereInput = {};
+
         if (status) where.status = status as AccountStatus;
         if (batchId) where.batchId = batchId;
         if (miId) where.currentMiId = miId;
@@ -66,6 +69,15 @@ export class PrismaAccountRepository implements IAccountRepository {
                 include: {
                     currentMi: { select: { id: true, name: true } },
                     currentMc: { select: { id: true, name: true } },
+                    spendingRecords: startDate && endDate ? {
+                        where: {
+                            spendingDate: {
+                                gte: startDate,
+                                lte: endDate
+                            }
+                        },
+                        select: { amount: true }
+                    } : undefined,
                 },
             }),
             prisma.account.count({ where }),
@@ -139,9 +151,17 @@ export class PrismaAccountRepository implements IAccountRepository {
 
     private mapToEntity(prismaAccount: any): Account | null {
         if (!prismaAccount) return null;
+
+        let totalSpending = Number(prismaAccount.totalSpending);
+
+        // If spendingRecords is fetched (filtered by date range), use it to calculate totalSpending
+        if (prismaAccount.spendingRecords && Array.isArray(prismaAccount.spendingRecords)) {
+            totalSpending = prismaAccount.spendingRecords.reduce((sum: number, ds: any) => sum + Number(ds.amount), 0);
+        }
+
         return {
             ...prismaAccount,
-            totalSpending: Number(prismaAccount.totalSpending),
+            totalSpending,
         } as Account;
     }
 }
