@@ -857,31 +857,18 @@ export default function Accounts() {
 
                     {/* Spending Days Filter */}
                     <Dropdown
-                        trigger={
-                            <button className="btn btn-secondary" style={{ gap: 6 }}>
-                                {spendingDays === 1 ? 'Hôm nay' : `${spendingDays} ngày`}
-                                <ChevronDown size={14} />
-                            </button>
-                        }
-                        items={[
-                            { key: '1', label: 'Hôm nay', onClick: () => setSpendingDays(1) },
-                            { key: '3', label: '3 ngày', onClick: () => setSpendingDays(3) },
-                            { key: '7', label: '7 ngày', onClick: () => setSpendingDays(7) },
-                            { key: '14', label: '14 ngày', onClick: () => setSpendingDays(14) },
-                            { key: '30', label: '30 ngày', onClick: () => setSpendingDays(30) },
-                        ]}
-                    />
 
-                    {(search || statusFilter || idsFilter || batchId || miId || mcId) && (
-                        <button
-                            className="btn btn-secondary"
-                            onClick={resetFilters}
-                            title="Xóa tất cả bộ lọc"
-                            style={{ color: 'var(--danger)' }}
-                        >
-                            <X size={16} /> Xóa lọc
-                        </button>
-                    )}
+
+                        {(search || statusFilter || idsFilter || batchId || miId || mcId) && (
+                            <button
+                                className="btn btn-secondary"
+                                onClick={resetFilters}
+                                title="Xóa tất cả bộ lọc"
+                                style={{ color: 'var(--danger)' }}
+                            >
+                                <X size={16} /> Xóa lọc
+                            </button>
+                        )}
                 </div>
 
                 <div className="table-container">
