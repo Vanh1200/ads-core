@@ -24,8 +24,10 @@ export class PrismaInvoiceMCCRepository implements IInvoiceMCCRepository {
         status?: string;
         sortBy?: string;
         sortOrder?: 'asc' | 'desc';
+        startDate?: Date;
+        endDate?: Date;
     }): Promise<{ data: InvoiceMCC[]; total: number }> {
-        const { page, limit, q, status, sortBy, sortOrder } = params;
+        const { page, limit, q, status, sortBy, sortOrder, startDate, endDate } = params;
         const where: Prisma.InvoiceMCCWhereInput = {};
         if (status) where.status = status as InvoiceMCCStatus;
         if (q) {
@@ -35,7 +37,48 @@ export class PrismaInvoiceMCCRepository implements IInvoiceMCCRepository {
             ];
         }
 
+        const include = {
+            partner: { select: { id: true, name: true } },
+            spendingRecords: startDate && endDate ? {
+                where: {
+                    spendingDate: {
+                        gte: startDate,
+                        lte: endDate
+                    }
+                },
+                select: { amount: true }
+            } : undefined
+        };
+
         // Handle dynamic sorting
+        // If sorting by rangeSpending, we must fetch all and sort in memory
+        if (sortBy === 'rangeSpending') {
+            const mccs = await prisma.invoiceMCC.findMany({
+                where,
+                include,
+            });
+
+            // Map and calculate spending
+            const mappedMccs = mccs.map(m => this.mapToEntity(m)!);
+
+            // Sort
+            mappedMccs.sort((a, b) => {
+                const spendA = a.rangeSpending || 0;
+                const spendB = b.rangeSpending || 0;
+                return sortOrder === 'asc' ? spendA - spendB : spendB - spendA;
+            });
+
+            // Paginate
+            const startIndex = (page - 1) * limit;
+            const paginatedMccs = mappedMccs.slice(startIndex, startIndex + limit);
+
+            return {
+                data: paginatedMccs,
+                total: mccs.length,
+            };
+        }
+
+        // Normal DB sorting
         const orderBy: any = {};
         if (sortBy) {
             orderBy[sortBy] = sortOrder || 'desc';
@@ -49,7 +92,7 @@ export class PrismaInvoiceMCCRepository implements IInvoiceMCCRepository {
                 skip: (page - 1) * limit,
                 take: limit,
                 orderBy,
-                include: { partner: { select: { id: true, name: true } } },
+                include,
             }),
             prisma.invoiceMCC.count({ where }),
         ]);
@@ -113,7 +156,16 @@ export class PrismaInvoiceMCCRepository implements IInvoiceMCCRepository {
 
     private mapToEntity(prismaMcc: any): InvoiceMCC | null {
         if (!prismaMcc) return null;
-        return prismaMcc as InvoiceMCC;
+
+        let rangeSpending = 0;
+        if (prismaMcc.spendingRecords && Array.isArray(prismaMcc.spendingRecords)) {
+            rangeSpending = prismaMcc.spendingRecords.reduce((sum: number, r: any) => sum + Number(r.amount), 0);
+        }
+
+        return {
+            ...prismaMcc,
+            rangeSpending,
+        } as InvoiceMCC;
     }
 }
 

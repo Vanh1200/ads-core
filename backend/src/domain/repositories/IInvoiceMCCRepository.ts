@@ -10,6 +10,8 @@ export interface IInvoiceMCCRepository {
         status?: string;
         sortBy?: string;
         sortOrder?: 'asc' | 'desc';
+        startDate?: Date;
+        endDate?: Date;
     }): Promise<{ data: InvoiceMCC[]; total: number }>;
     create(data: Omit<InvoiceMCC, 'id' | 'createdAt' | 'updatedAt' | 'linkedAccountsCount' | 'activeAccountsCount'>): Promise<InvoiceMCC>;
     update(id: string, data: Partial<InvoiceMCC>): Promise<InvoiceMCC>;

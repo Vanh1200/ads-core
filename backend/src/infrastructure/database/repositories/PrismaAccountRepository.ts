@@ -53,6 +53,48 @@ export class PrismaAccountRepository implements IAccountRepository {
         }
 
         // Handle dynamic sorting
+        const include = {
+            currentMi: { select: { id: true, name: true } },
+            currentMc: { select: { id: true, name: true } },
+            batch: { select: { id: true, mccAccountName: true, mccAccountId: true } },
+            spendingRecords: startDate && endDate ? {
+                where: {
+                    spendingDate: {
+                        gte: startDate,
+                        lte: endDate
+                    }
+                },
+                select: { amount: true }
+            } : undefined,
+        };
+
+        // If sorting by totalSpending AND date range is present, we must fetch all and sort in memory
+        if (sortBy === 'totalSpending' && startDate && endDate) {
+            const accounts = await prisma.account.findMany({
+                where,
+                include,
+            });
+
+            // Map and calculate spending
+            const mappedAccounts = accounts.map(a => this.mapToEntity(a)!);
+
+            // Sort
+            mappedAccounts.sort((a, b) => {
+                const spendA = Number(a.totalSpending) || 0;
+                const spendB = Number(b.totalSpending) || 0;
+                return sortOrder === 'asc' ? spendA - spendB : spendB - spendA;
+            });
+
+            // Paginate
+            const startIndex = (page - 1) * limit;
+            const paginatedAccounts = mappedAccounts.slice(startIndex, startIndex + limit);
+
+            return {
+                data: paginatedAccounts,
+                total: accounts.length,
+            };
+        }
+
         const orderBy: any = {};
         if (sortBy) {
             orderBy[sortBy] = sortOrder || 'desc';
@@ -66,19 +108,7 @@ export class PrismaAccountRepository implements IAccountRepository {
                 skip: (page - 1) * limit,
                 take: limit,
                 orderBy,
-                include: {
-                    currentMi: { select: { id: true, name: true } },
-                    currentMc: { select: { id: true, name: true } },
-                    spendingRecords: startDate && endDate ? {
-                        where: {
-                            spendingDate: {
-                                gte: startDate,
-                                lte: endDate
-                            }
-                        },
-                        select: { amount: true }
-                    } : undefined,
-                },
+                include,
             }),
             prisma.account.count({ where }),
         ]);

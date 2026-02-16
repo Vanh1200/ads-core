@@ -10,6 +10,8 @@ export interface IBatchRepository {
         sortBy?: string;
         sortOrder?: 'asc' | 'desc';
         ids?: string[];
+        startDate?: Date;
+        endDate?: Date;
     }): Promise<{ data: AccountBatch[]; total: number }>;
     create(data: Omit<AccountBatch, 'id' | 'createdAt' | 'updatedAt' | 'totalAccounts' | 'liveAccounts'>): Promise<AccountBatch>;
     update(id: string, data: Partial<AccountBatch>): Promise<AccountBatch>;

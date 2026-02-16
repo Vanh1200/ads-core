@@ -12,7 +12,16 @@ export class InvoiceMCCController {
         const { page, limit, search, sortBy, sortOrder } = query.success
             ? query.data
             : { page: 1, limit: 20, search: undefined, sortBy: undefined, sortOrder: 'desc' as const };
-        const { status } = req.query;
+        const { status, spendingDays } = req.query;
+
+        let startDate: Date | undefined;
+        let endDate: Date | undefined;
+
+        if (spendingDays) {
+            endDate = new Date();
+            startDate = new Date();
+            startDate.setDate(endDate.getDate() - Number(spendingDays));
+        }
 
         const { data, total } = await invoiceMCCService.list({
             page,
@@ -21,18 +30,11 @@ export class InvoiceMCCController {
             status: status as string,
             sortBy,
             sortOrder,
+            startDate,
+            endDate,
         });
 
-        // Enrich with spending data
-        const spendingDays = req.query.spendingDays ? parseInt(req.query.spendingDays as string) : 7;
-        const spendingMap = await spendingService.getRangeSpendingMap('invoice-mcc', data.map(i => i.id), spendingDays);
-
-        const enrichedData = data.map(mi => ({
-            ...mi,
-            rangeSpending: spendingMap[mi.id] || 0
-        }));
-
-        res.json(formatPaginationResponse(enrichedData, total, page, limit));
+        res.json(formatPaginationResponse(data, total, page, limit));
     });
 
     getById = asyncHandler(async (req: any, res: any) => {

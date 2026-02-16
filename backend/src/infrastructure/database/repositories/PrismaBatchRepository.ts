@@ -21,8 +21,10 @@ export class PrismaBatchRepository implements IBatchRepository {
         sortBy?: string;
         sortOrder?: 'asc' | 'desc';
         ids?: string[];
+        startDate?: Date;
+        endDate?: Date;
     }): Promise<{ data: AccountBatch[]; total: number }> {
-        const { page, limit, status, year, isMixYear, sortBy, sortOrder, ids } = params;
+        const { page, limit, status, year, isMixYear, sortBy, sortOrder, ids, startDate, endDate } = params;
         const where: any = {};
         if (status) where.status = status as BatchStatus;
         if (year) where.year = year;
@@ -31,7 +33,49 @@ export class PrismaBatchRepository implements IBatchRepository {
             where.mccAccountId = { in: ids };
         }
 
+        const include = {
+            accounts: {
+                include: {
+                    currentMi: true,
+                    currentMc: true,
+                    spendingRecords: startDate && endDate ? {
+                        where: {
+                            spendingDate: {
+                                gte: startDate,
+                                lte: endDate
+                            }
+                        },
+                        select: { amount: true }
+                    } : undefined,
+                }
+            }
+        };
+
         // Handle dynamic sorting
+        // If sorting by rangeSpending, we must fetch all and sort in memory
+        if (sortBy === 'rangeSpending') {
+            const batches = await prisma.accountBatch.findMany({
+                where,
+                include,
+            });
+
+            const mappedBatches = batches.map(b => this.mapToEntity(b)!);
+
+            mappedBatches.sort((a, b) => {
+                const spendA = a.rangeSpending || 0;
+                const spendB = b.rangeSpending || 0;
+                return sortOrder === 'asc' ? spendA - spendB : spendB - spendA;
+            });
+
+            const startIndex = (page - 1) * limit;
+            const paginatedBatches = mappedBatches.slice(startIndex, startIndex + limit);
+
+            return {
+                data: paginatedBatches,
+                total: batches.length,
+            };
+        }
+
         const orderBy: any = {};
         if (sortBy) {
             orderBy[sortBy] = sortOrder || 'desc';
@@ -45,6 +89,7 @@ export class PrismaBatchRepository implements IBatchRepository {
                 skip: (page - 1) * limit,
                 take: limit,
                 orderBy,
+                include,
             }),
             prisma.accountBatch.count({ where }),
         ]);
@@ -134,9 +179,21 @@ export class PrismaBatchRepository implements IBatchRepository {
 
     private mapToEntity(prismaBatch: any): AccountBatch | null {
         if (!prismaBatch) return null;
+
+        let rangeSpending = 0;
+        if (prismaBatch.accounts && Array.isArray(prismaBatch.accounts)) {
+            for (const account of prismaBatch.accounts) {
+                if (account.spendingRecords && Array.isArray(account.spendingRecords)) {
+                    const accountSpending = account.spendingRecords.reduce((sum: number, r: any) => sum + Number(r.amount), 0);
+                    rangeSpending += accountSpending;
+                }
+            }
+        }
+
         return {
             ...prismaBatch,
             status: prismaBatch.status as 'ACTIVE' | 'INACTIVE',
+            rangeSpending,
         } as AccountBatch;
     }
 }

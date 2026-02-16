@@ -24,15 +24,58 @@ export class PrismaCustomerRepository implements ICustomerRepository {
         status?: string;
         sortBy?: string;
         sortOrder?: 'asc' | 'desc';
+        startDate?: Date;
+        endDate?: Date;
     }): Promise<{ data: Customer[]; total: number }> {
-        const { page, limit, q, status, sortBy, sortOrder } = params;
+        const { page, limit, q, status, sortBy, sortOrder, startDate, endDate } = params;
         const where: Prisma.CustomerWhereInput = {};
         if (status) where.status = status as CustomerStatus;
         if (q) {
             where.name = { contains: q, mode: 'insensitive' };
         }
 
+        const include = {
+            assignedStaff: { select: { id: true, fullName: true } },
+            accounts: {
+                include: {
+                    spendingRecords: startDate && endDate ? {
+                        where: {
+                            spendingDate: {
+                                gte: startDate,
+                                lte: endDate
+                            }
+                        },
+                        select: { amount: true }
+                    } : undefined,
+                }
+            }
+        };
+
         // Handle dynamic sorting
+        // If sorting by rangeSpending, we must fetch all and sort in memory
+        if (sortBy === 'rangeSpending') {
+            const customers = await prisma.customer.findMany({
+                where,
+                include,
+            });
+
+            const mappedCustomers = customers.map(c => this.mapToEntity(c)!);
+
+            mappedCustomers.sort((a, b) => {
+                const spendA = a.rangeSpending || 0;
+                const spendB = b.rangeSpending || 0;
+                return sortOrder === 'asc' ? spendA - spendB : spendB - spendA;
+            });
+
+            const startIndex = (page - 1) * limit;
+            const paginatedCustomers = mappedCustomers.slice(startIndex, startIndex + limit);
+
+            return {
+                data: paginatedCustomers,
+                total: customers.length,
+            };
+        }
+
         const orderBy: any = {};
         if (sortBy) {
             orderBy[sortBy] = sortOrder || 'desc';
@@ -46,7 +89,7 @@ export class PrismaCustomerRepository implements ICustomerRepository {
                 skip: (page - 1) * limit,
                 take: limit,
                 orderBy,
-                include: { assignedStaff: { select: { id: true, fullName: true } } },
+                include,
             }),
             prisma.customer.count({ where }),
         ]);
@@ -108,9 +151,20 @@ export class PrismaCustomerRepository implements ICustomerRepository {
 
     private mapToEntity(prismaCustomer: any): Customer | null {
         if (!prismaCustomer) return null;
+
+        let rangeSpending = 0;
+        if (prismaCustomer.accounts && Array.isArray(prismaCustomer.accounts)) {
+            for (const account of prismaCustomer.accounts) {
+                if (account.spendingRecords && Array.isArray(account.spendingRecords)) {
+                    rangeSpending += account.spendingRecords.reduce((sum: number, r: any) => sum + Number(r.amount), 0);
+                }
+            }
+        }
+
         return {
             ...prismaCustomer,
             totalSpending: Number(prismaCustomer.totalSpending),
+            rangeSpending,
         } as Customer;
     }
 }

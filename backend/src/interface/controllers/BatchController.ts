@@ -12,7 +12,17 @@ export class BatchController {
         const { page, limit, sortBy, sortOrder, ids } = query.success
             ? query.data
             : { page: 1, limit: 20, sortBy: undefined, sortOrder: 'desc' as const, ids: undefined };
-        const { status, year } = req.query;
+        const { status, year, spendingDays } = req.query;
+
+        let startDate: Date | undefined;
+        let endDate: Date | undefined;
+
+        if (spendingDays) {
+            endDate = new Date();
+            startDate = new Date();
+            startDate.setDate(endDate.getDate() - Number(spendingDays));
+        }
+
         const { data, total } = await batchService.list({
             page,
             limit,
@@ -21,18 +31,11 @@ export class BatchController {
             sortBy,
             sortOrder,
             ids,
+            startDate,
+            endDate,
         });
 
-        // Enrich with spending data
-        const spendingDays = req.query.spendingDays ? parseInt(req.query.spendingDays as string) : 7;
-        const spendingMap = await spendingService.getRangeSpendingMap('batch', data.map(b => b.id), spendingDays);
-
-        const enrichedData = data.map(batch => ({
-            ...batch,
-            rangeSpending: spendingMap[batch.id] || 0
-        }));
-
-        res.json(formatPaginationResponse(enrichedData, total, page, limit));
+        res.json(formatPaginationResponse(data, total, page, limit));
     });
 
     getById = asyncHandler(async (req: any, res: any) => {

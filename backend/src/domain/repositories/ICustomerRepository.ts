@@ -10,6 +10,8 @@ export interface ICustomerRepository {
         status?: string;
         sortBy?: string;
         sortOrder?: 'asc' | 'desc';
+        startDate?: Date;
+        endDate?: Date;
     }): Promise<{ data: Customer[]; total: number }>;
     create(data: Omit<Customer, 'id' | 'createdAt' | 'updatedAt' | 'totalSpending' | 'totalAccounts' | 'activeAccounts'>): Promise<Customer>;
     update(id: string, data: Partial<Customer>): Promise<Customer>;
