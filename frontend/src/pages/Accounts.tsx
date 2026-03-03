@@ -397,8 +397,9 @@ export default function Accounts() {
             };
 
             const res = await accountsApi.getFilterIds(params);
-            const allAccounts = res.data; // Now returns [{id, googleAccountId}]
-            const allIds = allAccounts.map((a: any) => a.id);
+            const allAccounts = res.data; // Response is { data: {id, googleAccountId}[] } or {id, googleAccountId}[]
+            const data = Array.isArray(allAccounts) ? allAccounts : allAccounts.data;
+            const allIds = data.map((a: any) => a.id);
 
             setSelectedIds(new Set(allIds));
             setIsAllSelected(true);

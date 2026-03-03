@@ -775,7 +775,16 @@ export default function Batches() {
                                             </a>
                                         </td>
                                         <td>
-                                            <span style={{ color: 'var(--secondary)', fontWeight: 500 }}>{batch.liveAccounts}</span>
+                                            <a
+                                                href={`/accounts?batchId=${batch.id}&status=ACTIVE`}
+                                                className="link"
+                                                onClick={(e) => {
+                                                    e.stopPropagation();
+                                                }}
+                                                style={{ color: 'var(--secondary)', cursor: 'pointer', fontWeight: 500, textDecoration: 'none' }}
+                                            >
+                                                {batch.liveAccounts}
+                                            </a>
                                         </td>
                                         <td>
                                             <span style={{ fontWeight: 600, fontSize: 13, color: (batch.rangeSpending || 0) > 0 ? '#10b981' : 'inherit' }}>
