@@ -26,7 +26,7 @@ export default function Partners() {
     const navigate = useNavigate();
     const [search, setSearch] = useState('');
     const [page, setPage] = useState(1);
-    const [limit, setLimit] = useState(20);
+    const [limit, setLimit] = useState(50);
     const [showModal, setShowModal] = useState(false);
     const [selectedPartner, setSelectedPartner] = useState<Partner | null>(null);
     const [deleteId, setDeleteId] = useState<string | null>(null);

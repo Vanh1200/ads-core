@@ -7,7 +7,22 @@ export const api = axios.create({
     headers: {
         'Content-Type': 'application/json',
     },
+    // Serialize arrays as repeated params: ids=a&ids=b (not ids[]=a&ids[]=b)
+    paramsSerializer: (params) => {
+        const parts: string[] = [];
+        for (const key in params) {
+            const val = params[key];
+            if (val === undefined || val === null) continue;
+            if (Array.isArray(val)) {
+                val.forEach(v => parts.push(`${encodeURIComponent(key)}=${encodeURIComponent(v)}`));
+            } else {
+                parts.push(`${encodeURIComponent(key)}=${encodeURIComponent(val)}`);
+            }
+        }
+        return parts.join('&');
+    },
 });
+
 
 // Request interceptor to add auth token
 api.interceptors.request.use((config) => {
@@ -88,6 +103,7 @@ export const customersApi = {
 // Accounts API
 export const accountsApi = {
     list: (params?: object) => api.get('/accounts', { params }),
+    getFilterIds: (params?: object) => api.get('/accounts/filter-ids', { params }),
     get: (id: string) => api.get(`/accounts/${id}`),
     create: (data: object) => api.post('/accounts', data),
     update: (id: string, data: object) => api.put(`/accounts/${id}`, data),
@@ -157,6 +173,25 @@ export const importApi = {
             currency: string;
         }>;
     }) => api.post('/import/create-batch-with-accounts', data),
+    parseMI: (file: File) => {
+        const formData = new FormData();
+        formData.append('file', file);
+        return api.post('/import/parse-mi', formData, {
+            headers: { 'Content-Type': 'multipart/form-data' },
+        });
+    },
+    createMIWithAccounts: (data: {
+        mccInvoiceId: string;
+        name: string;
+        partnerId?: string | null;
+        notes?: string | null;
+        accounts: Array<{
+            googleAccountId: string;
+            accountName: string;
+            status: string;
+            currency: string;
+        }>;
+    }) => api.post('/import/create-mi-with-accounts', data),
     previewSpending: (file: File, spendingDate: string, miId?: string) => {
         const formData = new FormData();
         formData.append('file', file);

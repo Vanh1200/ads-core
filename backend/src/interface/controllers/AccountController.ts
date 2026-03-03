@@ -8,9 +8,31 @@ import { formatPaginationResponse } from '../../utils/pagination';
 export class AccountController {
     list = asyncHandler(async (req: any, res: any) => {
         const query = paginationSchema.safeParse(req.query);
-        const { page, limit, search, sortBy, sortOrder, ids } = query.success
+        const { page, limit, search, sortBy, sortOrder } = query.success
             ? query.data
-            : { page: 1, limit: 20, search: undefined, sortBy: undefined, sortOrder: 'desc' as const, ids: undefined };
+            : { page: 1, limit: 20, search: undefined, sortBy: undefined, sortOrder: 'desc' as const };
+
+        // Always parse ids directly from req.query - bypassing Zod which coerces object→"[object Object]"
+        // Express with qs may parse multiple ids= params as an array OR a plain object {0: id, 1: id, ...}
+        let ids: string[] | undefined;
+        const rawIds = req.query.ids;
+        if (rawIds) {
+            let candidates: any[];
+            if (Array.isArray(rawIds)) {
+                candidates = rawIds;
+            } else if (typeof rawIds === 'object') {
+                // qs plain object {0: 'id1', 1: 'id2', ...}
+                candidates = Object.values(rawIds as Record<string, any>);
+            } else {
+                candidates = [rawIds];
+            }
+            ids = candidates
+                .flatMap((s: any) => String(s).split(/[\n,]+/))
+                .map((i: string) => i.trim())
+                .filter(Boolean);
+            if (ids.length === 0) ids = undefined;
+        }
+
         const { status, batchId, miId, mcId, spendingDays } = req.query;
 
         let startDate: Date | undefined;
@@ -38,6 +60,21 @@ export class AccountController {
         });
 
         res.json(formatPaginationResponse(data, total, page, limit));
+    });
+
+
+    getFilterIds = asyncHandler(async (req: any, res: any) => {
+        const { search, status, batchId, miId, mcId } = req.query;
+
+        const ids = await accountService.getFilterIds({
+            q: search,
+            status: status as string,
+            batchId: batchId as string,
+            miId: miId as string,
+            mcId: mcId as string,
+        });
+
+        res.json(ids);
     });
 
     getById = asyncHandler(async (req: AuthRequest, res: Response) => {

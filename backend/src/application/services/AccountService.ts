@@ -13,6 +13,14 @@ export class AccountService {
         return this.accountRepo.list(params);
     }
 
+    async getFilterIds(params: any): Promise<string[]> {
+        if ('findIdsByFilter' in this.accountRepo) {
+            const result = await (this.accountRepo as any).findIdsByFilter(params);
+            return result.map((r: any) => r.id);
+        }
+        return [];
+    }
+
     async getById(id: string) {
         const account = await this.accountRepo.findById(id);
         if (!account) throw new Error('NOT_FOUND: Account not found');

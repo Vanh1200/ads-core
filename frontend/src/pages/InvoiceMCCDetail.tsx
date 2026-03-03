@@ -138,13 +138,19 @@ export default function InvoiceMCCDetail() {
                     </div>
                 </div>
 
-                <button
+                <a
+                    href={`/accounts?miId=${mi.id}`}
                     className="btn btn-primary"
-                    onClick={() => navigate(`/accounts?miId=${mi.id}`)}
+                    onClick={(e) => {
+                        if (!e.ctrlKey && !e.metaKey) {
+                            e.preventDefault();
+                            navigate(`/accounts?miId=${mi.id}`);
+                        }
+                    }}
                 >
                     <List size={16} style={{ marginRight: 8 }} />
                     Xem danh sách tài khoản
-                </button>
+                </a>
             </div>
 
             {/* Tabs */}
@@ -206,13 +212,19 @@ export default function InvoiceMCCDetail() {
                                         <div className="info-card-label">Đối tác</div>
                                         <div className="info-card-value">
                                             {mi.partner ? (
-                                                <span
+                                                <a
+                                                    href={`/partners?search=${mi.partner?.name}`}
                                                     className="link"
-                                                    onClick={() => navigate(`/partners?search=${mi.partner?.name}`)}
-                                                    style={{ color: 'var(--primary)', cursor: 'pointer', fontWeight: 500 }}
+                                                    onClick={(e) => {
+                                                        if (!e.ctrlKey && !e.metaKey) {
+                                                            e.preventDefault();
+                                                            navigate(`/partners?search=${mi.partner?.name}`);
+                                                        }
+                                                    }}
+                                                    style={{ color: 'var(--primary)', cursor: 'pointer', fontWeight: 500, textDecoration: 'none' }}
                                                 >
                                                     {mi.partner.name}
-                                                </span>
+                                                </a>
                                             ) : '-'}
                                         </div>
                                     </div>
@@ -225,13 +237,19 @@ export default function InvoiceMCCDetail() {
                                     <div>
                                         <div className="info-card-label">Đã liên kết</div>
                                         <div className="info-card-value">
-                                            <span
+                                            <a
+                                                href={`/accounts?miId=${mi.id}`}
                                                 className="link"
-                                                onClick={() => navigate(`/accounts?miId=${mi.id}`)}
-                                                style={{ color: 'var(--primary)', cursor: 'pointer', fontWeight: 500 }}
+                                                onClick={(e) => {
+                                                    if (!e.ctrlKey && !e.metaKey) {
+                                                        e.preventDefault();
+                                                        navigate(`/accounts?miId=${mi.id}`);
+                                                    }
+                                                }}
+                                                style={{ color: 'var(--primary)', cursor: 'pointer', fontWeight: 500, textDecoration: 'none' }}
                                             >
                                                 {mi.linkedAccountsCount || 0}
-                                            </span>
+                                            </a>
                                         </div>
                                     </div>
                                 </div>
@@ -243,13 +261,19 @@ export default function InvoiceMCCDetail() {
                                     <div>
                                         <div className="info-card-label">Đang hoạt động</div>
                                         <div className="info-card-value" style={{ color: 'var(--success)' }}>
-                                            <span
+                                            <a
+                                                href={`/accounts?miId=${mi.id}&status=ACTIVE`}
                                                 className="link"
-                                                onClick={() => navigate(`/accounts?miId=${mi.id}&status=ACTIVE`)}
-                                                style={{ color: 'var(--secondary)', cursor: 'pointer', fontWeight: 500 }}
+                                                onClick={(e) => {
+                                                    if (!e.ctrlKey && !e.metaKey) {
+                                                        e.preventDefault();
+                                                        navigate(`/accounts?miId=${mi.id}&status=ACTIVE`);
+                                                    }
+                                                }}
+                                                style={{ color: 'var(--secondary)', cursor: 'pointer', fontWeight: 500, textDecoration: 'none' }}
                                             >
                                                 {mi.activeAccountsCount || 0}
-                                            </span>
+                                            </a>
                                         </div>
                                     </div>
                                 </div>

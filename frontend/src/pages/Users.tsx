@@ -27,7 +27,7 @@ const ROLES = {
 export default function Users() {
     const [search, setSearch] = useState('');
     const [page, setPage] = useState(1);
-    const [limit, setLimit] = useState(20);
+    const [limit, setLimit] = useState(50);
 
     const [isSearchOpen, setIsSearchOpen] = useState(false);
     // const [searchQuery, setSearchQuery] = useState(''); // This state is now managed by SearchDropdown

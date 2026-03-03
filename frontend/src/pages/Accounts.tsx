@@ -56,7 +56,7 @@ export default function Accounts() {
     const [mcId, setMcId] = useState<string>(searchParams.get('mcId') || '');
 
     const [page, setPage] = useState(1);
-    const [limit, setLimit] = useState(20);
+    const [limit, setLimit] = useState(50);
     const [selectionAnchor, setSelectionAnchor] = useState<number | null>(null);
 
     // Sorting
@@ -248,7 +248,7 @@ export default function Accounts() {
             accountsApi.bulkUpdateStatus(accountIds, status),
         onSuccess: (data) => {
             queryClient.invalidateQueries({ queryKey: ['accounts'] });
-            setToast({ message: `Đã cập nhật trạng thái ${data.data.updatedAccountIds.length} tài khoản thành công!`, type: 'success' });
+            setToast({ message: `Đã cập nhật trạng thái ${data.data.count} tài khoản thành công!`, type: 'success' });
             setTimeout(() => setToast(null), 3000);
             setSelectedIds(new Set());
         },
@@ -262,7 +262,7 @@ export default function Accounts() {
         mutationFn: (accountIds: string[]) => accountsApi.bulkUnlinkMi(accountIds),
         onSuccess: (data) => {
             queryClient.invalidateQueries({ queryKey: ['accounts'] });
-            setToast({ message: `Đã hủy liên kết MI cho ${data.data.unlinkedAccountIds.length} tài khoản thành công!`, type: 'success' });
+            setToast({ message: `Đã hủy liên kết MI cho ${data.data.count} tài khoản thành công!`, type: 'success' });
             setTimeout(() => setToast(null), 3000);
             setSelectedIds(new Set());
         },
@@ -276,7 +276,7 @@ export default function Accounts() {
         mutationFn: (accountIds: string[]) => accountsApi.bulkUnassignMc(accountIds),
         onSuccess: (data) => {
             queryClient.invalidateQueries({ queryKey: ['accounts'] });
-            setToast({ message: `Đã hủy giao khách cho ${data.data.unassignedAccountIds.length} tài khoản thành công!`, type: 'success' });
+            setToast({ message: `Đã hủy giao khách cho ${data.data.count} tài khoản thành công!`, type: 'success' });
             setTimeout(() => setToast(null), 3000);
             setSelectedIds(new Set());
         },
@@ -345,7 +345,7 @@ export default function Accounts() {
             setSortOrder(sortOrder === 'asc' ? 'desc' : 'asc');
         } else {
             setSortField(field);
-            setSortOrder('asc');
+            setSortOrder('desc');
         }
     };
 
@@ -354,25 +354,8 @@ export default function Accounts() {
         return sortOrder === 'asc' ? <ChevronUp size={14} /> : <ChevronDown size={14} />;
     };
 
-    // Handle Copy IDs (Current Page Only)
-    const handleCopyIds = async (e: React.MouseEvent) => {
-        e.stopPropagation();
-        try {
-            if (accounts && accounts.length > 0) {
-                const idList = accounts.map(a => a.googleAccountId).join('\n');
-                await navigator.clipboard.writeText(idList);
-                setToast({ message: `Đã sao chép ${accounts.length} ID trên trang này vào clipboard`, type: 'success' });
-                setTimeout(() => setToast(null), 3000);
-            } else {
-                setToast({ message: 'Không có tài khoản nào trên trang này để sao chép', type: 'error' });
-                setTimeout(() => setToast(null), 3000);
-            }
-        } catch (error) {
-            console.error('Copy IDs error:', error);
-            setToast({ message: 'Lỗi khi sao chép ID', type: 'error' });
-            setTimeout(() => setToast(null), 3000);
-        }
-    };
+
+
 
     // Unified Selection Logic
     const [isAllSelected, setIsAllSelected] = useState(false); // Global flag
@@ -408,16 +391,13 @@ export default function Accounts() {
             const params = {
                 search: search || undefined,
                 status: statusFilter || undefined,
-                ids: idsFilter ? idsFilter.split('\n').map(l => l.trim()).filter(Boolean) : undefined,
                 batchId: batchId || undefined,
                 miId: miId || undefined,
                 mcId: mcId || undefined,
-                page: 1,
-                limit: 10000, // Fetch all (up to 10k)
             };
 
-            const res = await accountsApi.list(params);
-            const allAccounts = res.data.data;
+            const res = await accountsApi.getFilterIds(params);
+            const allAccounts = res.data; // Now returns [{id, googleAccountId}]
             const allIds = allAccounts.map((a: any) => a.id);
 
             setSelectedIds(new Set(allIds));
@@ -567,144 +547,177 @@ export default function Accounts() {
 
             {/* Active Filters removed as per request */}
 
-            {/* Selection Action Bar */}
-            {selectedIds.size > 0 && (
-                <div style={{
-                    marginBottom: 16,
-                    padding: '12px 16px',
-                    background: 'var(--bg-secondary)',
-                    borderRadius: 8,
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'space-between',
-                    border: '1px solid var(--border)',
-                    boxShadow: '0 2px 4px rgba(0,0,0,0.05)'
-                }}>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-                        <span style={{ fontWeight: 500 }}>
-                            Đã chọn <strong style={{ color: 'var(--primary)' }}>{selectedIds.size}</strong> tài khoản
-                        </span>
-                        {/* Global Select Option */}
-                        {!isAllSelected && selectedIds.size >= accounts.length && pagination.total > selectedIds.size && (
+            {/* Selection Action Bar Wrapper to prevent layout shift */}
+            <div style={{ minHeight: '64px', transition: 'all 0.2s' }}>
+                {selectedIds.size > 0 && (
+                    <div style={{
+                        marginBottom: 16,
+                        padding: '12px 16px',
+                        background: 'var(--bg-secondary)',
+                        borderRadius: 8,
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'space-between',
+                        border: '1px solid var(--border)',
+                        boxShadow: '0 2px 4px rgba(0,0,0,0.05)'
+                    }}>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+                            <span style={{ fontWeight: 500 }}>
+                                Đã chọn <strong style={{ color: 'var(--primary)' }}>{selectedIds.size}</strong> tài khoản
+                            </span>
+                            {/* Global Select Option */}
+                            {!isAllSelected && selectedIds.size >= accounts.length && pagination.total > selectedIds.size && (
+                                <button
+                                    onClick={handleSelectAllGlobal}
+                                    disabled={isSelectingAll}
+                                    style={{
+                                        background: 'none',
+                                        border: 'none',
+                                        color: '#096dd9',
+                                        padding: 0,
+                                        fontSize: 14,
+                                        cursor: 'pointer',
+                                        fontWeight: 500,
+                                        textDecoration: 'underline',
+                                        marginLeft: 8
+                                    }}
+                                >
+                                    {isSelectingAll ? 'Đang chọn...' : `(Chọn tất cả ${pagination.total} tài khoản theo bộ lọc)`}
+                                </button>
+                            )}
+                        </div>
+                        <div style={{ display: 'flex', gap: 8 }}>
                             <button
-                                onClick={handleSelectAllGlobal}
-                                disabled={isSelectingAll}
-                                style={{
-                                    background: 'none',
-                                    border: 'none',
-                                    color: '#096dd9',
-                                    padding: 0,
-                                    fontSize: 14,
-                                    cursor: 'pointer',
-                                    fontWeight: 500,
-                                    textDecoration: 'underline',
-                                    marginLeft: 8
+                                className="btn btn-secondary"
+                                onClick={async (e) => {
+                                    e.currentTarget.blur();
+                                    try {
+                                        // Filter selected accounts locally for copy action
+                                        const selectedAccountsList = isAllSelected && selectedIds.size > accounts.length
+                                            // Fallback if we fetched full filter ids
+                                            ? await accountsApi.getFilterIds({
+                                                search: search || undefined, status: statusFilter || undefined, batchId: batchId || undefined, miId: miId || undefined, mcId: mcId || undefined
+                                            }).then(res => res.data)
+                                            : accounts.filter(a => selectedIds.has(a.id));
+
+                                        const idList = selectedAccountsList.map((a: any) => a.googleAccountId).join('\n');
+                                        await navigator.clipboard.writeText(idList);
+                                        setToast({ message: `Đã sao chép ${selectedAccountsList.length} ID vào clipboard`, type: 'success' });
+                                        setTimeout(() => setToast(null), 3000);
+                                    } catch (err) {
+                                        setToast({ message: 'Lỗi khi sao chép', type: 'error' });
+                                        setTimeout(() => setToast(null), 3000);
+                                    }
                                 }}
                             >
-                                {isSelectingAll ? 'Đang chọn...' : `(Chọn tất cả ${pagination.total} tài khoản theo bộ lọc)`}
+                                <Copy size={16} />
+                                Sao chép ID
                             </button>
-                        )}
-                    </div>
-                    <div style={{ display: 'flex', gap: 8 }}>
-                        {canLinkMI(user?.role || 'VIEWER') && (
-                            <button
-                                className="btn btn-primary"
-                                onClick={() => setShowMiModal(true)}
-                            >
-                                <Link2 size={16} />
-                                Link MI
-                            </button>
-                        )}
-                        {canAssignMC(user?.role || 'VIEWER') && (
-                            <button
-                                className="btn btn-primary"
-                                style={{ background: '#10b981', borderColor: '#10b981' }}
-                                onClick={() => setShowMcModal(true)}
-                            >
-                                <UserPlus size={16} />
-                                Giao MC
-                            </button>
-                        )}
+                            {/* Actions Dropdown — contains Link MI, Giao MC, status changes, unlink */}
+                            {(() => {
+                                const role = user?.role || 'VIEWER';
+                                const canStatus = canManageBatches(role) || canUpdateSpending(role);
+                                const canLink = canLinkMI(role);
+                                const canAssign = canAssignMC(role);
 
-                        {/* More Actions Dropdown */}
-                        {(() => {
-                            const role = user?.role || 'VIEWER';
-                            const canStatus = canManageBatches(role) || canUpdateSpending(role); // Allow Admin/Buyer/Updater
-                            const canUnlink = canLinkMI(role);
-                            const canUnassign = canAssignMC(role);
+                                if (!canStatus && !canLink && !canAssign) return null;
 
-                            if (!canStatus && !canUnlink && !canUnassign) return null;
+                                const items: DropdownItem[] = [];
 
-                            const items: DropdownItem[] = [];
+                                if (canLink) {
+                                    items.push(
+                                        { type: 'header', key: 'link-header', label: 'Liên kết' },
+                                        {
+                                            key: 'link-mi',
+                                            label: 'Link MI',
+                                            icon: <Link2 size={14} />,
+                                            onClick: () => setShowMiModal(true)
+                                        }
+                                    );
+                                }
 
-                            if (canStatus) {
-                                items.push(
-                                    { type: 'header', key: 'status-header', label: 'Trạng thái' },
-                                    {
-                                        key: 'update-status',
-                                        label: 'Thay đổi trạng thái',
-                                        icon: <Edit2 size={14} />,
-                                        onClick: () => setShowStatusSelector(true)
-                                    }
+                                if (canAssign) {
+                                    items.push({
+                                        key: 'assign-mc',
+                                        label: 'Giao MC',
+                                        icon: <UserPlus size={14} />,
+                                        onClick: () => setShowMcModal(true)
+                                    });
+                                }
+
+                                if ((canLink || canAssign) && (canStatus || canLink || canAssign)) {
+                                    items.push({ type: 'divider', key: 'divider-0', label: '' });
+                                }
+
+                                if (canStatus) {
+                                    items.push(
+                                        { type: 'header', key: 'status-header', label: 'Trạng thái' },
+                                        {
+                                            key: 'update-status',
+                                            label: 'Thay đổi trạng thái',
+                                            icon: <Edit2 size={14} />,
+                                            onClick: () => setShowStatusSelector(true)
+                                        }
+                                    );
+                                }
+
+                                if (canStatus && (canLink || canAssign)) {
+                                    items.push({ type: 'divider', key: 'divider-1', label: '' });
+                                }
+
+                                if (canLink || canAssign) {
+                                    items.push({ type: 'header', key: 'manage-header', label: 'Xóa liên kết' });
+                                }
+
+                                if (canLink) {
+                                    items.push({
+                                        key: 'unlink-mi',
+                                        label: 'Xóa MI (Hủy liên kết)',
+                                        icon: <Trash2 size={14} />,
+                                        danger: true,
+                                        onClick: () => setConfirmBulkUnlinkMi(true)
+                                    });
+                                }
+
+                                if (canAssign) {
+                                    items.push({
+                                        key: 'unassign-mc',
+                                        label: 'Xóa MC (Hủy giao)',
+                                        icon: <Trash2 size={14} />,
+                                        danger: true,
+                                        onClick: () => setConfirmBulkUnassignMc(true)
+                                    });
+                                }
+
+                                return (
+                                    <Dropdown
+                                        trigger={
+                                            <button
+                                                className="btn btn-secondary"
+                                                style={{ display: 'flex', alignItems: 'center', gap: 4 }}
+                                            >
+                                                Thao tác
+                                                <ChevronDown size={14} />
+                                            </button>
+                                        }
+                                        items={items}
+                                    />
                                 );
-                            }
+                            })()}
 
-                            if ((canStatus && (canUnlink || canUnassign))) {
-                                items.push({ type: 'divider', key: 'divider-1', label: '' });
-                            }
-
-                            if (canUnlink || canUnassign) {
-                                items.push({ type: 'header', key: 'manage-header', label: 'Quản lý' });
-                            }
-
-                            if (canUnlink) {
-                                items.push({
-                                    key: 'unlink-mi',
-                                    label: 'Xóa MI (Hủy liên kết)',
-                                    icon: <Trash2 size={14} />,
-                                    danger: true,
-                                    onClick: () => setConfirmBulkUnlinkMi(true)
-                                });
-                            }
-
-                            if (canUnassign) {
-                                items.push({
-                                    key: 'unassign-mc',
-                                    label: 'Xóa MC (Hủy giao)',
-                                    icon: <Trash2 size={14} />,
-                                    danger: true,
-                                    onClick: () => setConfirmBulkUnassignMc(true)
-                                });
-                            }
-
-                            return (
-                                <Dropdown
-                                    trigger={
-                                        <button
-                                            className="btn btn-secondary"
-                                            style={{ display: 'flex', alignItems: 'center', gap: 4 }}
-                                        >
-                                            Thao tác khác
-                                            <ChevronDown size={14} />
-                                        </button>
-                                    }
-                                    items={items}
-                                />
-                            );
-                        })()}
-
-                        <button
-                            className="btn btn-secondary"
-                            onClick={() => {
-                                setSelectedIds(new Set());
-                                setIsAllSelected(false);
-                            }}
-                        >
-                            Bỏ chọn
-                        </button>
+                            <button
+                                className="btn btn-secondary"
+                                onClick={() => {
+                                    setSelectedIds(new Set());
+                                    setIsAllSelected(false);
+                                }}
+                            >
+                                Bỏ chọn
+                            </button>
+                        </div>
                     </div>
-                </div>
-            )}
+                )}
+            </div>
 
             <div className="card" style={{ overflow: 'visible' }}>
                 <div className="card-header" style={{ gap: '12px', flexWrap: 'wrap', justifyContent: 'flex-start', overflow: 'visible' }}>
@@ -724,8 +737,9 @@ export default function Accounts() {
                             isOpen={isSearchOpen}
                             onClose={() => setIsSearchOpen(false)}
                             onApply={(value) => {
-                                // If it looks like a list of IDs, set it to idsFilter
-                                if (value.includes('\n') || value.includes(',') || /^\d+$/.test(value.trim())) {
+                                // If it looks like a list of IDs (digits with optional dashes, e.g. 911-568-8107), set it to idsFilter
+                                const looksLikeId = /^[\d][\d\-]+[\d]$/.test(value.trim());
+                                if (value.includes('\n') || value.includes(',') || looksLikeId) {
                                     setIdsFilter(value.trim());
                                     setSearch('');
                                 } else {
@@ -870,6 +884,10 @@ export default function Accounts() {
                             { key: '7', label: '7 ngày', onClick: () => setSpendingDays(7) },
                             { key: '14', label: '14 ngày', onClick: () => setSpendingDays(14) },
                             { key: '30', label: '30 ngày', onClick: () => setSpendingDays(30) },
+                            { key: '60', label: '60 ngày', onClick: () => setSpendingDays(60) },
+                            { key: '90', label: '90 ngày', onClick: () => setSpendingDays(90) },
+                            { key: '180', label: '180 ngày', onClick: () => setSpendingDays(180) },
+                            { key: '360', label: '360 ngày', onClick: () => setSpendingDays(360) },
                         ]}
                     />
 
@@ -908,25 +926,6 @@ export default function Accounts() {
                                 >
                                     <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
                                         ID Google Ads <SortIcon field="googleAccountId" />
-                                        <div
-                                            className="copy-btn"
-                                            onClick={handleCopyIds}
-                                            title="Sao chép ID trên trang này"
-                                            style={{
-                                                marginLeft: 4,
-                                                padding: 4,
-                                                borderRadius: 4,
-                                                background: 'var(--bg-secondary)',
-                                                border: '1px solid var(--border)',
-                                                display: 'none', // Shown on hover via CSS in global or inline
-                                            }}
-                                        >
-                                            <Copy size={12} />
-                                        </div>
-                                        <style dangerouslySetInnerHTML={{
-                                            __html: `
-th: hover.copy - btn { display: block!important; }
-`}} />
                                     </div>
                                 </th>
                                 <th
@@ -1043,16 +1042,16 @@ th: hover.copy - btn { display: block!important; }
                                         <td>
                                             {account.batch ? (
                                                 <div style={{ display: 'flex', flexDirection: 'column' }}>
-                                                    <span
+                                                    <a
+                                                        href={`/batches/${account.batch!.id}`}
                                                         onClick={(e) => {
                                                             e.stopPropagation();
-                                                            navigate(`/batches/${account.batch!.id}`);
                                                         }}
                                                         className="hover:text-blue-400 hover:underline cursor-pointer"
-                                                        style={{ color: 'var(--primary)' }}
+                                                        style={{ color: 'var(--primary)', textDecoration: 'none' }}
                                                     >
                                                         {account.batch.mccAccountName}
-                                                    </span>
+                                                    </a>
                                                     {account.batch.mccAccountId && (
                                                         <span style={{ fontSize: 11, color: 'var(--text-muted)' }}>
                                                             {account.batch.mccAccountId}
@@ -1064,16 +1063,16 @@ th: hover.copy - btn { display: block!important; }
                                         <td>
                                             {account.currentMi ? (
                                                 <div style={{ display: 'flex', flexDirection: 'column' }}>
-                                                    <span
+                                                    <a
+                                                        href={`/invoice-mccs/${account.currentMi!.id}`}
                                                         onClick={(e) => {
                                                             e.stopPropagation();
-                                                            navigate(`/invoice-mccs/${account.currentMi!.id}`);
                                                         }}
                                                         className="hover:text-blue-400 hover:underline cursor-pointer"
-                                                        style={{ color: 'var(--primary)' }}
+                                                        style={{ color: 'var(--primary)', textDecoration: 'none' }}
                                                     >
                                                         {account.currentMi.name}
-                                                    </span>
+                                                    </a>
                                                     {account.currentMi.mccInvoiceId && (
                                                         <span style={{ fontSize: 11, color: 'var(--text-muted)' }}>
                                                             {account.currentMi.mccInvoiceId}
@@ -1084,16 +1083,16 @@ th: hover.copy - btn { display: block!important; }
                                         </td>
                                         <td>
                                             {account.currentMc ? (
-                                                <span
+                                                <a
+                                                    href={`/customers/${account.currentMc!.id}`}
                                                     onClick={(e) => {
                                                         e.stopPropagation();
-                                                        navigate(`/customers/${account.currentMc!.id}`);
                                                     }}
                                                     className="hover:text-blue-400 hover:underline cursor-pointer"
-                                                    style={{ color: 'var(--primary)' }}
+                                                    style={{ color: 'var(--primary)', textDecoration: 'none' }}
                                                 >
                                                     {account.currentMc.name}
-                                                </span>
+                                                </a>
                                             ) : <span style={{ color: 'var(--warning)' }}>Chưa giao</span>}
                                         </td>
                                     </tr>

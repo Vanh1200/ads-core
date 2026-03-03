@@ -12,7 +12,8 @@ export class CreditLinkingService {
                 include: {
                     accounts: {
                         where: { currentMiId: null, currentMcId: null, status: 'ACTIVE', currency: req.currency },
-                        take: req.count * 2,
+                        orderBy: { googleAccountId: 'asc' }, // ID order within each MA
+                        take: req.count * 3, // Fetch enough across all batches
                     },
                 },
             });

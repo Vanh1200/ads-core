@@ -7,6 +7,7 @@ const router = Router();
 // Query routes (must be before /:id to avoid conflicts)
 router.get('/unlinked', authenticateToken, canView, accountController.getUnlinked);
 router.get('/unassigned', authenticateToken, canView, accountController.getUnassigned);
+router.get('/filter-ids', authenticateToken, canView, accountController.getFilterIds);
 
 // CRUD
 router.get('/', authenticateToken, canView, accountController.list);

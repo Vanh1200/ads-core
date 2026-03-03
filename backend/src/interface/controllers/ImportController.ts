@@ -39,6 +39,17 @@ export class ImportController {
         res.json(result);
     });
 
+    parseInvoiceMCC = asyncHandler(async (req: any, res: any) => {
+        if (!req.file) { res.status(400).json({ error: 'No file uploaded' }); return; }
+        const result = await importService.parseInvoiceMCC(req.file.buffer);
+        res.json(result);
+    });
+
+    createInvoiceMCCWithAccounts = asyncHandler(async (req: any, res: any) => {
+        const result = await importService.createInvoiceMCCWithAccounts(req.body, req.user!.id, req.ip);
+        res.json(result);
+    });
+
     previewSpending = asyncHandler(async (req: any, res: any) => {
         if (!req.file) { res.status(400).json({ error: 'No file uploaded' }); return; }
         const result = await importService.previewSpending(req.file.buffer);

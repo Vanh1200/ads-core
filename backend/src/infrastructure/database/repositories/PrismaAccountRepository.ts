@@ -4,6 +4,35 @@ import { Account } from '../../../domain/entities/Account';
 import { AccountStatus, Prisma } from '@prisma/client';
 
 export class PrismaAccountRepository implements IAccountRepository {
+    async findIdsByFilter(params: {
+        q?: string;
+        status?: string;
+        batchId?: string;
+        miId?: string;
+        mcId?: string;
+    }): Promise<{ id: string; googleAccountId: string }[]> {
+        const { q, status, batchId, miId, mcId } = params;
+        const where: Prisma.AccountWhereInput = {};
+
+        if (status) where.status = status as AccountStatus;
+        if (batchId) where.batchId = batchId;
+        if (miId) where.currentMiId = miId;
+        if (mcId) where.currentMcId = mcId;
+        if (q) {
+            where.OR = [
+                { accountName: { contains: q, mode: 'insensitive' } },
+                { googleAccountId: { contains: q, mode: 'insensitive' } },
+            ];
+        }
+
+        return prisma.account.findMany({
+            where,
+            select: {
+                id: true,
+                googleAccountId: true
+            }
+        });
+    }
     async findById(id: string): Promise<Account | null> {
         const account = await prisma.account.findUnique({
             where: { id },
@@ -130,18 +159,27 @@ export class PrismaAccountRepository implements IAccountRepository {
                 mccAccountId: data.mccAccountId,
                 status: (data.status as AccountStatus) || 'ACTIVE',
                 totalSpending: 0,
-                batch: { connect: { id: data.batchId } },
-            },
+                batchId: data.batchId,
+                currentMiId: data.currentMiId,
+                currentMcId: data.currentMcId,
+            } as any, // Use any because some fields might be optional or handled differently by Prisma generated types
         });
         return this.mapToEntity(account)!;
     }
 
     async update(id: string, data: Partial<Account>): Promise<Account> {
-        const updateData: Prisma.AccountUpdateInput = {};
-        if (data.accountName) updateData.accountName = data.accountName;
-        if (data.status) updateData.status = data.status as AccountStatus;
+        const updateData: any = {};
+        if (data.accountName !== undefined) updateData.accountName = data.accountName;
+        if (data.status !== undefined) updateData.status = data.status as AccountStatus;
         if (data.totalSpending !== undefined) updateData.totalSpending = data.totalSpending;
-        if (data.lastSynced) updateData.lastSynced = data.lastSynced;
+        if (data.lastSynced !== undefined) updateData.lastSynced = data.lastSynced;
+        if (data.batchId !== undefined) updateData.batchId = data.batchId;
+        if (data.currentMiId !== undefined) updateData.currentMiId = data.currentMiId;
+        if (data.currentMcId !== undefined) updateData.currentMcId = data.currentMcId;
+        if (data.mccAccountName !== undefined) updateData.mccAccountName = data.mccAccountName;
+        if (data.mccAccountId !== undefined) updateData.mccAccountId = data.mccAccountId;
+        if (data.timezone !== undefined) updateData.timezone = data.timezone;
+        if (data.currency !== undefined) updateData.currency = data.currency;
 
         const account = await prisma.account.update({
             where: { id },

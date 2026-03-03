@@ -76,7 +76,7 @@ export default function Batches() {
     const [spendingDays, setSpendingDays] = useState(7);
 
     const [page, setPage] = useState(1);
-    const [limit, setLimit] = useState(20);
+    const [limit, setLimit] = useState(50);
 
     // Sorting
     const [sortField, setSortField] = useState<SortField>('createdAt');
@@ -182,7 +182,7 @@ export default function Batches() {
             setSortOrder(sortOrder === 'asc' ? 'desc' : 'asc');
         } else {
             setSortField(field);
-            setSortOrder('asc');
+            setSortOrder('desc');
         }
     };
 
@@ -420,37 +420,59 @@ export default function Batches() {
                 )}
             </div>
 
-            {/* Selection Action Bar */}
-            {selectedIds.size > 0 && (
-                <div style={{
-                    marginBottom: 16,
-                    padding: '8px 16px',
-                    background: 'rgba(99, 102, 241, 0.1)',
-                    border: '1px solid var(--primary)',
-                    borderRadius: 8,
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'space-between'
-                }}>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-                        <span style={{ fontWeight: 500, color: 'var(--primary)' }}>
-                            Đã chọn {selectedIds.size} lô
-                        </span>
-                        <div style={{ height: 20, width: 1, background: 'var(--primary)', opacity: 0.3 }} />
-
-                        {canManageBatches(user?.role || 'VIEWER') && (
+            {/* Selection Action Bar Wrapper */}
+            <div style={{ minHeight: '64px', transition: 'all 0.2s' }}>
+                {selectedIds.size > 0 && (
+                    <div style={{
+                        marginBottom: 16,
+                        padding: '12px 16px',
+                        background: 'var(--bg-secondary)',
+                        borderRadius: 8,
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'space-between',
+                        border: '1px solid var(--border)',
+                        boxShadow: '0 2px 4px rgba(0,0,0,0.05)'
+                    }}>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+                            <span style={{ fontWeight: 500 }}>
+                                Đã chọn <strong style={{ color: 'var(--primary)' }}>{selectedIds.size}</strong> lô
+                            </span>
+                        </div>
+                        <div style={{ display: 'flex', gap: 8 }}>
+                            {canManageBatches(user?.role || 'VIEWER') && (
+                                <Dropdown
+                                    trigger={
+                                        <button
+                                            className="btn btn-secondary"
+                                            style={{ display: 'flex', alignItems: 'center', gap: 4 }}
+                                        >
+                                            Thao tác
+                                            <ChevronDown size={14} />
+                                        </button>
+                                    }
+                                    items={[
+                                        {
+                                            key: 'bulk-edit',
+                                            label: 'Cập nhật lô hàng loạt',
+                                            icon: <Edit2 size={14} />,
+                                            onClick: () => setShowBulkEditModal(true)
+                                        }
+                                    ]}
+                                />
+                            )}
                             <button
-                                className="btn btn-sm btn-primary"
-                                onClick={() => setShowBulkEditModal(true)}
-                                style={{ gap: 6 }}
+                                className="btn btn-secondary"
+                                onClick={() => {
+                                    setSelectedIds(new Set());
+                                }}
                             >
-                                <Edit2 size={14} />
-                                Cập nhật hàng loạt
+                                Bỏ chọn
                             </button>
-                        )}
+                        </div>
                     </div>
-                </div>
-            )}
+                )}
+            </div>
 
             <div className="card" style={{ overflow: 'visible' }}>
                 <div className="card-header" style={{ gap: '12px', flexWrap: 'wrap', justifyContent: 'flex-start', overflow: 'visible' }}>
@@ -581,6 +603,10 @@ export default function Batches() {
                             { key: '7', label: '7 ngày', onClick: () => setSpendingDays(7) },
                             { key: '14', label: '14 ngày', onClick: () => setSpendingDays(14) },
                             { key: '30', label: '30 ngày', onClick: () => setSpendingDays(30) },
+                            { key: '60', label: '60 ngày', onClick: () => setSpendingDays(60) },
+                            { key: '90', label: '90 ngày', onClick: () => setSpendingDays(90) },
+                            { key: '180', label: '180 ngày', onClick: () => setSpendingDays(180) },
+                            { key: '360', label: '360 ngày', onClick: () => setSpendingDays(360) },
                         ]}
                     />
 
@@ -737,16 +763,16 @@ export default function Batches() {
                                             )}
                                         </td>
                                         <td>
-                                            <span
+                                            <a
+                                                href={`/accounts?batchId=${batch.id}`}
                                                 className="link"
                                                 onClick={(e) => {
                                                     e.stopPropagation();
-                                                    navigate(`/accounts?batchId=${batch.id}`);
                                                 }}
-                                                style={{ color: 'var(--primary)', cursor: 'pointer', fontWeight: 500 }}
+                                                style={{ color: 'var(--primary)', cursor: 'pointer', fontWeight: 500, textDecoration: 'none' }}
                                             >
                                                 {batch.totalAccounts || batch._count?.accounts || 0}
-                                            </span>
+                                            </a>
                                         </td>
                                         <td>
                                             <span style={{ color: 'var(--secondary)', fontWeight: 500 }}>{batch.liveAccounts}</span>
@@ -758,16 +784,16 @@ export default function Batches() {
                                         </td>
                                         <td>
                                             {batch.partner ? (
-                                                <span
+                                                <a
+                                                    href={`/partners?search=${batch.partner?.name}`}
                                                     className="link"
                                                     onClick={(e) => {
                                                         e.stopPropagation();
-                                                        navigate(`/partners?search=${batch.partner?.name}`);
                                                     }}
-                                                    style={{ color: 'var(--primary)', cursor: 'pointer', fontWeight: 500 }}
+                                                    style={{ color: 'var(--primary)', cursor: 'pointer', fontWeight: 500, textDecoration: 'none' }}
                                                 >
                                                     {batch.partner.name}
-                                                </span>
+                                                </a>
                                             ) : '-'}
                                         </td>
                                         <td>

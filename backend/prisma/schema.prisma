@@ -221,12 +221,12 @@ model Account {
   updatedAt       DateTime      @updatedAt @map("updated_at")
 
   // Foreign keys
-  batchId      String  @map("batch_id")
+  batchId      String? @map("batch_id")
   currentMiId  String? @map("current_mi_id")
   currentMcId  String? @map("current_mc_id")
 
   // Relations
-  batch       AccountBatch       @relation(fields: [batchId], references: [id])
+  batch       AccountBatch?      @relation(fields: [batchId], references: [id])
   currentMi   InvoiceMCC?        @relation("CurrentMI", fields: [currentMiId], references: [id])
   currentMc   Customer?          @relation("CurrentMC", fields: [currentMcId], references: [id])
   miHistories AccountMIHistory[]

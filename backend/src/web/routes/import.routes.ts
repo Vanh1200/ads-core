@@ -7,6 +7,8 @@ const router = Router();
 router.post('/accounts', authenticateToken, isBuyer, upload.single('file'), importController.importAccounts);
 router.post('/parse-batch', authenticateToken, isBuyer, upload.single('file'), importController.parseBatch);
 router.post('/create-batch-with-accounts', authenticateToken, isBuyer, importController.createBatchWithAccounts);
+router.post('/parse-mi', authenticateToken, isBuyer, upload.single('file'), importController.parseInvoiceMCC);
+router.post('/create-mi-with-accounts', authenticateToken, isBuyer, importController.createInvoiceMCCWithAccounts);
 // router.post('/spending', authenticateToken, isUpdater, upload.single('file'), importController.importSpending);
 router.post('/spending/preview', authenticateToken, isUpdater, upload.single('file'), importController.previewSpending);
 router.post('/spending/confirm', authenticateToken, isUpdater, importController.confirmSpending);

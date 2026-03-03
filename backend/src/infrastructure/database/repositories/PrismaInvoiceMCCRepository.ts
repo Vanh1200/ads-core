@@ -7,13 +7,19 @@ export class PrismaInvoiceMCCRepository implements IInvoiceMCCRepository {
     async findById(id: string): Promise<InvoiceMCC | null> {
         const mcc = await prisma.invoiceMCC.findUnique({
             where: { id },
-            include: { partner: { select: { id: true, name: true } } },
+            include: {
+                _count: { select: { accounts: true } },
+                partner: { select: { id: true, name: true } }
+            },
         });
         return this.mapToEntity(mcc);
     }
 
     async findByMccId(mccInvoiceId: string): Promise<InvoiceMCC | null> {
-        const mcc = await prisma.invoiceMCC.findUnique({ where: { mccInvoiceId } });
+        const mcc = await prisma.invoiceMCC.findUnique({
+            where: { mccInvoiceId },
+            include: { _count: { select: { accounts: true } } }
+        });
         return this.mapToEntity(mcc);
     }
 
@@ -38,6 +44,12 @@ export class PrismaInvoiceMCCRepository implements IInvoiceMCCRepository {
         }
 
         const include = {
+            _count: {
+                select: {
+                    accounts: true,
+                    // We can't filter _count by status easily in old Prisma, but we can use it for total
+                }
+            },
             partner: { select: { id: true, name: true } },
             spendingRecords: startDate && endDate ? {
                 where: {
@@ -121,6 +133,7 @@ export class PrismaInvoiceMCCRepository implements IInvoiceMCCRepository {
     async update(id: string, data: Partial<InvoiceMCC>): Promise<InvoiceMCC> {
         const updateData: Prisma.InvoiceMCCUpdateInput = {};
         if (data.name) updateData.name = data.name;
+        if (data.mccInvoiceId) updateData.mccInvoiceId = data.mccInvoiceId;
         if (data.status) updateData.status = data.status as InvoiceMCCStatus;
         if (data.creditStatus) updateData.creditStatus = data.creditStatus as CreditStatus;
         if (data.notes !== undefined) updateData.notes = data.notes;
@@ -164,6 +177,7 @@ export class PrismaInvoiceMCCRepository implements IInvoiceMCCRepository {
 
         return {
             ...prismaMcc,
+            linkedAccountsCount: prismaMcc._count?.accounts ?? prismaMcc.linkedAccountsCount ?? 0,
             rangeSpending,
         } as InvoiceMCC;
     }

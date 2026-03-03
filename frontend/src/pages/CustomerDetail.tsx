@@ -138,13 +138,19 @@ export default function CustomerDetail() {
                     </div>
                 </div>
 
-                <button
+                <a
+                    href={`/accounts?mcId=${customer.id}`}
                     className="btn btn-primary"
-                    onClick={() => navigate(`/accounts?mcId=${customer.id}`)}
+                    onClick={(e) => {
+                        if (!e.ctrlKey && !e.metaKey) {
+                            e.preventDefault();
+                            navigate(`/accounts?mcId=${customer.id}`);
+                        }
+                    }}
                 >
                     <List size={16} style={{ marginRight: 8 }} />
                     Xem danh sách tài khoản
-                </button>
+                </a>
             </div>
 
             {/* Tabs */}
@@ -211,13 +217,19 @@ export default function CustomerDetail() {
                                     <div>
                                         <div className="info-card-label">Tổng số tài khoản</div>
                                         <div className="info-card-value">
-                                            <span
+                                            <a
+                                                href={`/accounts?mcId=${customer.id}`}
                                                 className="link"
-                                                onClick={() => navigate(`/accounts?mcId=${customer.id}`)}
-                                                style={{ color: 'var(--primary)', cursor: 'pointer', fontWeight: 500 }}
+                                                onClick={(e) => {
+                                                    if (!e.ctrlKey && !e.metaKey) {
+                                                        e.preventDefault();
+                                                        navigate(`/accounts?mcId=${customer.id}`);
+                                                    }
+                                                }}
+                                                style={{ color: 'var(--primary)', cursor: 'pointer', fontWeight: 500, textDecoration: 'none' }}
                                             >
                                                 {customer.totalAccounts || 0}
-                                            </span>
+                                            </a>
                                         </div>
                                     </div>
                                 </div>
@@ -229,13 +241,19 @@ export default function CustomerDetail() {
                                     <div>
                                         <div className="info-card-label">Đang hoạt động</div>
                                         <div className="info-card-value" style={{ color: 'var(--success)' }}>
-                                            <span
+                                            <a
+                                                href={`/accounts?mcId=${customer.id}&status=ACTIVE`}
                                                 className="link"
-                                                onClick={() => navigate(`/accounts?mcId=${customer.id}&status=ACTIVE`)}
-                                                style={{ color: 'var(--secondary)', cursor: 'pointer', fontWeight: 500 }}
+                                                onClick={(e) => {
+                                                    if (!e.ctrlKey && !e.metaKey) {
+                                                        e.preventDefault();
+                                                        navigate(`/accounts?mcId=${customer.id}&status=ACTIVE`);
+                                                    }
+                                                }}
+                                                style={{ color: 'var(--secondary)', cursor: 'pointer', fontWeight: 500, textDecoration: 'none' }}
                                             >
                                                 {customer.activeAccounts || 0}
-                                            </span>
+                                            </a>
                                         </div>
                                     </div>
                                 </div>

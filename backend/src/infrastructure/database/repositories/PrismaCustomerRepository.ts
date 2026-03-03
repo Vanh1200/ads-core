@@ -7,7 +7,10 @@ export class PrismaCustomerRepository implements ICustomerRepository {
     async findById(id: string): Promise<Customer | null> {
         const customer = await prisma.customer.findUnique({
             where: { id },
-            include: { assignedStaff: { select: { id: true, fullName: true } } },
+            include: {
+                _count: { select: { accounts: true } },
+                assignedStaff: { select: { id: true, fullName: true } }
+            },
         });
         return this.mapToEntity(customer);
     }
@@ -35,6 +38,7 @@ export class PrismaCustomerRepository implements ICustomerRepository {
         }
 
         const include = {
+            _count: { select: { accounts: true } },
             assignedStaff: { select: { id: true, fullName: true } },
             accounts: {
                 include: {
@@ -163,6 +167,7 @@ export class PrismaCustomerRepository implements ICustomerRepository {
 
         return {
             ...prismaCustomer,
+            totalAccounts: prismaCustomer._count?.accounts ?? prismaCustomer.totalAccounts ?? 0,
             totalSpending: Number(prismaCustomer.totalSpending),
             rangeSpending,
         } as Customer;

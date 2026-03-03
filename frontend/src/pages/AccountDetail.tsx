@@ -219,7 +219,21 @@ export default function AccountDetail() {
                                     </div>
                                     <div>
                                         <div className="info-card-label">Lô tài khoản (MA)</div>
-                                        <div className="info-card-value">{account.batch.mccAccountName}</div>
+                                        <div className="info-card-value">
+                                            <a
+                                                href={`/batches/${account.batch.id}`}
+                                                className="link"
+                                                onClick={(e) => {
+                                                    if (!e.ctrlKey && !e.metaKey) {
+                                                        e.preventDefault();
+                                                        navigate(`/batches/${account.batch.id}`);
+                                                    }
+                                                }}
+                                                style={{ color: 'var(--primary)', cursor: 'pointer', fontWeight: 500, textDecoration: 'none' }}
+                                            >
+                                                {account.batch.mccAccountName}
+                                            </a>
+                                        </div>
                                     </div>
                                 </div>
 
@@ -229,7 +243,23 @@ export default function AccountDetail() {
                                     </div>
                                     <div>
                                         <div className="info-card-label">Invoice MCC (MI)</div>
-                                        <div className="info-card-value">{account.currentMi?.name || 'Chưa gán'}</div>
+                                        <div className="info-card-value">
+                                            {account.currentMi ? (
+                                                <a
+                                                    href={`/invoice-mccs/${account.currentMi?.id}`}
+                                                    className="link"
+                                                    onClick={(e) => {
+                                                        if (!e.ctrlKey && !e.metaKey) {
+                                                            e.preventDefault();
+                                                            navigate(`/invoice-mccs/${account.currentMi?.id}`);
+                                                        }
+                                                    }}
+                                                    style={{ color: 'var(--primary)', cursor: 'pointer', fontWeight: 500, textDecoration: 'none' }}
+                                                >
+                                                    {account.currentMi.name}
+                                                </a>
+                                            ) : 'Chưa gán'}
+                                        </div>
                                     </div>
                                 </div>
 
@@ -239,7 +269,23 @@ export default function AccountDetail() {
                                     </div>
                                     <div>
                                         <div className="info-card-label">Khách hàng (MC)</div>
-                                        <div className="info-card-value">{account.currentMc?.name || 'Chưa gán'}</div>
+                                        <div className="info-card-value">
+                                            {account.currentMc ? (
+                                                <a
+                                                    href={`/customers/${account.currentMc?.id}`}
+                                                    className="link"
+                                                    onClick={(e) => {
+                                                        if (!e.ctrlKey && !e.metaKey) {
+                                                            e.preventDefault();
+                                                            navigate(`/customers/${account.currentMc?.id}`);
+                                                        }
+                                                    }}
+                                                    style={{ color: 'var(--primary)', cursor: 'pointer', fontWeight: 500, textDecoration: 'none' }}
+                                                >
+                                                    {account.currentMc.name}
+                                                </a>
+                                            ) : 'Chưa gán'}
+                                        </div>
                                     </div>
                                 </div>
 

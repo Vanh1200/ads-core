@@ -7,7 +7,11 @@ export class PrismaBatchRepository implements IBatchRepository {
     async findById(id: string): Promise<AccountBatch | null> {
         const batch = await prisma.accountBatch.findUnique({
             where: { id },
-            include: { accounts: { include: { currentMi: true, currentMc: true } } },
+            include: {
+                _count: { select: { accounts: true } },
+                accounts: { include: { currentMi: true, currentMc: true } },
+                partner: true
+            },
         });
         return this.mapToEntity(batch);
     }
@@ -34,6 +38,8 @@ export class PrismaBatchRepository implements IBatchRepository {
         }
 
         const include = {
+            _count: { select: { accounts: true } },
+            partner: true,
             accounts: {
                 include: {
                     currentMi: true,
@@ -192,6 +198,7 @@ export class PrismaBatchRepository implements IBatchRepository {
 
         return {
             ...prismaBatch,
+            totalAccounts: prismaBatch._count?.accounts ?? prismaBatch.totalAccounts ?? 0,
             status: prismaBatch.status as 'ACTIVE' | 'INACTIVE',
             rangeSpending,
         } as AccountBatch;

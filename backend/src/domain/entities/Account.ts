@@ -11,7 +11,7 @@ export interface Account {
     lastSynced?: Date | null;
     createdAt: Date;
     updatedAt: Date;
-    batchId: string;
+    batchId?: string | null;
     currentMiId?: string | null;
     currentMcId?: string | null;
 }

@@ -162,6 +162,8 @@ export default function Dashboard() {
                                     <option value="30">30 ngày qua</option>
                                     <option value="60">60 ngày qua</option>
                                     <option value="90">90 ngày qua</option>
+                                    <option value="180">180 ngày qua</option>
+                                    <option value="360">360 ngày qua</option>
                                 </select>
                             </div>
                         </div>

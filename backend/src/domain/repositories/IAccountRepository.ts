@@ -1,6 +1,13 @@
 import { Account } from '../entities/Account';
 
 export interface IAccountRepository {
+    findIdsByFilter(params: {
+        q?: string;
+        status?: string;
+        batchId?: string;
+        miId?: string;
+        mcId?: string;
+    }): Promise<{ id: string; googleAccountId: string }[]>;
     findById(id: string): Promise<Account | null>;
     findByGoogleId(googleAccountId: string): Promise<Account | null>;
     list(params: {

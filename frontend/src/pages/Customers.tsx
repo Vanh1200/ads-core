@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useNavigate } from 'react-router-dom';
-import { Plus, Search, Filter, Edit2, Trash2, ChevronUp, ChevronDown } from 'lucide-react';
+import { Plus, Search, Filter, Edit2, Trash2, ChevronUp, ChevronDown, Copy } from 'lucide-react';
 import Dropdown from '../components/Dropdown';
 import SearchDropdown from '../components/SearchDropdown';
 import { customersApi, usersApi } from '../api/client';
@@ -40,7 +40,7 @@ export default function Customers() {
     const [selectedCustomer, setSelectedCustomer] = useState<Customer | null>(null);
     const [deleteId, setDeleteId] = useState<string | null>(null);
     const [page, setPage] = useState(1);
-    const [limit, setLimit] = useState(20);
+    const [limit, setLimit] = useState(50);
     const [toast, setToast] = useState<{ message: string; type: 'success' | 'error' } | null>(null);
 
     // Sorting
@@ -48,6 +48,13 @@ export default function Customers() {
     const [sortOrder, setSortOrder] = useState<SortOrder>('desc');
 
     const [isSearchOpen, setIsSearchOpen] = useState(false);
+
+    // Selection State
+    const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
+    const [selectionAnchor, setSelectionAnchor] = useState<number | null>(null);
+    const [showBulkEditStatus, setShowBulkEditStatus] = useState(false);
+    const [bulkStatus, setBulkStatus] = useState('');
+    const [confirmBulkDelete, setConfirmBulkDelete] = useState(false);
 
     const queryClient = useQueryClient();
 
@@ -57,6 +64,11 @@ export default function Customers() {
             return () => clearTimeout(timer);
         }
     }, [toast]);
+
+    // Reset global selection when filters change
+    useEffect(() => {
+        setSelectedIds(new Set());
+    }, [search, spendingDays]);
 
     const showToast = (message: string, type: 'success' | 'error') => {
         setToast({ message, type });
@@ -142,12 +154,78 @@ export default function Customers() {
     const pagination = data?.data?.pagination || { total: 0, pages: 0 };
     const users = usersData?.data?.data || [];
 
+    // Bulk Management
+    const allSelected = (customers.length > 0 && customers.every((c: Customer) => selectedIds.has(c.id)));
+    const someSelected = (customers.length > 0 && customers.some((c: Customer) => selectedIds.has(c.id)));
+
+    const toggleSelectAll = () => {
+        if (allSelected) {
+            const newSet = new Set(selectedIds);
+            customers.forEach((c: Customer) => newSet.delete(c.id));
+            setSelectedIds(newSet);
+        } else {
+            const newSet = new Set(selectedIds);
+            customers.forEach((c: Customer) => newSet.add(c.id));
+            setSelectedIds(newSet);
+        }
+    };
+
+    const toggleSelect = (id: string, index: number, event?: any) => {
+        const isShift = event?.shiftKey || (event?.nativeEvent && (event.nativeEvent as any).shiftKey);
+
+        setSelectedIds(prev => {
+            const next = new Set(prev);
+            if (isShift && selectionAnchor !== null && selectionAnchor !== index) {
+                const start = Math.min(selectionAnchor, index);
+                const end = Math.max(selectionAnchor, index);
+                const shouldSelect = !prev.has(id);
+
+                for (let i = start; i <= end; i++) {
+                    const mcId = customers[i]?.id;
+                    if (mcId) {
+                        if (shouldSelect) next.add(mcId);
+                        else next.delete(mcId);
+                    }
+                }
+            } else {
+                if (next.has(id)) next.delete(id);
+                else next.add(id);
+                setSelectionAnchor(index);
+            }
+            return next;
+        });
+    };
+
+    const bulkUpdateStatusMutation = useMutation({
+        mutationFn: ({ ids, status }: { ids: string[]; status: string }) =>
+            Promise.all(ids.map(id => customersApi.update(id, { status }))),
+        onSuccess: () => {
+            queryClient.invalidateQueries({ queryKey: ['customers'] });
+            showToast(`Đã cập nhật trạng thái cho ${selectedIds.size} khách hàng thành công!`, 'success');
+            setSelectedIds(new Set());
+            setShowBulkEditStatus(false);
+        },
+        onError: () => showToast('Có lỗi xảy ra khi cập nhật trạng thái!', 'error')
+    });
+
+    const bulkDeleteMutation = useMutation({
+        mutationFn: (ids: string[]) =>
+            Promise.all(ids.map(id => customersApi.delete(id))),
+        onSuccess: () => {
+            queryClient.invalidateQueries({ queryKey: ['customers'] });
+            showToast(`Đã xóa ${selectedIds.size} khách hàng thành công!`, 'success');
+            setSelectedIds(new Set());
+            setConfirmBulkDelete(false);
+        },
+        onError: () => showToast('Có lỗi xảy ra hoặc khách hàng không thể xóa!', 'error')
+    });
+
     const handleSort = (field: SortField) => {
         if (sortField === field) {
             setSortOrder(sortOrder === 'asc' ? 'desc' : 'asc');
         } else {
             setSortField(field);
-            setSortOrder('asc');
+            setSortOrder('desc');
         }
     };
 
@@ -181,7 +259,16 @@ export default function Customers() {
         3: '3 ngày',
         7: '7 ngày',
         14: '14 ngày',
-        30: '30 ngày'
+        30: '30 ngày',
+        60: '60 ngày',
+        90: '90 ngày',
+        180: '180 ngày',
+        360: '360 ngày'
+    };
+
+    const statusLabels: Record<string, { label: string; class: string }> = {
+        ACTIVE: { label: 'Hoạt động', class: 'success' },
+        INACTIVE: { label: 'Không hoạt động', class: 'danger' },
     };
 
     return (
@@ -202,6 +289,86 @@ export default function Customers() {
                         <Plus size={18} />
                         Thêm khách hàng
                     </button>
+                )}
+            </div>
+
+            {/* Selection Action Bar */}
+            <div style={{ minHeight: '64px', transition: 'all 0.2s' }}>
+                {selectedIds.size > 0 && (
+                    <div style={{
+                        marginBottom: 16,
+                        padding: '12px 16px',
+                        background: 'var(--bg-secondary)',
+                        borderRadius: 8,
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'space-between',
+                        border: '1px solid var(--border)',
+                        boxShadow: '0 2px 4px rgba(0,0,0,0.05)'
+                    }}>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+                            <span style={{ fontWeight: 500 }}>
+                                Đã chọn <strong style={{ color: 'var(--primary)' }}>{selectedIds.size}</strong> khách hàng
+                            </span>
+                        </div>
+                        <div style={{ display: 'flex', gap: 8 }}>
+                            <button
+                                className="btn btn-secondary"
+                                onClick={async (e) => {
+                                    e.currentTarget.blur();
+                                    try {
+                                        const idList = customers
+                                            .filter((c: any) => selectedIds.has(c.id))
+                                            .map((c: any) => c.id)
+                                            .join('\n');
+                                        await navigator.clipboard.writeText(idList);
+                                        showToast(`Đã sao chép ${selectedIds.size} ID vào clipboard`, 'success');
+                                    } catch (err) {
+                                        showToast('Lỗi khi sao chép', 'error');
+                                    }
+                                }}
+                            >
+                                <Copy size={16} />
+                                Sao chép ID
+                            </button>
+                            <Dropdown
+                                trigger={
+                                    <button
+                                        className="btn btn-secondary"
+                                        style={{ display: 'flex', alignItems: 'center', gap: 4 }}
+                                    >
+                                        Thao tác
+                                        <ChevronDown size={14} />
+                                    </button>
+                                }
+                                items={[
+                                    {
+                                        key: 'update-status',
+                                        label: 'Thay đổi trạng thái',
+                                        icon: <Edit2 size={14} />,
+                                        onClick: () => setShowBulkEditStatus(true)
+                                    },
+                                    { type: 'divider', key: 'd1', label: '' },
+                                    {
+                                        key: 'delete-customer',
+                                        label: 'Xóa khách hàng',
+                                        icon: <Trash2 size={14} />,
+                                        danger: true,
+                                        onClick: () => setConfirmBulkDelete(true)
+                                    }
+                                ]}
+                            />
+
+                            <button
+                                className="btn btn-secondary"
+                                onClick={() => {
+                                    setSelectedIds(new Set());
+                                }}
+                            >
+                                Bỏ chọn
+                            </button>
+                        </div>
+                    </div>
                 )}
             </div>
 
@@ -250,137 +417,167 @@ export default function Customers() {
                             { key: '7', label: '7 ngày', onClick: () => setSpendingDays(7) },
                             { key: '14', label: '14 ngày', onClick: () => setSpendingDays(14) },
                             { key: '30', label: '30 ngày', onClick: () => setSpendingDays(30) },
+                            { key: '60', label: '60 ngày', onClick: () => setSpendingDays(60) },
+                            { key: '90', label: '90 ngày', onClick: () => setSpendingDays(90) },
+                            { key: '180', label: '180 ngày', onClick: () => setSpendingDays(180) },
+                            { key: '360', label: '360 ngày', onClick: () => setSpendingDays(360) },
                         ]}
                     />
                 </div>
-                <div className="table-container">
-                    <table className="data-table">
-                        <thead>
-                            <tr>
-                                <th style={{ cursor: 'pointer', userSelect: 'none' }} onClick={() => handleSort('name')}>
-                                    <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
-                                        Tên khách hàng <SortIcon field="name" />
-                                    </div>
-                                </th>
-                                <th style={{ cursor: 'pointer', userSelect: 'none' }} onClick={() => handleSort('status')}>
-                                    <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
-                                        Trạng thái <SortIcon field="status" />
-                                    </div>
-                                </th>
-                                <th style={{ cursor: 'pointer', userSelect: 'none' }} onClick={() => handleSort('totalAccounts')}>
-                                    <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
-                                        Tài khoản <SortIcon field="totalAccounts" />
-                                    </div>
-                                </th>
-                                <th style={{ cursor: 'pointer', userSelect: 'none' }} onClick={() => handleSort('totalSpending')}>
-                                    <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
-                                        Tổng chi phí <SortIcon field="totalSpending" />
-                                    </div>
-                                </th>
-                                <th style={{ width: '10%', cursor: 'pointer', userSelect: 'none' }} onClick={() => handleSort('rangeSpending')}>
-                                    <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
-                                        Chi phí <SortIcon field="rangeSpending" />
-                                    </div>
-                                </th>
-                                <th style={{ width: '15%' }}>NV phụ trách</th>
-                                <th style={{ width: '120px', textAlign: 'right' }}>Thao tác</th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                            {isLoading ? (
-                                <tr>
-                                    <td colSpan={7} style={{ textAlign: 'center', padding: 40 }}>
-                                        <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', gap: 12 }}>
-                                            <div className="spinner" />
-                                            <span style={{ color: 'var(--text-muted)' }}>Đang tải dữ liệu...</span>
-                                        </div>
-                                    </td>
-                                </tr>
-                            ) : customers.length > 0 ? (
-                                customers.map((customer: Customer) => (
-                                    <tr
-                                        key={customer.id}
-                                        onClick={() => {
-                                            if (window.getSelection()?.toString()) return;
-                                            navigate(`/customers/${customer.id}`);
-                                        }}
-                                        style={{ cursor: 'pointer' }}
-                                        className="clickable-row"
-                                    >
-                                        <td><strong>{customer.name}</strong></td>
-                                        <td>
-                                            <span className={`badge badge-${customer.status === 'ACTIVE' ? 'success' : 'danger'}`} style={{ whiteSpace: 'nowrap' }}>
-                                                {customer.status === 'ACTIVE' ? 'Hoạt động' : 'Không hoạt động'}
-                                            </span>
-                                        </td>
-                                        <td>
-                                            <span
-                                                className="link"
-                                                onClick={(e) => {
-                                                    e.stopPropagation();
-                                                    navigate(`/accounts?mcId=${customer.id}`);
-                                                }}
-                                                style={{ color: 'var(--primary)', cursor: 'pointer', fontWeight: 500 }}
-                                            >
-                                                {customer._count?.accounts ?? customer.totalAccounts ?? 0}
-                                            </span>
-                                        </td>
-                                        <td>${parseFloat(customer.totalSpending || '0').toLocaleString()}</td>
-                                        <td>
-                                            <span style={{ fontWeight: 600, fontSize: 13, color: (customer.rangeSpending || 0) > 0 ? '#10b981' : 'inherit' }}>
-                                                {new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD' }).format(customer.rangeSpending || 0)}
-                                            </span>
-                                        </td>
-                                        <td>{customer.assignedStaff?.fullName || '-'}</td>
-                                        <td>
-                                            {canAssignMC(user?.role || 'VIEWER') && (
-                                                <div className="actions" style={{ justifyContent: 'flex-end' }} onClick={(e) => e.stopPropagation()}>
-                                                    <button
-                                                        className="btn-icon"
-                                                        title="Chỉnh sửa"
-                                                        onClick={(e) => {
-                                                            e.stopPropagation();
-                                                            setSelectedCustomer(customer);
-                                                            setShowModal(true);
-                                                        }}
-                                                    >
-                                                        <Edit2 size={18} />
-                                                    </button>
-                                                    <button
-                                                        className="btn-icon danger"
-                                                        title="Xóa"
-                                                        onClick={(e) => {
-                                                            e.stopPropagation();
-                                                            setDeleteId(customer.id);
-                                                        }}
-                                                    >
-                                                        <Trash2 size={18} />
-                                                    </button>
-                                                </div>
-                                            )}
-                                        </td>
-                                    </tr>
-                                ))
-                            ) : (
-                                <tr>
-                                    <td colSpan={7} style={{ textAlign: 'center', padding: 40, color: 'var(--text-muted)' }}>
-                                        <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 12 }}>
-                                            <Search size={32} style={{ opacity: 0.3 }} />
-                                            <span>Không tìm thấy khách hàng nào phù hợp</span>
-                                            {search && (
-                                                <button className="btn btn-secondary btn-sm" onClick={() => { setSearch(''); setPage(1); }}>
-                                                    Xóa bộ lọc
-                                                </button>
-                                            )}
-                                        </div>
-                                    </td>
-                                </tr>
-                            )}
-                        </tbody>
-                    </table>
-                </div>
 
-                {pagination.total > 0 && (
+                <table className="data-table">
+                    <thead>
+                        <tr>
+                            <th style={{ width: 40, textAlign: 'center' }}>
+                                <input
+                                    type="checkbox"
+                                    className="form-checkbox"
+                                    checked={allSelected}
+                                    ref={(el) => {
+                                        if (el) el.indeterminate = someSelected && !allSelected;
+                                    }}
+                                    onChange={toggleSelectAll}
+                                    style={{ cursor: 'pointer' }}
+                                />
+                            </th>
+                            <th style={{ cursor: 'pointer', userSelect: 'none' }} onClick={() => handleSort('name')}>
+                                <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
+                                    Tên khách hàng <SortIcon field="name" />
+                                </div>
+                            </th>
+                            <th style={{ cursor: 'pointer', userSelect: 'none' }} onClick={() => handleSort('status')}>
+                                <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
+                                    Trạng thái <SortIcon field="status" />
+                                </div>
+                            </th>
+                            <th style={{ cursor: 'pointer', userSelect: 'none', textAlign: 'right' }} onClick={() => handleSort('totalAccounts')}>
+                                <div style={{ display: 'flex', alignItems: 'center', gap: 4, justifyContent: 'flex-end' }}>
+                                    Tài khoản <SortIcon field="totalAccounts" />
+                                </div>
+                            </th>
+                            <th style={{ cursor: 'pointer', userSelect: 'none', textAlign: 'right' }} onClick={() => handleSort('totalSpending')}>
+                                <div style={{ display: 'flex', alignItems: 'center', gap: 4, justifyContent: 'flex-end' }}>
+                                    Tổng chi phí <SortIcon field="totalSpending" />
+                                </div>
+                            </th>
+                            <th style={{ width: '10%', cursor: 'pointer', userSelect: 'none', textAlign: 'right' }} onClick={() => handleSort('rangeSpending')}>
+                                <div style={{ display: 'flex', alignItems: 'center', gap: 4, justifyContent: 'flex-end' }}>
+                                    Chi phí <SortIcon field="rangeSpending" />
+                                </div>
+                            </th>
+                            <th style={{ width: '15%' }}>NV phụ trách</th>
+                            <th style={{ width: '120px', textAlign: 'right' }}>Thao tác</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {isLoading ? (
+                            <tr>
+                                <td colSpan={7} style={{ textAlign: 'center', padding: 40 }}>
+                                    <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', gap: 12 }}>
+                                        <div className="spinner" />
+                                        <span style={{ color: 'var(--text-muted)' }}>Đang tải dữ liệu...</span>
+                                    </div>
+                                </td>
+                            </tr>
+                        ) : customers.length > 0 ? (
+                            customers.map((customer: Customer, index: number) => (
+                                <tr
+                                    key={customer.id}
+                                    onClick={(e) => {
+                                        if (window.getSelection()?.toString()) return;
+                                        if ((e.target as HTMLElement).tagName.toLowerCase() === 'input') return;
+                                        navigate(`/customers/${customer.id}`);
+                                    }}
+                                    style={{ cursor: 'pointer' }}
+                                    className={`clickable-row ${selectedIds.has(customer.id) ? 'selected-row' : ''}`}
+                                >
+                                    <td style={{ textAlign: 'center' }} onClick={(e) => e.stopPropagation()}>
+                                        <input
+                                            type="checkbox"
+                                            className="form-checkbox"
+                                            checked={selectedIds.has(customer.id)}
+                                            onChange={(e) => toggleSelect(customer.id, index, e)}
+                                            onClick={(e) => e.stopPropagation()}
+                                        />
+                                    </td>
+                                    <td>
+                                        <strong>{customer.name}</strong>
+                                    </td>
+                                    <td>
+                                        <span className={`badge badge-${statusLabels[customer.status]?.class || 'info'}`} style={{ whiteSpace: 'nowrap' }}>
+                                            {statusLabels[customer.status]?.label || customer.status}
+                                        </span>
+                                    </td>
+                                    <td style={{ textAlign: 'right' }}>
+                                        <a
+                                            href={`/accounts?mcId=${customer.id}`}
+                                            className="link"
+                                            onClick={(e) => {
+                                                e.stopPropagation();
+                                            }}
+                                            style={{ color: 'var(--primary)', cursor: 'pointer', fontWeight: 500, textDecoration: 'none' }}
+                                        >
+                                            {customer._count?.accounts ?? customer.totalAccounts ?? 0}
+                                        </a>
+                                    </td>
+                                    <td style={{ textAlign: 'right' }}>${parseFloat(customer.totalSpending || '0').toLocaleString()}</td>
+                                    <td style={{ textAlign: 'right' }}>
+                                        <span style={{ fontWeight: 600, fontSize: 13, color: (customer.rangeSpending || 0) > 0 ? '#10b981' : 'inherit' }}>
+                                            {new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD' }).format(customer.rangeSpending || 0)}
+                                        </span>
+                                    </td>
+                                    <td>{customer.assignedStaff?.fullName || '-'}</td>
+                                    <td>
+                                        {canAssignMC(user?.role || 'VIEWER') && (
+                                            <div className="actions" style={{ justifyContent: 'flex-end' }} onClick={(e) => e.stopPropagation()}>
+                                                <button
+                                                    className="btn-icon"
+                                                    title="Chỉnh sửa"
+                                                    onClick={(e) => {
+                                                        e.stopPropagation();
+                                                        setSelectedCustomer(customer);
+                                                        setShowModal(true);
+                                                    }}
+                                                >
+                                                    <Edit2 size={18} />
+                                                </button>
+                                                <button
+                                                    className="btn-icon danger"
+                                                    title="Xóa"
+                                                    onClick={(e) => {
+                                                        e.stopPropagation();
+                                                        setDeleteId(customer.id);
+                                                    }}
+                                                >
+                                                    <Trash2 size={18} />
+                                                </button>
+
+                                            </div>
+                                        )}
+                                    </td>
+                                </tr>
+                            ))
+                        ) : (
+                            <tr>
+                                <td colSpan={9} style={{ textAlign: 'center', padding: 40, color: 'var(--text-muted)' }}>
+                                    <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 12 }}>
+                                        <Search size={32} style={{ opacity: 0.3 }} />
+                                        <span>Không tìm thấy khách hàng nào phù hợp</span>
+                                        {search && (
+                                            <button className="btn btn-secondary btn-sm" onClick={() => { setSearch(''); setPage(1); }}>
+                                                Xóa bộ lọc
+                                            </button>
+                                        )}
+                                    </div>
+                                </td>
+                            </tr>
+                        )}
+                    </tbody>
+                </table>
+            </div>
+
+            {
+                pagination.total > 0 && (
                     <div className="pagination-container" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: 16 }}>
                         <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
                             <span style={{ color: 'var(--text-muted)', fontSize: 13 }}>Số hàng hiển thị:</span>
@@ -413,19 +610,99 @@ export default function Customers() {
                                 ← Trước
                             </button>
                             <span className="pagination-info">
-                                Trang {page} / {pagination.pages}
+                                Trang {page} / {pagination.pages || 1}
                             </span>
                             <button
                                 className="pagination-btn"
-                                disabled={page >= pagination.pages}
+                                disabled={page >= (pagination.pages || 1)}
                                 onClick={() => setPage(page + 1)}
                             >
                                 Sau →
                             </button>
                         </div>
                     </div>
-                )}
-            </div>
+                )
+            }
+
+            {/* Bulk Status Update Modal */}
+            {
+                showBulkEditStatus && (
+                    <div className="modal-overlay" onClick={() => setShowBulkEditStatus(false)}>
+                        <div className="modal" onClick={(e) => e.stopPropagation()}>
+                            <div className="modal-header">
+                                <h3 className="modal-title">Thay đổi trạng thái hàng loạt</h3>
+                                <button className="modal-close" onClick={() => setShowBulkEditStatus(false)}>×</button>
+                            </div>
+                            <div className="modal-body">
+                                <p style={{ marginBottom: 16 }}>
+                                    Bạn đang cập nhật trạng thái cho <strong style={{ color: 'var(--primary)' }}>{selectedIds.size}</strong> khách hàng.
+                                </p>
+                                <div className="form-group">
+                                    <label className="form-label">Trạng thái mới *</label>
+                                    <select
+                                        className="form-select"
+                                        value={bulkStatus}
+                                        onChange={(e) => setBulkStatus(e.target.value)}
+                                    >
+                                        <option value="">-- Chọn trạng thái --</option>
+                                        <option value="ACTIVE">Hoạt động</option>
+                                        <option value="INACTIVE">Không hoạt động</option>
+                                        <option value="SUSPENDED">Tạm ngưng</option>
+                                    </select>
+                                </div>
+                            </div>
+                            <div className="modal-footer">
+                                <button className="btn btn-secondary" onClick={() => setShowBulkEditStatus(false)}>Hủy</button>
+                                <button
+                                    className="btn btn-primary"
+                                    disabled={!bulkStatus || bulkUpdateStatusMutation.isPending}
+                                    onClick={() => {
+                                        bulkUpdateStatusMutation.mutate({
+                                            ids: Array.from(selectedIds),
+                                            status: bulkStatus
+                                        });
+                                    }}
+                                >
+                                    {bulkUpdateStatusMutation.isPending ? 'Đang cập nhật...' : 'Cập nhật'}
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                )
+            }
+
+            {/* Bulk Delete Confirm Modal */}
+            {
+                confirmBulkDelete && (
+                    <div className="modal-overlay" onClick={() => setConfirmBulkDelete(false)}>
+                        <div className="modal" onClick={e => e.stopPropagation()}>
+                            <div className="modal-header">
+                                <h3 className="modal-title" style={{ display: 'flex', alignItems: 'center', gap: 8, color: 'var(--danger)' }}>
+                                    <Trash2 size={20} />
+                                    Xóa khách hàng
+                                </h3>
+                                <button className="modal-close" onClick={() => setConfirmBulkDelete(false)}>×</button>
+                            </div>
+                            <div className="modal-body">
+                                <p>Bạn có chắc chắn muốn xóa <strong>{selectedIds.size}</strong> khách hàng đã chọn không?</p>
+                                <p style={{ color: 'var(--text-muted)', fontSize: 13, marginTop: 4 }}>
+                                    Hành động này không thể hoàn tác.
+                                </p>
+                            </div>
+                            <div className="modal-footer">
+                                <button className="btn btn-secondary" onClick={() => setConfirmBulkDelete(false)}>Hủy</button>
+                                <button
+                                    className="btn btn-danger"
+                                    onClick={() => bulkDeleteMutation.mutate(Array.from(selectedIds))}
+                                    disabled={bulkDeleteMutation.isPending}
+                                >
+                                    {bulkDeleteMutation.isPending ? 'Đang xóa...' : 'Xác nhận xóa'}
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                )
+            }
 
             {
                 showModal && (
