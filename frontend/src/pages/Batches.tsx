@@ -781,7 +781,7 @@ export default function Batches() {
                                                 onClick={(e) => {
                                                     e.stopPropagation();
                                                 }}
-                                                style={{ color: 'var(--primary)', cursor: 'pointer', fontWeight: 500, textDecoration: 'none' }}
+                                                style={{ color: '#10b981', cursor: 'pointer', fontWeight: 500, textDecoration: 'none' }}
                                             >
                                                 {batch.liveAccounts}
                                             </a>
