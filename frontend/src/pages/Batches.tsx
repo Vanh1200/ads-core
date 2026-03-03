@@ -379,8 +379,8 @@ export default function Batches() {
                 partnerId: formData.get('partnerId') || null,
                 status: formData.get('status'),
                 timezone: formData.get('timezone'),
-                year: formData.get('year') === 'Mix' ? null : (formData.get('year') ? parseInt(formData.get('year') as string) : null),
-                isMixYear: formData.get('year') === 'Mix',
+                year: formData.get('isMixYear') === 'on' ? null : (formData.get('year') ? parseInt(formData.get('year') as string) : null),
+                isMixYear: formData.get('isMixYear') === 'on',
                 readiness: parseInt(formData.get('readiness') as string) || 0,
                 notes: formData.get('notes'),
             },
@@ -1022,18 +1022,28 @@ export default function Batches() {
                                                 </div>
                                                 <div className="form-group" style={{ margin: 0 }}>
                                                     <label className="form-label">Năm tạo (Year) *</label>
-                                                    <select
-                                                        className={`form-select ${!editedYear ? 'border-danger' : ''}`}
-                                                        style={!editedYear ? { borderColor: 'var(--danger)' } : {}}
-                                                        value={editedYear}
-                                                        onChange={(e) => setEditedYear(e.target.value)}
-                                                    >
-                                                        <option value="">-- Năm --</option>
-                                                        <option value="Mix">Mix</option>
-                                                        <option value="2024">2024</option>
-                                                        <option value="2025">2025</option>
-                                                        <option value="2026">2026</option>
-                                                    </select>
+                                                    <div style={{ display: 'flex', gap: 12, alignItems: 'center' }}>
+                                                        <input
+                                                            type="number"
+                                                            className={`form-input ${!editedYear && editedYear !== 'Mix' ? 'border-danger' : ''}`}
+                                                            style={{
+                                                                flex: 1,
+                                                                ...(!editedYear && editedYear !== 'Mix' ? { borderColor: 'var(--danger)' } : {})
+                                                            }}
+                                                            value={editedYear === 'Mix' ? '' : editedYear}
+                                                            disabled={editedYear === 'Mix'}
+                                                            onChange={(e) => setEditedYear(e.target.value)}
+                                                            placeholder="VD: 2025"
+                                                        />
+                                                        <label style={{ display: 'flex', alignItems: 'center', gap: 6, cursor: 'pointer', whiteSpace: 'nowrap', fontSize: 13, userSelect: 'none' }}>
+                                                            <input
+                                                                type="checkbox"
+                                                                checked={editedYear === 'Mix'}
+                                                                onChange={(e) => setEditedYear(e.target.checked ? 'Mix' : '')}
+                                                            />
+                                                            Mix Year
+                                                        </label>
+                                                    </div>
                                                 </div>
                                                 <div className="form-group" style={{ margin: 0 }}>
                                                     <label className="form-label">Readiness (0-10) *</label>
@@ -1191,17 +1201,24 @@ export default function Batches() {
                                         </div>
                                         <div className="form-group">
                                             <label className="form-label">Năm tạo (Year)</label>
-                                            <select
-                                                name="year"
-                                                className="form-select"
-                                                defaultValue={selectedBatch.isMixYear ? 'Mix' : (selectedBatch.year || '')}
-                                            >
-                                                <option value="">-- Chọn năm --</option>
-                                                <option value="Mix">Mix</option>
-                                                <option value="2024">2024</option>
-                                                <option value="2025">2025</option>
-                                                <option value="2026">2026</option>
-                                            </select>
+                                            <div style={{ display: 'flex', gap: 12, alignItems: 'center' }}>
+                                                <input
+                                                    name="year"
+                                                    type="number"
+                                                    className="form-input"
+                                                    style={{ flex: 1 }}
+                                                    placeholder="VD: 2025"
+                                                    defaultValue={selectedBatch.year || ''}
+                                                />
+                                                <label style={{ display: 'flex', alignItems: 'center', gap: 6, cursor: 'pointer', whiteSpace: 'nowrap', fontSize: 13, userSelect: 'none' }}>
+                                                    <input
+                                                        name="isMixYear"
+                                                        type="checkbox"
+                                                        defaultChecked={selectedBatch.isMixYear}
+                                                    />
+                                                    Mix Year
+                                                </label>
+                                            </div>
                                         </div>
                                     </div>
                                     <div className="form-group">
