@@ -122,7 +122,19 @@ export const errorHandler = (
         return;
     }
 
-    // 6. Default: Internal Server Error
+    // 7. Google Ads API Errors
+    if (err.message?.startsWith('Google Ads API error')) {
+        const match = err.message.match(/\((\d+)\):\s*(.*)/);
+        const statusCode = match ? parseInt(match[1]) : 500;
+        const message = match ? match[2].replace(/^"|"$/g, '') : err.message;
+        res.status(statusCode >= 400 && statusCode < 600 ? statusCode : 502).json({
+            error: message,
+            code: 'GOOGLE_ADS_ERROR',
+        });
+        return;
+    }
+
+    // 8. Default: Internal Server Error
     res.status(500).json({
         error: 'Internal Server Error',
         code: 'INTERNAL_ERROR',

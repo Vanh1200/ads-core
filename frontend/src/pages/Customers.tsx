@@ -292,88 +292,74 @@ export default function Customers() {
                 )}
             </div>
 
-            {/* Selection Action Bar */}
-            <div style={{ minHeight: '64px', transition: 'all 0.2s' }}>
-                {selectedIds.size > 0 && (
-                    <div style={{
-                        marginBottom: 16,
-                        padding: '12px 16px',
-                        background: 'var(--bg-secondary)',
-                        borderRadius: 8,
-                        display: 'flex',
-                        alignItems: 'center',
-                        justifyContent: 'space-between',
-                        border: '1px solid var(--border)',
-                        boxShadow: '0 2px 4px rgba(0,0,0,0.05)'
-                    }}>
-                        <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-                            <span style={{ fontWeight: 500 }}>
-                                Đã chọn <strong style={{ color: 'var(--primary)' }}>{selectedIds.size}</strong> khách hàng
-                            </span>
-                        </div>
-                        <div style={{ display: 'flex', gap: 8 }}>
-                            <button
-                                className="btn btn-secondary"
-                                onClick={async (e) => {
-                                    e.currentTarget.blur();
-                                    try {
-                                        const idList = customers
-                                            .filter((c: any) => selectedIds.has(c.id))
-                                            .map((c: any) => c.id)
-                                            .join('\n');
-                                        await navigator.clipboard.writeText(idList);
-                                        showToast(`Đã sao chép ${selectedIds.size} ID vào clipboard`, 'success');
-                                    } catch (err) {
-                                        showToast('Lỗi khi sao chép', 'error');
-                                    }
-                                }}
-                            >
-                                <Copy size={16} />
-                                Sao chép ID
-                            </button>
-                            <Dropdown
-                                trigger={
-                                    <button
-                                        className="btn btn-secondary"
-                                        style={{ display: 'flex', alignItems: 'center', gap: 4 }}
-                                    >
-                                        Thao tác
-                                        <ChevronDown size={14} />
-                                    </button>
-                                }
-                                items={[
-                                    {
-                                        key: 'update-status',
-                                        label: 'Thay đổi trạng thái',
-                                        icon: <Edit2 size={14} />,
-                                        onClick: () => setShowBulkEditStatus(true)
-                                    },
-                                    { type: 'divider', key: 'd1', label: '' },
-                                    {
-                                        key: 'delete-customer',
-                                        label: 'Xóa khách hàng',
-                                        icon: <Trash2 size={14} />,
-                                        danger: true,
-                                        onClick: () => setConfirmBulkDelete(true)
-                                    }
-                                ]}
-                            />
-
-                            <button
-                                className="btn btn-secondary"
-                                onClick={() => {
-                                    setSelectedIds(new Set());
-                                }}
-                            >
-                                Bỏ chọn
-                            </button>
-                        </div>
-                    </div>
-                )}
-            </div>
-
             <div className="card" style={{ overflow: 'visible' }}>
                 <div className="card-header" style={{ gap: '12px', flexWrap: 'wrap', justifyContent: 'flex-start', overflow: 'visible' }}>
+                    {selectedIds.size > 0 && (
+                        <div className="selection-overlay">
+                            <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+                                <span style={{ fontWeight: 500 }}>
+                                    Đã chọn <strong style={{ color: 'var(--primary)' }}>{selectedIds.size}</strong> khách hàng
+                                </span>
+                            </div>
+                            <div style={{ display: 'flex', gap: 8 }}>
+                                <button
+                                    className="btn btn-secondary"
+                                    onClick={async (e) => {
+                                        e.currentTarget.blur();
+                                        try {
+                                            const idList = customers
+                                                .filter((c: any) => selectedIds.has(c.id))
+                                                .map((c: any) => c.id)
+                                                .join('\n');
+                                            await navigator.clipboard.writeText(idList);
+                                            showToast(`Đã sao chép ${selectedIds.size} ID vào clipboard`, 'success');
+                                        } catch (err) {
+                                            showToast('Lỗi khi sao chép', 'error');
+                                        }
+                                    }}
+                                >
+                                    <Copy size={16} />
+                                    Sao chép ID
+                                </button>
+                                <Dropdown
+                                    trigger={
+                                        <button
+                                            className="btn btn-secondary"
+                                            style={{ display: 'flex', alignItems: 'center', gap: 4 }}
+                                        >
+                                            Thao tác
+                                            <ChevronDown size={14} />
+                                        </button>
+                                    }
+                                    items={[
+                                        {
+                                            key: 'update-status',
+                                            label: 'Thay đổi trạng thái',
+                                            icon: <Edit2 size={14} />,
+                                            onClick: () => setShowBulkEditStatus(true)
+                                        },
+                                        { type: 'divider', key: 'd1', label: '' },
+                                        {
+                                            key: 'delete-customer',
+                                            label: 'Xóa khách hàng',
+                                            icon: <Trash2 size={14} />,
+                                            danger: true,
+                                            onClick: () => setConfirmBulkDelete(true)
+                                        }
+                                    ]}
+                                />
+
+                                <button
+                                    className="btn btn-secondary"
+                                    onClick={() => {
+                                        setSelectedIds(new Set());
+                                    }}
+                                >
+                                    Bỏ chọn
+                                </button>
+                            </div>
+                        </div>
+                    )}
                     <Filter size={18} style={{ color: 'var(--text-muted)' }} />
                     <div style={{ position: 'relative' }}>
                         <button

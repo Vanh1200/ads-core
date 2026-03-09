@@ -420,62 +420,48 @@ export default function Batches() {
                 )}
             </div>
 
-            {/* Selection Action Bar Wrapper */}
-            <div style={{ minHeight: '64px', transition: 'all 0.2s' }}>
-                {selectedIds.size > 0 && (
-                    <div style={{
-                        marginBottom: 16,
-                        padding: '12px 16px',
-                        background: 'var(--bg-secondary)',
-                        borderRadius: 8,
-                        display: 'flex',
-                        alignItems: 'center',
-                        justifyContent: 'space-between',
-                        border: '1px solid var(--border)',
-                        boxShadow: '0 2px 4px rgba(0,0,0,0.05)'
-                    }}>
-                        <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-                            <span style={{ fontWeight: 500 }}>
-                                Đã chọn <strong style={{ color: 'var(--primary)' }}>{selectedIds.size}</strong> lô
-                            </span>
-                        </div>
-                        <div style={{ display: 'flex', gap: 8 }}>
-                            {canManageBatches(user?.role || 'VIEWER') && (
-                                <Dropdown
-                                    trigger={
-                                        <button
-                                            className="btn btn-secondary"
-                                            style={{ display: 'flex', alignItems: 'center', gap: 4 }}
-                                        >
-                                            Thao tác
-                                            <ChevronDown size={14} />
-                                        </button>
-                                    }
-                                    items={[
-                                        {
-                                            key: 'bulk-edit',
-                                            label: 'Cập nhật lô hàng loạt',
-                                            icon: <Edit2 size={14} />,
-                                            onClick: () => setShowBulkEditModal(true)
-                                        }
-                                    ]}
-                                />
-                            )}
-                            <button
-                                className="btn btn-secondary"
-                                onClick={() => {
-                                    setSelectedIds(new Set());
-                                }}
-                            >
-                                Bỏ chọn
-                            </button>
-                        </div>
-                    </div>
-                )}
-            </div>
-
             <div className="card" style={{ overflow: 'visible' }}>
                 <div className="card-header" style={{ gap: '12px', flexWrap: 'wrap', justifyContent: 'flex-start', overflow: 'visible' }}>
+                    {selectedIds.size > 0 && (
+                        <div className="selection-overlay">
+                            <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+                                <span style={{ fontWeight: 500 }}>
+                                    Đã chọn <strong style={{ color: 'var(--primary)' }}>{selectedIds.size}</strong> lô
+                                </span>
+                            </div>
+                            <div style={{ display: 'flex', gap: 8 }}>
+                                {canManageBatches(user?.role || 'VIEWER') && (
+                                    <Dropdown
+                                        trigger={
+                                            <button
+                                                className="btn btn-secondary"
+                                                style={{ display: 'flex', alignItems: 'center', gap: 4 }}
+                                            >
+                                                Thao tác
+                                                <ChevronDown size={14} />
+                                            </button>
+                                        }
+                                        items={[
+                                            {
+                                                key: 'bulk-edit',
+                                                label: 'Cập nhật lô hàng loạt',
+                                                icon: <Edit2 size={14} />,
+                                                onClick: () => setShowBulkEditModal(true)
+                                            }
+                                        ]}
+                                    />
+                                )}
+                                <button
+                                    className="btn btn-secondary"
+                                    onClick={() => {
+                                        setSelectedIds(new Set());
+                                    }}
+                                >
+                                    Bỏ chọn
+                                </button>
+                            </div>
+                        </div>
+                    )}
                     <Filter size={18} style={{ color: 'var(--text-muted)' }} />
 
                     {/* Search Input */}
@@ -853,52 +839,53 @@ export default function Batches() {
                     </table>
                 </div>
 
-                {pagination.total > 0 && (
-                    <div className="pagination-container" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: 16 }}>
-                        <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                            <span style={{ color: 'var(--text-muted)', fontSize: 13 }}>Số hàng hiển thị:</span>
-                            <select
-                                className="form-select"
-                                style={{ width: 'auto', padding: '4px 8px', fontSize: 13 }}
-                                value={limit}
-                                onChange={(e) => {
-                                    setLimit(Number(e.target.value));
-                                    setPage(1);
-                                }}
-                            >
-                                <option value={10}>10</option>
-                                <option value={20}>20</option>
-                                <option value={30}>30</option>
-                                <option value={50}>50</option>
-                                <option value={100}>100</option>
-                            </select>
-                            <span style={{ color: 'var(--text-muted)', fontSize: 13 }}>
-                                {((page - 1) * limit) + 1} - {Math.min(page * limit, pagination.total)} trong tổng số {pagination.total}
-                            </span>
-                        </div>
-
-                        <div className="pagination">
-                            <button
-                                className="pagination-btn"
-                                disabled={page <= 1}
-                                onClick={() => setPage(page - 1)}
-                            >
-                                ← Trước
-                            </button>
-                            <span className="pagination-info">
-                                Trang {page} / {pagination.totalPages}
-                            </span>
-                            <button
-                                className="pagination-btn"
-                                disabled={page >= pagination.totalPages}
-                                onClick={() => setPage(page + 1)}
-                            >
-                                Sau →
-                            </button>
-                        </div>
-                    </div>
-                )}
             </div>
+
+            {pagination.total > 0 && (
+                <div className="pagination-container" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: 16 }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                        <span style={{ color: 'var(--text-muted)', fontSize: 13 }}>Số hàng hiển thị:</span>
+                        <select
+                            className="form-select"
+                            style={{ width: 'auto', padding: '4px 8px', fontSize: 13 }}
+                            value={limit}
+                            onChange={(e) => {
+                                setLimit(Number(e.target.value));
+                                setPage(1);
+                            }}
+                        >
+                            <option value={10}>10</option>
+                            <option value={20}>20</option>
+                            <option value={30}>30</option>
+                            <option value={50}>50</option>
+                            <option value={100}>100</option>
+                        </select>
+                        <span style={{ color: 'var(--text-muted)', fontSize: 13 }}>
+                            {((page - 1) * limit) + 1} - {Math.min(page * limit, pagination.total)} trong tổng số {pagination.total}
+                        </span>
+                    </div>
+
+                    <div className="pagination">
+                        <button
+                            className="pagination-btn"
+                            disabled={page <= 1}
+                            onClick={() => setPage(page - 1)}
+                        >
+                            ← Trước
+                        </button>
+                        <span className="pagination-info">
+                            Trang {page} / {pagination.totalPages}
+                        </span>
+                        <button
+                            className="pagination-btn"
+                            disabled={page >= pagination.totalPages}
+                            onClick={() => setPage(page + 1)}
+                        >
+                            Sau →
+                        </button>
+                    </div>
+                </div>
+            )}
 
             {/* Import Modal */}
             {

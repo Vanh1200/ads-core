@@ -385,88 +385,74 @@ export default function InvoiceMCCs() {
                 )}
             </div>
 
-            {/* Selection Action Bar */}
-            <div style={{ minHeight: '64px', transition: 'all 0.2s' }}>
-                {selectedIds.size > 0 && (
-                    <div style={{
-                        marginBottom: 16,
-                        padding: '12px 16px',
-                        background: 'var(--bg-secondary)',
-                        borderRadius: 8,
-                        display: 'flex',
-                        alignItems: 'center',
-                        justifyContent: 'space-between',
-                        border: '1px solid var(--border)',
-                        boxShadow: '0 2px 4px rgba(0,0,0,0.05)'
-                    }}>
-                        <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-                            <span style={{ fontWeight: 500 }}>
-                                Đã chọn <strong style={{ color: 'var(--primary)' }}>{selectedIds.size}</strong> Invoice MCC
-                            </span>
-                        </div>
-                        <div style={{ display: 'flex', gap: 8 }}>
-                            <button
-                                className="btn btn-secondary"
-                                onClick={async (e) => {
-                                    e.currentTarget.blur();
-                                    try {
-                                        const idList = invoiceMCCs
-                                            .filter((i: any) => selectedIds.has(i.id))
-                                            .map((i: any) => i.mccInvoiceId || i.id)
-                                            .join('\n');
-                                        await navigator.clipboard.writeText(idList);
-                                        showToast(`Đã sao chép ${selectedIds.size} ID vào clipboard`, 'success');
-                                    } catch (err) {
-                                        showToast('Lỗi khi sao chép', 'error');
-                                    }
-                                }}
-                            >
-                                <Copy size={16} />
-                                Sao chép ID
-                            </button>
-                            <Dropdown
-                                trigger={
-                                    <button
-                                        className="btn btn-secondary"
-                                        style={{ display: 'flex', alignItems: 'center', gap: 4 }}
-                                    >
-                                        Thao tác
-                                        <ChevronDown size={14} />
-                                    </button>
-                                }
-                                items={[
-                                    {
-                                        key: 'update-status',
-                                        label: 'Thay đổi trạng thái',
-                                        icon: <Edit2 size={14} />,
-                                        onClick: () => setShowBulkEditStatus(true)
-                                    },
-                                    { type: 'divider', key: 'd1', label: '' },
-                                    {
-                                        key: 'delete-mcc',
-                                        label: 'Xóa Invoice MCC',
-                                        icon: <Trash2 size={14} />,
-                                        danger: true,
-                                        onClick: () => setConfirmBulkDelete(true)
-                                    }
-                                ]}
-                            />
-
-                            <button
-                                className="btn btn-secondary"
-                                onClick={() => {
-                                    setSelectedIds(new Set());
-                                }}
-                            >
-                                Bỏ chọn
-                            </button>
-                        </div>
-                    </div>
-                )}
-            </div>
-
             <div className="card" style={{ overflow: 'visible' }}>
                 <div className="card-header" style={{ gap: '12px', flexWrap: 'wrap', justifyContent: 'flex-start' }}>
+                    {selectedIds.size > 0 && (
+                        <div className="selection-overlay">
+                            <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+                                <span style={{ fontWeight: 500 }}>
+                                    Đã chọn <strong style={{ color: 'var(--primary)' }}>{selectedIds.size}</strong> Invoice MCC
+                                </span>
+                            </div>
+                            <div style={{ display: 'flex', gap: 8 }}>
+                                <button
+                                    className="btn btn-secondary"
+                                    onClick={async (e) => {
+                                        e.currentTarget.blur();
+                                        try {
+                                            const idList = invoiceMCCs
+                                                .filter((i: any) => selectedIds.has(i.id))
+                                                .map((i: any) => i.mccInvoiceId || i.id)
+                                                .join('\n');
+                                            await navigator.clipboard.writeText(idList);
+                                            showToast(`Đã sao chép ${selectedIds.size} ID vào clipboard`, 'success');
+                                        } catch (err) {
+                                            showToast('Lỗi khi sao chép', 'error');
+                                        }
+                                    }}
+                                >
+                                    <Copy size={16} />
+                                    Sao chép ID
+                                </button>
+                                <Dropdown
+                                    trigger={
+                                        <button
+                                            className="btn btn-secondary"
+                                            style={{ display: 'flex', alignItems: 'center', gap: 4 }}
+                                        >
+                                            Thao tác
+                                            <ChevronDown size={14} />
+                                        </button>
+                                    }
+                                    items={[
+                                        {
+                                            key: 'update-status',
+                                            label: 'Thay đổi trạng thái',
+                                            icon: <Edit2 size={14} />,
+                                            onClick: () => setShowBulkEditStatus(true)
+                                        },
+                                        { type: 'divider', key: 'd1', label: '' },
+                                        {
+                                            key: 'delete-mcc',
+                                            label: 'Xóa Invoice MCC',
+                                            icon: <Trash2 size={14} />,
+                                            danger: true,
+                                            onClick: () => setConfirmBulkDelete(true)
+                                        }
+                                    ]}
+                                />
+
+                                <button
+                                    className="btn btn-secondary"
+                                    onClick={() => {
+                                        setSelectedIds(new Set());
+                                    }}
+                                >
+                                    Bỏ chọn
+                                </button>
+                            </div>
+                        </div>
+                    )}
                     <Filter size={18} style={{ color: 'var(--text-muted)' }} />
                     <div style={{ position: 'relative' }}>
                         <button
@@ -683,53 +669,53 @@ export default function InvoiceMCCs() {
                         </tbody>
                     </table>
                 </div>
-
-                {pagination.total > 0 && (
-                    <div className="pagination-container" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: 16 }}>
-                        <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                            <span style={{ color: 'var(--text-muted)', fontSize: 13 }}>Số hàng hiển thị:</span>
-                            <select
-                                className="form-select"
-                                style={{ width: 'auto', padding: '4px 8px', fontSize: 13 }}
-                                value={limit}
-                                onChange={(e) => {
-                                    setLimit(Number(e.target.value));
-                                    setPage(1);
-                                }}
-                            >
-                                <option value={10}>10</option>
-                                <option value={20}>20</option>
-                                <option value={30}>30</option>
-                                <option value={50}>50</option>
-                                <option value={100}>100</option>
-                            </select>
-                            <span style={{ color: 'var(--text-muted)', fontSize: 13 }}>
-                                {((page - 1) * limit) + 1} - {Math.min(page * limit, pagination.total)} trong tổng số {pagination.total}
-                            </span>
-                        </div>
-
-                        <div className="pagination">
-                            <button
-                                className="pagination-btn"
-                                disabled={page <= 1}
-                                onClick={() => setPage(page - 1)}
-                            >
-                                ← Trước
-                            </button>
-                            <span className="pagination-info">
-                                Trang {page} / {pagination.pages}
-                            </span>
-                            <button
-                                className="pagination-btn"
-                                disabled={page >= pagination.pages}
-                                onClick={() => setPage(page + 1)}
-                            >
-                                Sau →
-                            </button>
-                        </div>
-                    </div>
-                )}
             </div>
+
+            {pagination.total > 0 && (
+                <div className="pagination-container" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: 16 }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                        <span style={{ color: 'var(--text-muted)', fontSize: 13 }}>Số hàng hiển thị:</span>
+                        <select
+                            className="form-select"
+                            style={{ width: 'auto', padding: '4px 8px', fontSize: 13 }}
+                            value={limit}
+                            onChange={(e) => {
+                                setLimit(Number(e.target.value));
+                                setPage(1);
+                            }}
+                        >
+                            <option value={10}>10</option>
+                            <option value={20}>20</option>
+                            <option value={30}>30</option>
+                            <option value={50}>50</option>
+                            <option value={100}>100</option>
+                        </select>
+                        <span style={{ color: 'var(--text-muted)', fontSize: 13 }}>
+                            {((page - 1) * limit) + 1} - {Math.min(page * limit, pagination.total)} trong tổng số {pagination.total}
+                        </span>
+                    </div>
+
+                    <div className="pagination">
+                        <button
+                            className="pagination-btn"
+                            disabled={page <= 1}
+                            onClick={() => setPage(page - 1)}
+                        >
+                            ← Trước
+                        </button>
+                        <span className="pagination-info">
+                            Trang {page} / {pagination.pages}
+                        </span>
+                        <button
+                            className="pagination-btn"
+                            disabled={page >= pagination.pages}
+                            onClick={() => setPage(page + 1)}
+                        >
+                            Sau →
+                        </button>
+                    </div>
+                </div>
+            )}
 
             {
                 showModal && (
@@ -859,282 +845,288 @@ export default function InvoiceMCCs() {
             }
 
             {/* Bulk Status Edit Modal */}
-            {showBulkEditStatus && (
-                <div className="modal-overlay" onClick={() => setShowBulkEditStatus(false)}>
-                    <div className="modal" style={{ maxWidth: '400px' }} onClick={(e) => e.stopPropagation()}>
-                        <div className="modal-header">
-                            <h3 className="modal-title">Cập nhật trạng thái ({selectedIds.size})</h3>
-                            <button className="modal-close" onClick={() => setShowBulkEditStatus(false)}>×</button>
-                        </div>
-                        <div className="modal-body">
-                            <div className="form-group">
-                                <label className="form-label">Trạng thái mới</label>
-                                <select
-                                    className="form-select"
-                                    value={bulkStatus}
-                                    onChange={(e) => setBulkStatus(e.target.value)}
+            {
+                showBulkEditStatus && (
+                    <div className="modal-overlay" onClick={() => setShowBulkEditStatus(false)}>
+                        <div className="modal" style={{ maxWidth: '400px' }} onClick={(e) => e.stopPropagation()}>
+                            <div className="modal-header">
+                                <h3 className="modal-title">Cập nhật trạng thái ({selectedIds.size})</h3>
+                                <button className="modal-close" onClick={() => setShowBulkEditStatus(false)}>×</button>
+                            </div>
+                            <div className="modal-body">
+                                <div className="form-group">
+                                    <label className="form-label">Trạng thái mới</label>
+                                    <select
+                                        className="form-select"
+                                        value={bulkStatus}
+                                        onChange={(e) => setBulkStatus(e.target.value)}
+                                    >
+                                        <option value="">-- Chọn trạng thái --</option>
+                                        <option value="ACTIVE">Hoạt động</option>
+                                        <option value="PENDING">Chờ kết nối</option>
+                                        <option value="EXHAUSTED">Hết tín dụng</option>
+                                        <option value="INACTIVE">Không hoạt động</option>
+                                    </select>
+                                </div>
+                            </div>
+                            <div className="modal-footer">
+                                <button className="btn btn-secondary" onClick={() => setShowBulkEditStatus(false)}>Hủy</button>
+                                <button
+                                    className="btn btn-primary"
+                                    onClick={() => {
+                                        if (bulkStatus) {
+                                            bulkUpdateStatusMutation.mutate({
+                                                ids: Array.from(selectedIds),
+                                                status: bulkStatus
+                                            });
+                                        }
+                                    }}
+                                    disabled={bulkUpdateStatusMutation.isPending || !bulkStatus}
                                 >
-                                    <option value="">-- Chọn trạng thái --</option>
-                                    <option value="ACTIVE">Hoạt động</option>
-                                    <option value="PENDING">Chờ kết nối</option>
-                                    <option value="EXHAUSTED">Hết tín dụng</option>
-                                    <option value="INACTIVE">Không hoạt động</option>
-                                </select>
+                                    {bulkUpdateStatusMutation.isPending ? 'Đang cập nhật...' : 'Cập nhật hàng loạt'}
+                                </button>
                             </div>
                         </div>
-                        <div className="modal-footer">
-                            <button className="btn btn-secondary" onClick={() => setShowBulkEditStatus(false)}>Hủy</button>
-                            <button
-                                className="btn btn-primary"
-                                onClick={() => {
-                                    if (bulkStatus) {
-                                        bulkUpdateStatusMutation.mutate({
-                                            ids: Array.from(selectedIds),
-                                            status: bulkStatus
-                                        });
-                                    }
-                                }}
-                                disabled={bulkUpdateStatusMutation.isPending || !bulkStatus}
-                            >
-                                {bulkUpdateStatusMutation.isPending ? 'Đang cập nhật...' : 'Cập nhật hàng loạt'}
-                            </button>
-                        </div>
                     </div>
-                </div>
-            )}
+                )
+            }
 
             {/* Bulk Delete Confirm Modal */}
-            {confirmBulkDelete && (
-                <div className="modal-overlay" onClick={() => setConfirmBulkDelete(false)}>
-                    <div className="modal" style={{ maxWidth: '400px' }} onClick={(e) => e.stopPropagation()}>
-                        <div className="modal-header">
-                            <h3 className="modal-title">Xác nhận xóa hàng loạt</h3>
-                            <button className="modal-close" onClick={() => setConfirmBulkDelete(false)}>×</button>
-                        </div>
-                        <div className="modal-body">
-                            <p>Bạn có chắc chắn muốn xóa <strong>{selectedIds.size}</strong> Invoice MCC đã chọn không?</p>
-                            <p className="text-danger" style={{ fontSize: '13px', marginTop: '8px' }}>
-                                Lưu ý: Chỉ có thể xóa các Invoice MCC không có tài khoản liên kết.
-                            </p>
-                        </div>
-                        <div className="modal-footer">
-                            <button className="btn btn-secondary" onClick={() => setConfirmBulkDelete(false)}>Hủy</button>
-                            <button
-                                className="btn btn-danger"
-                                onClick={() => {
-                                    bulkDeleteMutation.mutate(Array.from(selectedIds));
-                                }}
-                                disabled={bulkDeleteMutation.isPending}
-                            >
-                                {bulkDeleteMutation.isPending ? 'Đang xóa...' : 'Xác nhận xóa'}
-                            </button>
-                        </div>
-                    </div>
-                </div>
-            )}
-            {/* Import Modal */}
-            {showImportModal && (
-                <div className="modal-overlay" onClick={closeImportModal}>
-                    <div
-                        className="modal"
-                        style={{
-                            maxWidth: modalStep === 'preview' ? '900px' : '500px',
-                            maxHeight: modalStep === 'preview' ? '85vh' : 'auto',
-                            display: 'flex',
-                            flexDirection: 'column'
-                        }}
-                        onClick={(e) => e.stopPropagation()}
-                    >
-                        <div className="modal-header" style={{ flexShrink: 0 }}>
-                            <h3 className="modal-title">
-                                {modalStep === 'upload' ? 'Import Invoice MCC từ Excel' : 'Xác nhận thông tin MI'}
-                            </h3>
-                            <button className="modal-close" onClick={closeImportModal}>×</button>
-                        </div>
-
-                        <div className="modal-body" style={{ flex: 1, overflow: modalStep === 'preview' ? 'hidden' : 'auto', display: 'flex', flexDirection: 'column' }}>
-                            {modalStep === 'upload' && (
-                                <>
-                                    <input
-                                        type="file"
-                                        ref={fileInputRef}
-                                        accept=".xlsx,.xls"
-                                        onChange={handleFileSelect}
-                                        style={{ display: 'none' }}
-                                    />
-
-                                    <div
-                                        className="file-upload"
-                                        onClick={() => fileInputRef.current?.click()}
-                                        style={{ cursor: 'pointer' }}
-                                    >
-                                        {parseMutation.isPending ? (
-                                            <>
-                                                <div className="spinner" style={{ width: 48, height: 48 }}></div>
-                                                <p className="file-upload-text">Đang xử lý file...</p>
-                                            </>
-                                        ) : file ? (
-                                            <>
-                                                <FileSpreadsheet size={48} style={{ color: 'var(--secondary)' }} />
-                                                <p className="file-upload-text">{file.name}</p>
-                                                <p className="file-upload-hint">{(file.size / 1024).toFixed(1)} KB</p>
-                                            </>
-                                        ) : (
-                                            <>
-                                                <Upload size={48} />
-                                                <p className="file-upload-text">Click để chọn file Excel</p>
-                                                <p className="file-upload-hint">
-                                                    Hỗ trợ định dạng .xlsx, .xls - Báo cáo hiệu suất từ Google Ads
-                                                </p>
-                                            </>
-                                        )}
-                                    </div>
-
-                                    {parseError && (
-                                        <div style={{
-                                            marginTop: 16,
-                                            padding: 12,
-                                            background: 'rgba(239, 68, 68, 0.1)',
-                                            borderRadius: 8,
-                                            color: 'var(--danger)',
-                                            display: 'flex',
-                                            alignItems: 'center',
-                                            gap: 8
-                                        }}>
-                                            <AlertCircle size={20} />
-                                            {parseError}
-                                        </div>
-                                    )}
-                                </>
-                            )}
-
-                            {modalStep === 'preview' && parsedData && (
-                                <div style={{ display: 'flex', flexDirection: 'column', flex: 1, minHeight: 0 }}>
-                                    <div style={{ flexShrink: 0, marginBottom: 16 }}>
-                                        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16, marginBottom: 16 }}>
-                                            <div className="form-group" style={{ margin: 0 }}>
-                                                <label className="form-label">Tên Invoice MCC *</label>
-                                                <input
-                                                    type="text"
-                                                    className={`form-input ${!editedMiName ? 'border-danger' : ''}`}
-                                                    style={!editedMiName ? { borderColor: 'var(--danger)' } : {}}
-                                                    value={editedMiName}
-                                                    onChange={(e) => setEditedMiName(e.target.value)}
-                                                    placeholder="Nhập tên MI"
-                                                />
-                                            </div>
-                                            <div className="form-group" style={{ margin: 0 }}>
-                                                <label className="form-label">MCC Invoice ID *</label>
-                                                <input
-                                                    type="text"
-                                                    className={`form-input ${!editedMccInvoiceId ? 'border-danger' : ''}`}
-                                                    style={!editedMccInvoiceId ? { borderColor: 'var(--danger)' } : {}}
-                                                    value={editedMccInvoiceId}
-                                                    onChange={(e) => setEditedMccInvoiceId(e.target.value)}
-                                                    placeholder="xxx-xxx-xxxx"
-                                                />
-                                            </div>
-                                        </div>
-
-                                        <div className="form-group" style={{ margin: 0 }}>
-                                            <label className="form-label">Đối tác</label>
-                                            <select
-                                                className="form-select"
-                                                value={editedPartnerId}
-                                                onChange={(e) => setEditedPartnerId(e.target.value)}
-                                            >
-                                                <option value="">-- Chọn đối tác --</option>
-                                                {partners.map((p: Partner) => (
-                                                    <option key={p.id} value={p.id}>{p.name}</option>
-                                                ))}
-                                            </select>
-                                        </div>
-                                    </div>
-
-                                    {/* Accounts Preview Table - Scrollable */}
-                                    <div style={{
-                                        flex: 1,
-                                        minHeight: 200,
-                                        overflow: 'auto',
-                                        border: '1px solid var(--border)',
-                                        borderRadius: 8
-                                    }}>
-                                        <table className="data-table" style={{ marginBottom: 0 }}>
-                                            <thead style={{ position: 'sticky', top: 0, background: 'var(--bg-secondary)', zIndex: 1 }}>
-                                                <tr>
-                                                    <th>ID</th>
-                                                    <th>Tên tài khoản</th>
-                                                    <th>Trạng thái</th>
-                                                    <th>Tiền tệ</th>
-                                                    <th>Ghi chú</th>
-                                                </tr>
-                                            </thead>
-                                            <tbody>
-                                                {parsedData.accounts.map((account: any, index: number) => (
-                                                    <tr key={index}>
-                                                        <td><code>{account.googleAccountId}</code></td>
-                                                        <td>{account.accountName}</td>
-                                                        <td>
-                                                            <span className={`badge badge-${statusLabels[account.status]?.class || 'info'}`}>
-                                                                {statusLabels[account.status]?.label || account.status}
-                                                            </span>
-                                                        </td>
-                                                        <td>{account.currency}</td>
-                                                        <td>
-                                                            {account.existsInDb && (
-                                                                <span style={{ color: 'var(--warning)', fontSize: 12 }}>
-                                                                    Đã tồn tại (sẽ cập nhận)
-                                                                </span>
-                                                            )}
-                                                        </td>
-                                                    </tr>
-                                                ))}
-                                            </tbody>
-                                        </table>
-                                    </div>
-                                </div>
-                            )}
-                        </div>
-
-                        <div className="modal-footer" style={{ flexShrink: 0 }}>
-                            {modalStep === 'upload' ? (
-                                <button type="button" className="btn btn-secondary" onClick={closeImportModal}>
-                                    Hủy
+            {
+                confirmBulkDelete && (
+                    <div className="modal-overlay" onClick={() => setConfirmBulkDelete(false)}>
+                        <div className="modal" style={{ maxWidth: '400px' }} onClick={(e) => e.stopPropagation()}>
+                            <div className="modal-header">
+                                <h3 className="modal-title">Xác nhận xóa hàng loạt</h3>
+                                <button className="modal-close" onClick={() => setConfirmBulkDelete(false)}>×</button>
+                            </div>
+                            <div className="modal-body">
+                                <p>Bạn có chắc chắn muốn xóa <strong>{selectedIds.size}</strong> Invoice MCC đã chọn không?</p>
+                                <p className="text-danger" style={{ fontSize: '13px', marginTop: '8px' }}>
+                                    Lưu ý: Chỉ có thể xóa các Invoice MCC không có tài khoản liên kết.
+                                </p>
+                            </div>
+                            <div className="modal-footer">
+                                <button className="btn btn-secondary" onClick={() => setConfirmBulkDelete(false)}>Hủy</button>
+                                <button
+                                    className="btn btn-danger"
+                                    onClick={() => {
+                                        bulkDeleteMutation.mutate(Array.from(selectedIds));
+                                    }}
+                                    disabled={bulkDeleteMutation.isPending}
+                                >
+                                    {bulkDeleteMutation.isPending ? 'Đang xóa...' : 'Xác nhận xóa'}
                                 </button>
-                            ) : (
-                                <>
-                                    <button
-                                        type="button"
-                                        className="btn btn-secondary"
-                                        onClick={() => {
-                                            setModalStep('upload');
-                                            setFile(null);
-                                            setParsedData(null);
-                                        }}
-                                    >
-                                        ← Chọn file khác
-                                    </button>
-                                    <button
-                                        type="button"
-                                        className="btn btn-primary"
-                                        disabled={!editedMiName || !editedMccInvoiceId || createImportMutation.isPending}
-                                        onClick={handleImportCreate}
-                                    >
-                                        {createImportMutation.isPending ? (
-                                            'Đang tạo...'
-                                        ) : (
-                                            <>
-                                                <CheckCircle size={18} />
-                                                Xác nhận tạo MI ({parsedData?.accounts.length} tài khoản)
-                                            </>
-                                        )}
-                                    </button>
-                                </>
-                            )}
+                            </div>
                         </div>
                     </div>
-                </div>
-            )}
+                )
+            }
+            {/* Import Modal */}
+            {
+                showImportModal && (
+                    <div className="modal-overlay" onClick={closeImportModal}>
+                        <div
+                            className="modal"
+                            style={{
+                                maxWidth: modalStep === 'preview' ? '900px' : '500px',
+                                maxHeight: modalStep === 'preview' ? '85vh' : 'auto',
+                                display: 'flex',
+                                flexDirection: 'column'
+                            }}
+                            onClick={(e) => e.stopPropagation()}
+                        >
+                            <div className="modal-header" style={{ flexShrink: 0 }}>
+                                <h3 className="modal-title">
+                                    {modalStep === 'upload' ? 'Import Invoice MCC từ Excel' : 'Xác nhận thông tin MI'}
+                                </h3>
+                                <button className="modal-close" onClick={closeImportModal}>×</button>
+                            </div>
+
+                            <div className="modal-body" style={{ flex: 1, overflow: modalStep === 'preview' ? 'hidden' : 'auto', display: 'flex', flexDirection: 'column' }}>
+                                {modalStep === 'upload' && (
+                                    <>
+                                        <input
+                                            type="file"
+                                            ref={fileInputRef}
+                                            accept=".xlsx,.xls"
+                                            onChange={handleFileSelect}
+                                            style={{ display: 'none' }}
+                                        />
+
+                                        <div
+                                            className="file-upload"
+                                            onClick={() => fileInputRef.current?.click()}
+                                            style={{ cursor: 'pointer' }}
+                                        >
+                                            {parseMutation.isPending ? (
+                                                <>
+                                                    <div className="spinner" style={{ width: 48, height: 48 }}></div>
+                                                    <p className="file-upload-text">Đang xử lý file...</p>
+                                                </>
+                                            ) : file ? (
+                                                <>
+                                                    <FileSpreadsheet size={48} style={{ color: 'var(--secondary)' }} />
+                                                    <p className="file-upload-text">{file.name}</p>
+                                                    <p className="file-upload-hint">{(file.size / 1024).toFixed(1)} KB</p>
+                                                </>
+                                            ) : (
+                                                <>
+                                                    <Upload size={48} />
+                                                    <p className="file-upload-text">Click để chọn file Excel</p>
+                                                    <p className="file-upload-hint">
+                                                        Hỗ trợ định dạng .xlsx, .xls - Báo cáo hiệu suất từ Google Ads
+                                                    </p>
+                                                </>
+                                            )}
+                                        </div>
+
+                                        {parseError && (
+                                            <div style={{
+                                                marginTop: 16,
+                                                padding: 12,
+                                                background: 'rgba(239, 68, 68, 0.1)',
+                                                borderRadius: 8,
+                                                color: 'var(--danger)',
+                                                display: 'flex',
+                                                alignItems: 'center',
+                                                gap: 8
+                                            }}>
+                                                <AlertCircle size={20} />
+                                                {parseError}
+                                            </div>
+                                        )}
+                                    </>
+                                )}
+
+                                {modalStep === 'preview' && parsedData && (
+                                    <div style={{ display: 'flex', flexDirection: 'column', flex: 1, minHeight: 0 }}>
+                                        <div style={{ flexShrink: 0, marginBottom: 16 }}>
+                                            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16, marginBottom: 16 }}>
+                                                <div className="form-group" style={{ margin: 0 }}>
+                                                    <label className="form-label">Tên Invoice MCC *</label>
+                                                    <input
+                                                        type="text"
+                                                        className={`form-input ${!editedMiName ? 'border-danger' : ''}`}
+                                                        style={!editedMiName ? { borderColor: 'var(--danger)' } : {}}
+                                                        value={editedMiName}
+                                                        onChange={(e) => setEditedMiName(e.target.value)}
+                                                        placeholder="Nhập tên MI"
+                                                    />
+                                                </div>
+                                                <div className="form-group" style={{ margin: 0 }}>
+                                                    <label className="form-label">MCC Invoice ID *</label>
+                                                    <input
+                                                        type="text"
+                                                        className={`form-input ${!editedMccInvoiceId ? 'border-danger' : ''}`}
+                                                        style={!editedMccInvoiceId ? { borderColor: 'var(--danger)' } : {}}
+                                                        value={editedMccInvoiceId}
+                                                        onChange={(e) => setEditedMccInvoiceId(e.target.value)}
+                                                        placeholder="xxx-xxx-xxxx"
+                                                    />
+                                                </div>
+                                            </div>
+
+                                            <div className="form-group" style={{ margin: 0 }}>
+                                                <label className="form-label">Đối tác</label>
+                                                <select
+                                                    className="form-select"
+                                                    value={editedPartnerId}
+                                                    onChange={(e) => setEditedPartnerId(e.target.value)}
+                                                >
+                                                    <option value="">-- Chọn đối tác --</option>
+                                                    {partners.map((p: Partner) => (
+                                                        <option key={p.id} value={p.id}>{p.name}</option>
+                                                    ))}
+                                                </select>
+                                            </div>
+                                        </div>
+
+                                        {/* Accounts Preview Table - Scrollable */}
+                                        <div style={{
+                                            flex: 1,
+                                            minHeight: 200,
+                                            overflow: 'auto',
+                                            border: '1px solid var(--border)',
+                                            borderRadius: 8
+                                        }}>
+                                            <table className="data-table" style={{ marginBottom: 0 }}>
+                                                <thead style={{ position: 'sticky', top: 0, background: 'var(--bg-secondary)', zIndex: 1 }}>
+                                                    <tr>
+                                                        <th>ID</th>
+                                                        <th>Tên tài khoản</th>
+                                                        <th>Trạng thái</th>
+                                                        <th>Tiền tệ</th>
+                                                        <th>Ghi chú</th>
+                                                    </tr>
+                                                </thead>
+                                                <tbody>
+                                                    {parsedData.accounts.map((account: any, index: number) => (
+                                                        <tr key={index}>
+                                                            <td><code>{account.googleAccountId}</code></td>
+                                                            <td>{account.accountName}</td>
+                                                            <td>
+                                                                <span className={`badge badge-${statusLabels[account.status]?.class || 'info'}`}>
+                                                                    {statusLabels[account.status]?.label || account.status}
+                                                                </span>
+                                                            </td>
+                                                            <td>{account.currency}</td>
+                                                            <td>
+                                                                {account.existsInDb && (
+                                                                    <span style={{ color: 'var(--warning)', fontSize: 12 }}>
+                                                                        Đã tồn tại (sẽ cập nhận)
+                                                                    </span>
+                                                                )}
+                                                            </td>
+                                                        </tr>
+                                                    ))}
+                                                </tbody>
+                                            </table>
+                                        </div>
+                                    </div>
+                                )}
+                            </div>
+
+                            <div className="modal-footer" style={{ flexShrink: 0 }}>
+                                {modalStep === 'upload' ? (
+                                    <button type="button" className="btn btn-secondary" onClick={closeImportModal}>
+                                        Hủy
+                                    </button>
+                                ) : (
+                                    <>
+                                        <button
+                                            type="button"
+                                            className="btn btn-secondary"
+                                            onClick={() => {
+                                                setModalStep('upload');
+                                                setFile(null);
+                                                setParsedData(null);
+                                            }}
+                                        >
+                                            ← Chọn file khác
+                                        </button>
+                                        <button
+                                            type="button"
+                                            className="btn btn-primary"
+                                            disabled={!editedMiName || !editedMccInvoiceId || createImportMutation.isPending}
+                                            onClick={handleImportCreate}
+                                        >
+                                            {createImportMutation.isPending ? (
+                                                'Đang tạo...'
+                                            ) : (
+                                                <>
+                                                    <CheckCircle size={18} />
+                                                    Xác nhận tạo MI ({parsedData?.accounts.length} tài khoản)
+                                                </>
+                                            )}
+                                        </button>
+                                    </>
+                                )}
+                            </div>
+                        </div>
+                    </div>
+                )
+            }
             {/* Toast Notification */}
             {
                 toast && (

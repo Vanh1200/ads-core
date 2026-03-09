@@ -59,6 +59,8 @@ export const requestLogger = (req: Request, res: Response, next: NextFunction) =
     // Attach requestId for downstream use
     (req as any).requestId = requestId;
 
+    logger.debug(`[START] ${req.method} ${req.url}`, { requestId });
+
     res.on('finish', () => {
         const duration = Date.now() - start;
         const userId = (req as any).user?.id;

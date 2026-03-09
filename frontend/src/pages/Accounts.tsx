@@ -546,182 +546,167 @@ export default function Accounts() {
                 </div>
             </div>
 
-            {/* Active Filters removed as per request */}
-
-            {/* Selection Action Bar Wrapper to prevent layout shift */}
-            <div style={{ minHeight: '64px', transition: 'all 0.2s' }}>
-                {selectedIds.size > 0 && (
-                    <div style={{
-                        marginBottom: 16,
-                        padding: '12px 16px',
-                        background: 'var(--bg-secondary)',
-                        borderRadius: 8,
-                        display: 'flex',
-                        alignItems: 'center',
-                        justifyContent: 'space-between',
-                        border: '1px solid var(--border)',
-                        boxShadow: '0 2px 4px rgba(0,0,0,0.05)'
-                    }}>
-                        <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-                            <span style={{ fontWeight: 500 }}>
-                                Đã chọn <strong style={{ color: 'var(--primary)' }}>{selectedIds.size}</strong> tài khoản
-                            </span>
-                            {/* Global Select Option */}
-                            {!isAllSelected && selectedIds.size >= accounts.length && pagination.total > selectedIds.size && (
-                                <button
-                                    onClick={handleSelectAllGlobal}
-                                    disabled={isSelectingAll}
-                                    style={{
-                                        background: 'none',
-                                        border: 'none',
-                                        color: '#096dd9',
-                                        padding: 0,
-                                        fontSize: 14,
-                                        cursor: 'pointer',
-                                        fontWeight: 500,
-                                        textDecoration: 'underline',
-                                        marginLeft: 8
-                                    }}
-                                >
-                                    {isSelectingAll ? 'Đang chọn...' : `(Chọn tất cả ${pagination.total} tài khoản theo bộ lọc)`}
-                                </button>
-                            )}
-                        </div>
-                        <div style={{ display: 'flex', gap: 8 }}>
-                            <button
-                                className="btn btn-secondary"
-                                onClick={async (e) => {
-                                    e.currentTarget.blur();
-                                    try {
-                                        // Filter selected accounts locally for copy action
-                                        const selectedAccountsList = isAllSelected && selectedIds.size > accounts.length
-                                            // Fallback if we fetched full filter ids
-                                            ? await accountsApi.getFilterIds({
-                                                search: search || undefined, status: statusFilter || undefined, batchId: batchId || undefined, miId: miId || undefined, mcId: mcId || undefined
-                                            }).then(res => res.data)
-                                            : accounts.filter(a => selectedIds.has(a.id));
-
-                                        const idList = selectedAccountsList.map((a: any) => a.googleAccountId).join('\n');
-                                        await navigator.clipboard.writeText(idList);
-                                        setToast({ message: `Đã sao chép ${selectedAccountsList.length} ID vào clipboard`, type: 'success' });
-                                        setTimeout(() => setToast(null), 3000);
-                                    } catch (err) {
-                                        setToast({ message: 'Lỗi khi sao chép', type: 'error' });
-                                        setTimeout(() => setToast(null), 3000);
-                                    }
-                                }}
-                            >
-                                <Copy size={16} />
-                                Sao chép ID
-                            </button>
-                            {/* Actions Dropdown — contains Link MI, Giao MC, status changes, unlink */}
-                            {(() => {
-                                const role = user?.role || 'VIEWER';
-                                const canStatus = canManageBatches(role) || canUpdateSpending(role);
-                                const canLink = canLinkMI(role);
-                                const canAssign = canAssignMC(role);
-
-                                if (!canStatus && !canLink && !canAssign) return null;
-
-                                const items: DropdownItem[] = [];
-
-                                if (canLink) {
-                                    items.push(
-                                        { type: 'header', key: 'link-header', label: 'Liên kết' },
-                                        {
-                                            key: 'link-mi',
-                                            label: 'Link MI',
-                                            icon: <Link2 size={14} />,
-                                            onClick: () => setShowMiModal(true)
-                                        }
-                                    );
-                                }
-
-                                if (canAssign) {
-                                    items.push({
-                                        key: 'assign-mc',
-                                        label: 'Giao MC',
-                                        icon: <UserPlus size={14} />,
-                                        onClick: () => setShowMcModal(true)
-                                    });
-                                }
-
-                                if ((canLink || canAssign) && (canStatus || canLink || canAssign)) {
-                                    items.push({ type: 'divider', key: 'divider-0', label: '' });
-                                }
-
-                                if (canStatus) {
-                                    items.push(
-                                        { type: 'header', key: 'status-header', label: 'Trạng thái' },
-                                        {
-                                            key: 'update-status',
-                                            label: 'Thay đổi trạng thái',
-                                            icon: <Edit2 size={14} />,
-                                            onClick: () => setShowStatusSelector(true)
-                                        }
-                                    );
-                                }
-
-                                if (canStatus && (canLink || canAssign)) {
-                                    items.push({ type: 'divider', key: 'divider-1', label: '' });
-                                }
-
-                                if (canLink || canAssign) {
-                                    items.push({ type: 'header', key: 'manage-header', label: 'Xóa liên kết' });
-                                }
-
-                                if (canLink) {
-                                    items.push({
-                                        key: 'unlink-mi',
-                                        label: 'Xóa MI (Hủy liên kết)',
-                                        icon: <Trash2 size={14} />,
-                                        danger: true,
-                                        onClick: () => setConfirmBulkUnlinkMi(true)
-                                    });
-                                }
-
-                                if (canAssign) {
-                                    items.push({
-                                        key: 'unassign-mc',
-                                        label: 'Xóa MC (Hủy giao)',
-                                        icon: <Trash2 size={14} />,
-                                        danger: true,
-                                        onClick: () => setConfirmBulkUnassignMc(true)
-                                    });
-                                }
-
-                                return (
-                                    <Dropdown
-                                        trigger={
-                                            <button
-                                                className="btn btn-secondary"
-                                                style={{ display: 'flex', alignItems: 'center', gap: 4 }}
-                                            >
-                                                Thao tác
-                                                <ChevronDown size={14} />
-                                            </button>
-                                        }
-                                        items={items}
-                                    />
-                                );
-                            })()}
-
-                            <button
-                                className="btn btn-secondary"
-                                onClick={() => {
-                                    setSelectedIds(new Set());
-                                    setIsAllSelected(false);
-                                }}
-                            >
-                                Bỏ chọn
-                            </button>
-                        </div>
-                    </div>
-                )}
-            </div>
 
             <div className="card" style={{ overflow: 'visible' }}>
                 <div className="card-header" style={{ gap: '12px', flexWrap: 'wrap', justifyContent: 'flex-start', overflow: 'visible' }}>
+                    {selectedIds.size > 0 && (
+                        <div className="selection-overlay">
+                            <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+                                <span style={{ fontWeight: 500 }}>
+                                    Đã chọn <strong style={{ color: 'var(--primary)' }}>{selectedIds.size}</strong> tài khoản
+                                </span>
+                                {/* Global Select Option */}
+                                {!isAllSelected && selectedIds.size >= accounts.length && pagination.total > selectedIds.size && (
+                                    <button
+                                        onClick={handleSelectAllGlobal}
+                                        disabled={isSelectingAll}
+                                        style={{
+                                            background: 'none',
+                                            border: 'none',
+                                            color: '#096dd9',
+                                            padding: 0,
+                                            fontSize: 14,
+                                            cursor: 'pointer',
+                                            fontWeight: 500,
+                                            textDecoration: 'underline',
+                                            marginLeft: 8
+                                        }}
+                                    >
+                                        {isSelectingAll ? 'Đang chọn...' : `(Chọn tất cả ${pagination.total} tài khoản theo bộ lọc)`}
+                                    </button>
+                                )}
+                            </div>
+                            <div style={{ display: 'flex', gap: 8 }}>
+                                <button
+                                    className="btn btn-secondary"
+                                    onClick={async (e) => {
+                                        e.currentTarget.blur();
+                                        try {
+                                            // Filter selected accounts locally for copy action
+                                            const selectedAccountsList = isAllSelected && selectedIds.size > accounts.length
+                                                // Fallback if we fetched full filter ids
+                                                ? await accountsApi.getFilterIds({
+                                                    search: search || undefined, status: statusFilter || undefined, batchId: batchId || undefined, miId: miId || undefined, mcId: mcId || undefined
+                                                }).then(res => res.data)
+                                                : accounts.filter(a => selectedIds.has(a.id));
+
+                                            const idList = selectedAccountsList.map((a: any) => a.googleAccountId).join('\n');
+                                            await navigator.clipboard.writeText(idList);
+                                            setToast({ message: `Đã sao chép ${selectedAccountsList.length} ID vào clipboard`, type: 'success' });
+                                            setTimeout(() => setToast(null), 3000);
+                                        } catch (err) {
+                                            setToast({ message: 'Lỗi khi sao chép', type: 'error' });
+                                            setTimeout(() => setToast(null), 3000);
+                                        }
+                                    }}
+                                >
+                                    <Copy size={16} />
+                                    Sao chép ID
+                                </button>
+                                {/* Actions Dropdown — contains Link MI, Giao MC, status changes, unlink */}
+                                {(() => {
+                                    const role = user?.role || 'VIEWER';
+                                    const canStatus = canManageBatches(role) || canUpdateSpending(role);
+                                    const canLink = canLinkMI(role);
+                                    const canAssign = canAssignMC(role);
+
+                                    if (!canStatus && !canLink && !canAssign) return null;
+
+                                    const items: DropdownItem[] = [];
+
+                                    if (canLink) {
+                                        items.push(
+                                            { type: 'header', key: 'link-header', label: 'Liên kết' },
+                                            {
+                                                key: 'link-mi',
+                                                label: 'Link MI',
+                                                icon: <Link2 size={14} />,
+                                                onClick: () => setShowMiModal(true)
+                                            }
+                                        );
+                                    }
+
+                                    if (canAssign) {
+                                        items.push({
+                                            key: 'assign-mc',
+                                            label: 'Giao MC',
+                                            icon: <UserPlus size={14} />,
+                                            onClick: () => setShowMcModal(true)
+                                        });
+                                    }
+
+                                    if ((canLink || canAssign) && (canStatus || canLink || canAssign)) {
+                                        items.push({ type: 'divider', key: 'divider-0', label: '' });
+                                    }
+
+                                    if (canStatus) {
+                                        items.push(
+                                            { type: 'header', key: 'status-header', label: 'Trạng thái' },
+                                            {
+                                                key: 'update-status',
+                                                label: 'Thay đổi trạng thái',
+                                                icon: <Edit2 size={14} />,
+                                                onClick: () => setShowStatusSelector(true)
+                                            }
+                                        );
+                                    }
+
+                                    if (canStatus && (canLink || canAssign)) {
+                                        items.push({ type: 'divider', key: 'divider-1', label: '' });
+                                    }
+
+                                    if (canLink || canAssign) {
+                                        items.push({ type: 'header', key: 'manage-header', label: 'Xóa liên kết' });
+                                    }
+
+                                    if (canLink) {
+                                        items.push({
+                                            key: 'unlink-mi',
+                                            label: 'Xóa MI (Hủy liên kết)',
+                                            icon: <Trash2 size={14} />,
+                                            danger: true,
+                                            onClick: () => setConfirmBulkUnlinkMi(true)
+                                        });
+                                    }
+
+                                    if (canAssign) {
+                                        items.push({
+                                            key: 'unassign-mc',
+                                            label: 'Xóa MC (Hủy giao)',
+                                            icon: <Trash2 size={14} />,
+                                            danger: true,
+                                            onClick: () => setConfirmBulkUnassignMc(true)
+                                        });
+                                    }
+
+                                    return (
+                                        <Dropdown
+                                            trigger={
+                                                <button
+                                                    className="btn btn-secondary"
+                                                    style={{ display: 'flex', alignItems: 'center', gap: 4 }}
+                                                >
+                                                    Thao tác
+                                                    <ChevronDown size={14} />
+                                                </button>
+                                            }
+                                            items={items}
+                                        />
+                                    );
+                                })()}
+
+                                <button
+                                    className="btn btn-secondary"
+                                    onClick={() => {
+                                        setSelectedIds(new Set());
+                                        setIsAllSelected(false);
+                                    }}
+                                >
+                                    Bỏ chọn
+                                </button>
+                            </div>
+                        </div>
+                    )}
                     <Filter size={18} style={{ color: 'var(--text-muted)' }} />
                     <div style={{ position: 'relative' }}>
                         <button

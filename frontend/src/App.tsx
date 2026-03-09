@@ -19,6 +19,7 @@ import PartnerDetail from './pages/PartnerDetail';
 import Import from './pages/Import';
 import ActivityLogs from './pages/ActivityLogs';
 import QuickLinkTool from './pages/QuickLinkTool';
+import GoogleAdsExplorer from './pages/GoogleAdsExplorer';
 import './App.css';
 
 const queryClient = new QueryClient({
@@ -83,6 +84,7 @@ function AppRoutes() {
         <Route path="accounts/:id" element={<AccountDetail />} />
         <Route path="import" element={<Import />} />
         <Route path="quick-link" element={<QuickLinkTool />} />
+        <Route path="google-ads" element={<GoogleAdsExplorer />} />
         <Route path="activity-logs" element={<ActivityLogs />} />
         <Route path="users" element={<Users />} />
       </Route>

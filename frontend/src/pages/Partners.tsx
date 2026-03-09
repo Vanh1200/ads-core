@@ -324,52 +324,53 @@ export default function Partners() {
                     </table>
                 </div>
 
-                {pagination.total > 0 && (
-                    <div className="pagination-container" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: 16 }}>
-                        <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                            <span style={{ color: 'var(--text-muted)', fontSize: 13 }}>Số hàng hiển thị:</span>
-                            <select
-                                className="form-select"
-                                style={{ width: 'auto', padding: '4px 8px', fontSize: 13 }}
-                                value={limit}
-                                onChange={(e) => {
-                                    setLimit(Number(e.target.value));
-                                    setPage(1);
-                                }}
-                            >
-                                <option value={10}>10</option>
-                                <option value={20}>20</option>
-                                <option value={30}>30</option>
-                                <option value={50}>50</option>
-                                <option value={100}>100</option>
-                            </select>
-                            <span style={{ color: 'var(--text-muted)', fontSize: 13 }}>
-                                {((page - 1) * limit) + 1} - {Math.min(page * limit, pagination.total)} trong tổng số {pagination.total}
-                            </span>
-                        </div>
-
-                        <div className="pagination">
-                            <button
-                                className="pagination-btn"
-                                disabled={page <= 1}
-                                onClick={() => setPage(page - 1)}
-                            >
-                                ← Trước
-                            </button>
-                            <span className="pagination-info">
-                                Trang {page} / {pagination.pages}
-                            </span>
-                            <button
-                                className="pagination-btn"
-                                disabled={page >= pagination.pages}
-                                onClick={() => setPage(page + 1)}
-                            >
-                                Sau →
-                            </button>
-                        </div>
-                    </div>
-                )}
             </div>
+
+            {pagination.total > 0 && (
+                <div className="pagination-container" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: 16 }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                        <span style={{ color: 'var(--text-muted)', fontSize: 13 }}>Số hàng hiển thị:</span>
+                        <select
+                            className="form-select"
+                            style={{ width: 'auto', padding: '4px 8px', fontSize: 13 }}
+                            value={limit}
+                            onChange={(e) => {
+                                setLimit(Number(e.target.value));
+                                setPage(1);
+                            }}
+                        >
+                            <option value={10}>10</option>
+                            <option value={20}>20</option>
+                            <option value={30}>30</option>
+                            <option value={50}>50</option>
+                            <option value={100}>100</option>
+                        </select>
+                        <span style={{ color: 'var(--text-muted)', fontSize: 13 }}>
+                            {((page - 1) * limit) + 1} - {Math.min(page * limit, pagination.total)} trong tổng số {pagination.total}
+                        </span>
+                    </div>
+
+                    <div className="pagination">
+                        <button
+                            className="pagination-btn"
+                            disabled={page <= 1}
+                            onClick={() => setPage(page - 1)}
+                        >
+                            ← Trước
+                        </button>
+                        <span className="pagination-info">
+                            Trang {page} / {pagination.pages}
+                        </span>
+                        <button
+                            className="pagination-btn"
+                            disabled={page >= pagination.pages}
+                            onClick={() => setPage(page + 1)}
+                        >
+                            Sau →
+                        </button>
+                    </div>
+                </div>
+            )}
 
             {/* Create/Edit Modal */}
             {

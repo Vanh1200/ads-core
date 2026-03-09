@@ -13,6 +13,7 @@ import {
     Activity,
     LogOut,
     Link,
+    Globe,
 } from 'lucide-react';
 
 const navItems = [
@@ -24,6 +25,7 @@ const navItems = [
     { path: '/accounts', icon: Database, label: 'Tài khoản', section: 'Quản lý' },
     { path: '/import', icon: Upload, label: 'Import dữ liệu', section: 'Công cụ' },
     { path: '/quick-link', icon: Link, label: 'Liên kết tín nhanh', section: 'Công cụ' },
+    { path: '/google-ads', icon: Globe, label: 'Google Ads API', section: 'Công cụ' },
     { path: '/activity-logs', icon: Activity, label: 'Lịch sử hoạt động', section: 'Hệ thống' },
     { path: '/users', icon: Users, label: 'Nhân viên', section: 'Hệ thống' },
 ];
@@ -63,6 +65,7 @@ export default function Layout() {
                 return true;
             case '/import': // Import
             case '/quick-link': // Quick Link
+            case '/google-ads': // Google Ads API
                 return ['ADMIN', 'MANAGER', 'BUYER', 'LINKER', 'UPDATER'].includes(user.role);
             default:
                 return false;

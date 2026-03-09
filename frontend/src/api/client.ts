@@ -241,4 +241,19 @@ export const statsApi = {
     getRecentActivity: (limit?: number) => api.get('/stats/recent-activity', { params: { limit } }),
 };
 
+// Google Ads API
+export const googleAdsApi = {
+    getOAuthUrl: () => api.get('/google-ads/oauth/url'),
+    getOAuthStatus: () => api.get('/google-ads/oauth/status'),
+    disconnect: () => api.post('/google-ads/oauth/disconnect'),
+    getAccessibleCustomers: () => api.get('/google-ads/accessible-customers'),
+    getCustomerInfo: (customerId: string) => api.get(`/google-ads/customer-info/${customerId}`),
+    getCustomerClients: (managerId: string) => api.get(`/google-ads/customer-clients/${managerId}`),
+    getCampaigns: (customerId: string) => api.get(`/google-ads/campaigns/${customerId}`),
+    getCampaignDetails: (customerId: string, campaignId: string) =>
+        api.get(`/google-ads/campaign-details/${customerId}/${campaignId}`),
+    getSpending: (customerId: string, dateRange?: string) =>
+        api.get(`/google-ads/spending/${customerId}`, { params: { dateRange } }),
+};
+
 export default api;

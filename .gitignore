@@ -96,3 +96,11 @@ typings/
 dist/
 .agent/
 brain/
+google-ads-tokens.json
+*.tsbuildinfo
+fix-*.js
+test-db.ts
+backend/test-db.ts
+backend.log
+frontend.log
+node_modules
