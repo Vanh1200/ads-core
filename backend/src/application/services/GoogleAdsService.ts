@@ -150,30 +150,55 @@ class GoogleAdsService {
 
     private async gaqlSearch(customerId: string, query: string, loginCustomerId?: string): Promise<any[]> {
         const cid = customerId.replace(/-/g, '');
-        // Use the customerId itself as login-customer-id if not explicitly provided
-        const headers = await this.getHeaders(loginCustomerId || customerId);
-        const url = `${GOOGLE_ADS_BASE_URL}/customers/${cid}/googleAds:search`;
 
-        const allResults: any[] = [];
-        let pageToken: string | undefined = undefined;
+        // Strategy: 
+        // 1. Try with the provided loginCustomerId or the default mccId from env
+        // 2. If that fails with 403 (Permission Denied), it's likely this account is NOT under the main MCC
+        // 3. Fallback to using the customerId itself as the login-customer-id (works for independent MCCs)
 
-        do {
+        const primaryLoginId = loginCustomerId || this.mccId;
+        const fallbackLoginId = customerId;
+
+        const executeSearch = async (loginId?: string) => {
+            const headers = await this.getHeaders(loginId);
+            const url = `${GOOGLE_ADS_BASE_URL}/customers/${cid}/googleAds:search`;
             const body: any = { query };
-            if (pageToken) body.pageToken = pageToken;
+            const allResults: any[] = [];
+            let pageToken: string | undefined = undefined;
 
-            try {
+            do {
+                if (pageToken) body.pageToken = pageToken;
                 const response = await axios.post(url, body, { headers });
                 const results = response.data.results || [];
                 allResults.push(...results);
                 pageToken = response.data.nextPageToken;
-            } catch (err: any) {
-                const errData = err.response?.data;
-                console.error('[GoogleAdsService] GAQL error details:', JSON.stringify(errData?.error?.details || errData, null, 2));
-                throw new Error(`Google Ads API error (${err.response?.status}): ${JSON.stringify(errData?.error?.message || errData)}`);
-            }
-        } while (pageToken);
+            } while (pageToken);
 
-        return allResults;
+            return allResults;
+        };
+
+        try {
+            return await executeSearch(primaryLoginId);
+        } catch (err: any) {
+            const errData = err.response?.data;
+            const isAuthError = err.response?.status === 403 ||
+                err.response?.status === 401 ||
+                JSON.stringify(errData).includes('PERMISSION_DENIED');
+
+            if (isAuthError && primaryLoginId !== fallbackLoginId) {
+                console.log(`[GoogleAdsService] Access denied with primary login ID ${primaryLoginId}. Retrying with fallback login ID ${fallbackLoginId}...`);
+                try {
+                    return await executeSearch(fallbackLoginId);
+                } catch (fallbackErr: any) {
+                    const fallbackErrData = fallbackErr.response?.data;
+                    console.error('[GoogleAdsService] GAQL error details (fallback):', JSON.stringify(fallbackErrData?.error?.details || fallbackErrData, null, 2));
+                    throw new Error(`Google Ads API error (${fallbackErr.response?.status}): ${JSON.stringify(fallbackErrData?.error?.message || fallbackErrData)}`);
+                }
+            }
+
+            console.error('[GoogleAdsService] GAQL error details:', JSON.stringify(errData?.error?.details || errData, null, 2));
+            throw new Error(`Google Ads API error (${err.response?.status}): ${JSON.stringify(errData?.error?.message || errData)}`);
+        }
     }
 
     // ===== Google Ads API Methods =====
