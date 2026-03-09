@@ -150,7 +150,8 @@ class GoogleAdsService {
 
     private async gaqlSearch(customerId: string, query: string, loginCustomerId?: string): Promise<any[]> {
         const cid = customerId.replace(/-/g, '');
-        const headers = await this.getHeaders(loginCustomerId);
+        // Use the customerId itself as login-customer-id if not explicitly provided
+        const headers = await this.getHeaders(loginCustomerId || customerId);
         const url = `${GOOGLE_ADS_BASE_URL}/customers/${cid}/googleAds:search`;
 
         const allResults: any[] = [];
