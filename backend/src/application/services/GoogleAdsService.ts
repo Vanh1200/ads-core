@@ -200,7 +200,9 @@ class GoogleAdsService {
                 customer.manager,
                 customer.status,
                 customer.auto_tagging_enabled,
-                customer.has_partners_badge
+                customer.has_partners_badge,
+                customer.test_account,
+                customer.optimization_score_weight
             FROM customer
             LIMIT 1
         `;
@@ -233,7 +235,15 @@ class GoogleAdsService {
                 campaign.name,
                 campaign.status,
                 campaign.advertising_channel_type,
-                campaign.bidding_strategy_type
+                campaign.advertising_channel_sub_type,
+                campaign.bidding_strategy_type,
+                campaign.serving_status,
+                campaign.optimization_score,
+                campaign.ad_serving_optimization_status,
+                campaign.network_settings.target_google_search,
+                campaign.network_settings.target_search_network,
+                campaign.network_settings.target_content_network,
+                campaign.network_settings.target_partner_search_network
             FROM campaign
             ORDER BY campaign.name
         `;
@@ -273,11 +283,40 @@ class GoogleAdsService {
                 metrics.conversions,
                 metrics.ctr,
                 metrics.average_cpc
-            FROM customer
+            FROM campaign
             WHERE segments.date DURING ${dateRange}
             ORDER BY segments.date DESC
         `;
-        return this.gaqlSearch(customerId, query);
+        const results = await this.gaqlSearch(customerId, query);
+
+        // Aggregate by date (since multiple campaigns might exist)
+        const aggregated: Record<string, any> = {};
+        for (const row of results) {
+            const date = row.segments.date;
+            if (!aggregated[date]) {
+                aggregated[date] = {
+                    segments: { date },
+                    metrics: {
+                        costMicros: 0,
+                        impressions: 0,
+                        clicks: 0,
+                        conversions: 0,
+                    }
+                };
+            }
+            aggregated[date].metrics.costMicros += Number(row.metrics.costMicros || 0);
+            aggregated[date].metrics.impressions += Number(row.metrics.impressions || 0);
+            aggregated[date].metrics.clicks += Number(row.metrics.clicks || 0);
+            aggregated[date].metrics.conversions += Number(row.metrics.conversions || 0);
+        }
+
+        // Re-calculate averages/CTR for the aggregate
+        return Object.values(aggregated).map((item: any) => {
+            const m = item.metrics;
+            m.ctr = m.impressions > 0 ? m.clicks / m.impressions : 0;
+            m.averageCpc = m.clicks > 0 ? m.costMicros / m.clicks : 0;
+            return item;
+        }).sort((a: any, b: any) => b.segments.date.localeCompare(a.segments.date));
     }
 
     getMccId(): string {

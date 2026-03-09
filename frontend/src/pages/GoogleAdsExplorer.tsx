@@ -466,6 +466,24 @@ export default function GoogleAdsExplorer() {
                                     )}
                                 </div>
                             </div>
+                            <div className="gads-info-item">
+                                <div className="gads-info-label">Tài khoản Test</div>
+                                <div className="gads-info-value">
+                                    {customerDetail.data.testAccount ? (
+                                        <span className="badge badge-warning">YES</span>
+                                    ) : (
+                                        <span className="badge badge-secondary">NO</span>
+                                    )}
+                                </div>
+                            </div>
+                            <div className="gads-info-item">
+                                <div className="gads-info-label">Opt. Score Weight</div>
+                                <div className="gads-info-value">
+                                    {customerDetail.data.optimizationScoreWeight
+                                        ? (Number(customerDetail.data.optimizationScoreWeight) * 100).toFixed(1) + '%'
+                                        : '—'}
+                                </div>
+                            </div>
                         </div>
                     ) : (
                         <div className="empty-state"><AlertCircle /><p>Không thể tải thông tin tài khoản</p></div>
@@ -621,11 +639,58 @@ export default function GoogleAdsExplorer() {
                                     <div className="gads-info-value">{data.campaign?.endDate || '—'}</div>
                                 </div>
                                 <div className="gads-info-item">
+                                    <div className="gads-info-label">Optimization Score</div>
+                                    <div className="gads-info-value" style={{ fontWeight: 700, color: 'var(--primary)' }}>
+                                        {data.campaign?.optimizationScore
+                                            ? (Number(data.campaign.optimizationScore) * 100).toFixed(1) + '%'
+                                            : '—'}
+                                    </div>
+                                </div>
+                                <div className="gads-info-item">
+                                    <div className="gads-info-label">Sub Type</div>
+                                    <div className="gads-info-value">{data.campaign?.advertisingChannelSubType || '—'}</div>
+                                </div>
+                                <div className="gads-info-item">
+                                    <div className="gads-info-label">Ad Serving Opt.</div>
+                                    <div className="gads-info-value">{data.campaign?.adServingOptimizationStatus || '—'}</div>
+                                </div>
+                                <div className="gads-info-item">
                                     <div className="gads-info-label">Ngân sách</div>
                                     <div className="gads-info-value">
                                         {data.campaignBudget?.amountMicros
                                             ? formatCurrency(data.campaignBudget.amountMicros)
                                             : '—'}
+                                    </div>
+                                </div>
+                            </div>
+
+                            {/* Network Settings */}
+                            <h4 style={{ fontSize: 15, fontWeight: 600, marginBottom: 12, marginTop: 20, color: 'var(--text-primary)' }}>
+                                Mạng lưới hiển thị
+                            </h4>
+                            <div className="gads-info-grid" style={{ marginBottom: 24 }}>
+                                <div className="gads-info-item">
+                                    <div className="gads-info-label">Google Search</div>
+                                    <div className="gads-info-value">
+                                        {data.campaign?.networkSettings?.targetGoogleSearch ? 'Bật' : 'Tắt'}
+                                    </div>
+                                </div>
+                                <div className="gads-info-item">
+                                    <div className="gads-info-label">Search Network</div>
+                                    <div className="gads-info-value">
+                                        {data.campaign?.networkSettings?.targetSearchNetwork ? 'Bật' : 'Tắt'}
+                                    </div>
+                                </div>
+                                <div className="gads-info-item">
+                                    <div className="gads-info-label">Content Network</div>
+                                    <div className="gads-info-value">
+                                        {data.campaign?.networkSettings?.targetContentNetwork ? 'Bật' : 'Tắt'}
+                                    </div>
+                                </div>
+                                <div className="gads-info-item">
+                                    <div className="gads-info-label">Partner Search</div>
+                                    <div className="gads-info-value">
+                                        {data.campaign?.networkSettings?.targetPartnerSearchNetwork ? 'Bật' : 'Tắt'}
                                     </div>
                                 </div>
                             </div>
