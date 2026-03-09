@@ -233,9 +233,7 @@ class GoogleAdsService {
                 campaign.name,
                 campaign.status,
                 campaign.advertising_channel_type,
-                campaign.bidding_strategy_type,
-                campaign.start_date,
-                campaign.end_date
+                campaign.bidding_strategy_type
             FROM campaign
             ORDER BY campaign.name
         `;
@@ -251,8 +249,6 @@ class GoogleAdsService {
                 campaign.advertising_channel_type,
                 campaign.advertising_channel_sub_type,
                 campaign.bidding_strategy_type,
-                campaign.start_date,
-                campaign.end_date,
                 campaign.serving_status,
                 metrics.impressions,
                 metrics.clicks,
