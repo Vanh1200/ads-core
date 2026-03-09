@@ -26,7 +26,13 @@ class GoogleAdsService {
         this.mccId = process.env.GOOGLE_ADS_MCC_ID || '';
         this.clientId = process.env.GOOGLE_CLIENT_ID || '';
         this.clientSecret = process.env.GOOGLE_CLIENT_SECRET || '';
-        this.redirectUri = process.env.GOOGLE_OAUTH_REDIRECT_URI || 'http://localhost:3001/api/google-ads/oauth/callback';
+
+        const defaultRedirect = 'http://localhost:3001/api/google-ads/oauth/callback';
+        this.redirectUri = process.env.GOOGLE_OAUTH_REDIRECT_URI || defaultRedirect;
+
+        if (process.env.NODE_ENV === 'production' && this.redirectUri === defaultRedirect) {
+            console.warn('[GoogleAdsService] WARNING: GOOGLE_OAUTH_REDIRECT_URI is not set in production. Defaulting to localhost!');
+        }
     }
 
     // ===== OAuth 2.0 Flow =====
