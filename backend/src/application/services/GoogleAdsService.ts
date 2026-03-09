@@ -32,6 +32,7 @@ class GoogleAdsService {
     // ===== OAuth 2.0 Flow =====
 
     getAuthUrl(): string {
+        console.log(`[GoogleAdsService] Generating Auth URL with redirectUri: ${this.redirectUri}`);
         const params = new URLSearchParams({
             client_id: this.clientId,
             redirect_uri: this.redirectUri,
