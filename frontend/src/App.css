@@ -43,6 +43,11 @@ body {
   display: flex;
   align-items: center;
   justify-content: center;
+  width: 100%;
+  padding: 20px;
+}
+
+.loading-container.full-screen {
   min-height: 100vh;
   background: var(--background);
 }

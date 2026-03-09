@@ -800,7 +800,7 @@ export default function GoogleAdsExplorer() {
 
     if (isStatusLoading) {
         return (
-            <div className="loading-container">
+            <div className="loading-container full-screen">
                 <div className="spinner"></div>
             </div>
         );

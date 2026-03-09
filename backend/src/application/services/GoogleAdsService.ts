@@ -167,7 +167,7 @@ class GoogleAdsService {
                 pageToken = response.data.nextPageToken;
             } catch (err: any) {
                 const errData = err.response?.data;
-                console.error('[GoogleAdsService] GAQL error:', JSON.stringify(errData, null, 2));
+                console.error('[GoogleAdsService] GAQL error details:', JSON.stringify(errData?.error?.details || errData, null, 2));
                 throw new Error(`Google Ads API error (${err.response?.status}): ${JSON.stringify(errData?.error?.message || errData)}`);
             }
         } while (pageToken);
@@ -235,9 +235,7 @@ class GoogleAdsService {
                 campaign.advertising_channel_type,
                 campaign.bidding_strategy_type,
                 campaign.start_date,
-                campaign.end_date,
-                campaign_budget.amount_micros,
-                campaign_budget.delivery_method
+                campaign.end_date
             FROM campaign
             ORDER BY campaign.name
         `;
@@ -256,17 +254,12 @@ class GoogleAdsService {
                 campaign.start_date,
                 campaign.end_date,
                 campaign.serving_status,
-                campaign.optimization_score,
-                campaign_budget.amount_micros,
-                campaign_budget.delivery_method,
-                campaign_budget.total_amount_micros,
                 metrics.impressions,
                 metrics.clicks,
                 metrics.cost_micros,
                 metrics.conversions,
                 metrics.ctr,
-                metrics.average_cpc,
-                metrics.average_cpm
+                metrics.average_cpc
             FROM campaign
             WHERE campaign.id = ${campaignId}
         `;
