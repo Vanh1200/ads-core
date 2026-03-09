@@ -516,6 +516,17 @@ export default function QuickLinkTool() {
                                                     <option value="USD">USD</option>
                                                     <option value="PHP">PHP</option>
                                                     <option value="VND">VND</option>
+                                                    <option value="INR">INR</option>
+                                                    <option value="GBP">GBP</option>
+                                                    <option value="EUR">EUR</option>
+                                                    <option value="CAD">CAD</option>
+                                                    <option value="BRL">BRL</option>
+                                                    <option value="JPY">JPY</option>
+                                                    <option value="COP">COP</option>
+                                                    <option value="THB">THB</option>
+                                                    <option value="HUF">HUF</option>
+                                                    <option value="UAH">UAH</option>
+                                                    <option value="KRW">KRW</option>
                                                 </Select>
                                             </div>
                                             <div>
