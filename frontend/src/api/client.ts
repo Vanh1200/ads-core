@@ -247,13 +247,27 @@ export const googleAdsApi = {
     getOAuthStatus: () => api.get('/google-ads/oauth/status'),
     disconnect: () => api.post('/google-ads/oauth/disconnect'),
     getAccessibleCustomers: () => api.get('/google-ads/accessible-customers'),
-    getCustomerInfo: (customerId: string) => api.get(`/google-ads/customer-info/${customerId}`),
-    getCustomerClients: (managerId: string) => api.get(`/google-ads/customer-clients/${managerId}`),
-    getCampaigns: (customerId: string) => api.get(`/google-ads/campaigns/${customerId}`),
-    getCampaignDetails: (customerId: string, campaignId: string) =>
-        api.get(`/google-ads/campaign-details/${customerId}/${campaignId}`),
-    getSpending: (customerId: string, dateRange?: string) =>
-        api.get(`/google-ads/spending/${customerId}`, { params: { dateRange } }),
+    getCustomerInfo: (customerId: string, loginCustomerId?: string) =>
+        api.get(`/google-ads/customer-info/${customerId}`, {
+            headers: loginCustomerId ? { 'x-login-customer-id': loginCustomerId } : {}
+        }),
+    getCustomerClients: (managerId: string, loginCustomerId?: string) =>
+        api.get(`/google-ads/customer-clients/${managerId}`, {
+            headers: loginCustomerId ? { 'x-login-customer-id': loginCustomerId } : {}
+        }),
+    getCampaigns: (customerId: string, loginCustomerId?: string) =>
+        api.get(`/google-ads/campaigns/${customerId}`, {
+            headers: loginCustomerId ? { 'x-login-customer-id': loginCustomerId } : {}
+        }),
+    getCampaignDetails: (customerId: string, campaignId: string, loginCustomerId?: string) =>
+        api.get(`/google-ads/campaign-details/${customerId}/${campaignId}`, {
+            headers: loginCustomerId ? { 'x-login-customer-id': loginCustomerId } : {}
+        }),
+    getSpending: (customerId: string, dateRange?: string, loginCustomerId?: string) =>
+        api.get(`/google-ads/spending/${customerId}`, {
+            params: { dateRange },
+            headers: loginCustomerId ? { 'x-login-customer-id': loginCustomerId } : {}
+        }),
 };
 
 export default api;

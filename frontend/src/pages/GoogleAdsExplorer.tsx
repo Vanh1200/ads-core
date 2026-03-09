@@ -23,6 +23,7 @@ export default function GoogleAdsExplorer() {
     const [searchParams] = useSearchParams();
     const [viewState, setViewState] = useState<ViewState>({ view: 'overview' });
     const [selectedDateRange, setSelectedDateRange] = useState('LAST_7_DAYS');
+    const [selectedMcc, setSelectedMcc] = useState<string>('');
 
     // Check if just connected via OAuth callback
     useEffect(() => {
@@ -38,7 +39,16 @@ export default function GoogleAdsExplorer() {
     });
 
     const isConnected = statusData?.data?.connected || false;
-    const mccId = statusData?.data?.mccId || '';
+    const defaultMccId = statusData?.data?.mccId || '';
+
+    // Initialize selectedMcc from status or first accessible if not set
+    useEffect(() => {
+        if (isConnected && !selectedMcc) {
+            if (defaultMccId) {
+                setSelectedMcc(defaultMccId);
+            }
+        }
+    }, [isConnected, defaultMccId]);
 
     // Get OAuth URL
     const connectMutation = useMutation({
@@ -64,45 +74,45 @@ export default function GoogleAdsExplorer() {
         enabled: isConnected,
     });
 
-    // Customer clients under MCC
+    // Customer clients under selected MCC
     const { data: clientsData, isLoading: isClientsLoading } = useQuery({
-        queryKey: ['googleAds', 'clients', mccId],
-        queryFn: () => googleAdsApi.getCustomerClients(mccId),
-        enabled: isConnected && !!mccId,
+        queryKey: ['googleAds', 'clients', selectedMcc],
+        queryFn: () => googleAdsApi.getCustomerClients(selectedMcc, selectedMcc),
+        enabled: isConnected && !!selectedMcc,
     });
 
     // MCC Info
     const { data: mccInfo, isLoading: isMccInfoLoading } = useQuery({
-        queryKey: ['googleAds', 'mccInfo', mccId],
-        queryFn: () => googleAdsApi.getCustomerInfo(mccId),
-        enabled: isConnected && !!mccId,
+        queryKey: ['googleAds', 'mccInfo', selectedMcc],
+        queryFn: () => googleAdsApi.getCustomerInfo(selectedMcc, selectedMcc),
+        enabled: isConnected && !!selectedMcc,
     });
 
     // Customer detail
     const { data: customerDetail, isLoading: isCustomerDetailLoading } = useQuery({
-        queryKey: ['googleAds', 'customerInfo', viewState.customerId],
-        queryFn: () => googleAdsApi.getCustomerInfo(viewState.customerId!),
+        queryKey: ['googleAds', 'customerInfo', viewState.customerId, selectedMcc],
+        queryFn: () => googleAdsApi.getCustomerInfo(viewState.customerId!, selectedMcc),
         enabled: isConnected && !!viewState.customerId && viewState.view === 'customer-detail',
     });
 
     // Campaigns
     const { data: campaignsData, isLoading: isCampaignsLoading } = useQuery({
-        queryKey: ['googleAds', 'campaigns', viewState.customerId],
-        queryFn: () => googleAdsApi.getCampaigns(viewState.customerId!),
+        queryKey: ['googleAds', 'campaigns', viewState.customerId, selectedMcc],
+        queryFn: () => googleAdsApi.getCampaigns(viewState.customerId!, selectedMcc),
         enabled: isConnected && !!viewState.customerId && viewState.view === 'campaigns',
     });
 
     // Campaign detail
     const { data: campaignDetail, isLoading: isCampaignDetailLoading } = useQuery({
-        queryKey: ['googleAds', 'campaignDetail', viewState.customerId, viewState.campaignId],
-        queryFn: () => googleAdsApi.getCampaignDetails(viewState.customerId!, viewState.campaignId!),
+        queryKey: ['googleAds', 'campaignDetail', viewState.customerId, viewState.campaignId, selectedMcc],
+        queryFn: () => googleAdsApi.getCampaignDetails(viewState.customerId!, viewState.campaignId!, selectedMcc),
         enabled: isConnected && !!viewState.customerId && !!viewState.campaignId && viewState.view === 'campaign-detail',
     });
 
     // Spending
     const { data: spendingData, isLoading: isSpendingLoading } = useQuery({
-        queryKey: ['googleAds', 'spending', viewState.customerId, selectedDateRange],
-        queryFn: () => googleAdsApi.getSpending(viewState.customerId!, selectedDateRange),
+        queryKey: ['googleAds', 'spending', viewState.customerId, selectedDateRange, selectedMcc],
+        queryFn: () => googleAdsApi.getSpending(viewState.customerId!, selectedDateRange, selectedMcc),
         enabled: isConnected && !!viewState.customerId && viewState.view === 'spending',
     });
 
@@ -194,12 +204,36 @@ export default function GoogleAdsExplorer() {
                             </h3>
                             <p style={{ margin: '4px 0 0', fontSize: 13, color: 'var(--text-muted)' }}>
                                 {isConnected
-                                    ? `MCC: ${formatId(mccId)} • Developer Token: Tài khoản thử nghiệm`
+                                    ? `MCC Mặc định: ${formatId(defaultMccId)} • Developer Token: Tài khoản thử nghiệm`
                                     : 'Kết nối tài khoản Google để sử dụng API'
                                 }
                             </p>
                         </div>
                     </div>
+
+                    {isConnected && (
+                        <div className="gads-mcc-picker" style={{ display: 'flex', alignItems: 'center', gap: 12, background: 'var(--bg-hover)', padding: '8px 16px', borderRadius: 8 }}>
+                            <Building2 size={18} className="text-primary" />
+                            <span style={{ fontSize: 13, fontWeight: 500 }}>Chọn MCC Quản lý:</span>
+                            <select
+                                className="form-select"
+                                style={{ width: 'auto', minWidth: 200, padding: '4px 8px', fontSize: 13 }}
+                                value={selectedMcc}
+                                onChange={(e) => {
+                                    setSelectedMcc(e.target.value);
+                                    setViewState({ view: 'overview' }); // Reset view when changing MCC
+                                }}
+                            >
+                                <option value="">-- Chọn MCC --</option>
+                                {accessibleData?.data?.customers?.map((cid: string) => (
+                                    <option key={cid} value={cid}>
+                                        {formatId(cid)}
+                                    </option>
+                                ))}
+                            </select>
+                        </div>
+                    )}
+
                     <div style={{ display: 'flex', gap: 8 }}>
                         {isConnected ? (
                             <button
@@ -230,7 +264,7 @@ export default function GoogleAdsExplorer() {
     const renderOverview = () => (
         <>
             {/* MCC Info */}
-            {mccId && (
+            {selectedMcc && (
                 <div className="card" style={{ marginBottom: 20 }}>
                     <div className="card-header">
                         <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
@@ -337,7 +371,7 @@ export default function GoogleAdsExplorer() {
             </div>
 
             {/* Customer Clients under MCC */}
-            {mccId && (
+            {selectedMcc && (
                 <div className="card">
                     <div className="card-header">
                         <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>

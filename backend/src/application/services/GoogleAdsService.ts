@@ -216,7 +216,7 @@ class GoogleAdsService {
         }
     }
 
-    async getCustomerInfo(customerId: string): Promise<any> {
+    async getCustomerInfo(customerId: string, loginCustomerId?: string): Promise<any> {
         const query = `
             SELECT
                 customer.id,
@@ -232,11 +232,11 @@ class GoogleAdsService {
             FROM customer
             LIMIT 1
         `;
-        const results = await this.gaqlSearch(customerId, query);
+        const results = await this.gaqlSearch(customerId, query, loginCustomerId);
         return results.length > 0 ? results[0].customer : null;
     }
 
-    async getCustomerClients(managerId: string): Promise<any[]> {
+    async getCustomerClients(managerId: string, loginCustomerId?: string): Promise<any[]> {
         const query = `
             SELECT
                 customer_client.client_customer,
@@ -250,11 +250,11 @@ class GoogleAdsService {
             FROM customer_client
             WHERE customer_client.level <= 1
         `;
-        const results = await this.gaqlSearch(managerId, query);
+        const results = await this.gaqlSearch(managerId, query, loginCustomerId || managerId);
         return results.map((r: any) => r.customerClient);
     }
 
-    async getCampaigns(customerId: string): Promise<any[]> {
+    async getCampaigns(customerId: string, loginCustomerId?: string): Promise<any[]> {
         const query = `
             SELECT
                 campaign.id,
@@ -273,10 +273,10 @@ class GoogleAdsService {
             FROM campaign
             ORDER BY campaign.name
         `;
-        return this.gaqlSearch(customerId, query);
+        return this.gaqlSearch(customerId, query, loginCustomerId);
     }
 
-    async getCampaignDetails(customerId: string, campaignId: string): Promise<any> {
+    async getCampaignDetails(customerId: string, campaignId: string, loginCustomerId?: string): Promise<any> {
         const query = `
             SELECT
                 campaign.id,
@@ -295,11 +295,11 @@ class GoogleAdsService {
             FROM campaign
             WHERE campaign.id = ${campaignId}
         `;
-        const results = await this.gaqlSearch(customerId, query);
+        const results = await this.gaqlSearch(customerId, query, loginCustomerId);
         return results.length > 0 ? results[0] : null;
     }
 
-    async getAccountSpending(customerId: string, dateRange: string = 'LAST_7_DAYS'): Promise<any[]> {
+    async getAccountSpending(customerId: string, dateRange: string = 'LAST_7_DAYS', loginCustomerId?: string): Promise<any[]> {
         const query = `
             SELECT
                 segments.date,
@@ -313,7 +313,7 @@ class GoogleAdsService {
             WHERE segments.date DURING ${dateRange}
             ORDER BY segments.date DESC
         `;
-        const results = await this.gaqlSearch(customerId, query);
+        const results = await this.gaqlSearch(customerId, query, loginCustomerId);
 
         // Aggregate by date (since multiple campaigns might exist)
         const aggregated: Record<string, any> = {};

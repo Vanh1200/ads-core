@@ -39,7 +39,8 @@ export class GoogleAdsController {
 
     getCustomerInfo = asyncHandler(async (req: Request, res: Response) => {
         const customerId = req.params.customerId as string;
-        const info = await googleAdsService.getCustomerInfo(customerId);
+        const loginCustomerId = req.headers['x-login-customer-id'] as string | undefined;
+        const info = await googleAdsService.getCustomerInfo(customerId, loginCustomerId);
         if (!info) {
             return res.status(404).json({ error: 'Customer not found' });
         }
@@ -48,20 +49,23 @@ export class GoogleAdsController {
 
     getCustomerClients = asyncHandler(async (req: Request, res: Response) => {
         const managerId = req.params.managerId as string;
-        const clients = await googleAdsService.getCustomerClients(managerId);
+        const loginCustomerId = req.headers['x-login-customer-id'] as string | undefined;
+        const clients = await googleAdsService.getCustomerClients(managerId, loginCustomerId);
         res.json({ clients });
     });
 
     getCampaigns = asyncHandler(async (req: Request, res: Response) => {
         const customerId = req.params.customerId as string;
-        const campaigns = await googleAdsService.getCampaigns(customerId);
+        const loginCustomerId = req.headers['x-login-customer-id'] as string | undefined;
+        const campaigns = await googleAdsService.getCampaigns(customerId, loginCustomerId);
         res.json({ campaigns });
     });
 
     getCampaignDetails = asyncHandler(async (req: Request, res: Response) => {
         const customerId = req.params.customerId as string;
         const campaignId = req.params.campaignId as string;
-        const details = await googleAdsService.getCampaignDetails(customerId, campaignId);
+        const loginCustomerId = req.headers['x-login-customer-id'] as string | undefined;
+        const details = await googleAdsService.getCampaignDetails(customerId, campaignId, loginCustomerId);
         if (!details) {
             return res.status(404).json({ error: 'Campaign not found' });
         }
@@ -71,7 +75,8 @@ export class GoogleAdsController {
     getSpending = asyncHandler(async (req: Request, res: Response) => {
         const customerId = req.params.customerId as string;
         const dateRange = (req.query.dateRange as string) || 'LAST_7_DAYS';
-        const spending = await googleAdsService.getAccountSpending(customerId, dateRange);
+        const loginCustomerId = req.headers['x-login-customer-id'] as string | undefined;
+        const spending = await googleAdsService.getAccountSpending(customerId, dateRange, loginCustomerId);
         res.json({ spending });
     });
 }
