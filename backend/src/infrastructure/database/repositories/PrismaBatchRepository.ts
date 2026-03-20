@@ -19,22 +19,33 @@ export class PrismaBatchRepository implements IBatchRepository {
     async list(params: {
         page: number;
         limit: number;
+        search?: string;
         status?: string;
         year?: number;
         isMixYear?: boolean;
+        timezone?: string;
+        partnerId?: string;
         sortBy?: string;
         sortOrder?: 'asc' | 'desc';
         ids?: string[];
         startDate?: Date;
         endDate?: Date;
     }): Promise<{ data: AccountBatch[]; total: number }> {
-        const { page, limit, status, year, isMixYear, sortBy, sortOrder, ids, startDate, endDate } = params;
+        const { page, limit, search, status, year, isMixYear, timezone, partnerId, sortBy, sortOrder, ids, startDate, endDate } = params;
         const where: any = {};
         if (status) where.status = status as BatchStatus;
         if (year) where.year = year;
         if (isMixYear !== undefined) where.isMixYear = isMixYear;
+        if (timezone) where.timezone = timezone;
+        if (partnerId) where.partnerId = partnerId;
         if (ids && ids.length > 0) {
             where.mccAccountId = { in: ids };
+        }
+        if (search) {
+            where.OR = [
+                { mccAccountName: { contains: search, mode: 'insensitive' } },
+                { mccAccountId: { contains: search, mode: 'insensitive' } },
+            ];
         }
 
         const include = {

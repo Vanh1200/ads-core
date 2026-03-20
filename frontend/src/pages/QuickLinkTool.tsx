@@ -140,6 +140,20 @@ export default function QuickLinkTool() {
             data.forEach((s: any, index: number) => {
                 const reqId = requirements[index].id;
                 if (s.links && s.links.length > 0) {
+                    if (s.links.length > 1) {
+                        const mergedAccounts = s.links.flatMap((l: any) => l.accounts);
+                        const mergedAccountIds = s.links.flatMap((l: any) => l.accountIds);
+                        const mergedLink = {
+                            batchId: 'ALL',
+                            batchName: 'Tất cả các Lô',
+                            readiness: s.links[0].readiness,
+                            accountsCount: mergedAccounts.length,
+                            accountIds: mergedAccountIds,
+                            accounts: mergedAccounts,
+                            isMerged: true
+                        };
+                        s.links = [mergedLink, ...s.links];
+                    }
                     initialLinks[reqId] = { ...s.links[0] }; // Clone to allow modification
                 }
             });

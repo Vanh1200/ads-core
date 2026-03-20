@@ -9,10 +9,10 @@ import { formatPaginationResponse } from '../../utils/pagination';
 export class BatchController {
     list = asyncHandler(async (req: any, res: any) => {
         const query = paginationSchema.safeParse(req.query);
-        const { page, limit, sortBy, sortOrder, ids } = query.success
+        const { page, limit, search, sortBy, sortOrder, ids } = query.success
             ? query.data
-            : { page: 1, limit: 20, sortBy: undefined, sortOrder: 'desc' as const, ids: undefined };
-        const { status, year, spendingDays } = req.query;
+            : { page: 1, limit: 20, search: undefined, sortBy: undefined, sortOrder: 'desc' as const, ids: undefined };
+        const { status, year, isMixYear, timezone, partnerId, spendingDays } = req.query;
 
         let startDate: Date | undefined;
         let endDate: Date | undefined;
@@ -26,8 +26,12 @@ export class BatchController {
         const { data, total } = await batchService.list({
             page,
             limit,
+            search: search as string,
             status: status as string,
             year: year ? parseInt(year as string) : undefined,
+            isMixYear: isMixYear === 'true' ? true : isMixYear === 'false' ? false : undefined,
+            timezone: timezone as string,
+            partnerId: partnerId as string,
             sortBy,
             sortOrder,
             ids,

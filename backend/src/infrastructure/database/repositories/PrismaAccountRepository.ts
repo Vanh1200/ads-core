@@ -38,7 +38,7 @@ export class PrismaAccountRepository implements IAccountRepository {
             where: { id },
             include: {
                 batch: { select: { id: true, mccAccountName: true } },
-                currentMi: { select: { id: true, name: true } },
+                currentMi: { select: { id: true, name: true, mccInvoiceId: true } },
                 currentMc: { select: { id: true, name: true } },
             },
         });
@@ -83,7 +83,7 @@ export class PrismaAccountRepository implements IAccountRepository {
 
         // Handle dynamic sorting
         const include = {
-            currentMi: { select: { id: true, name: true } },
+            currentMi: { select: { id: true, name: true, mccInvoiceId: true } },
             currentMc: { select: { id: true, name: true } },
             batch: { select: { id: true, mccAccountName: true, mccAccountId: true } },
             spendingRecords: startDate && endDate ? {

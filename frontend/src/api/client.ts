@@ -74,8 +74,8 @@ export const batchesApi = {
     update: (id: string, data: object) => api.put(`/batches/${id}`, data),
     delete: (id: string) => api.delete(`/batches/${id}`),
     getAccounts: (id: string) => api.get(`/batches/${id}/accounts`),
-    bulkUpdate: (ids: string[], status?: string, readiness?: number) =>
-        api.post('/batches/bulk-update', { ids, status, readiness }),
+    bulkUpdate: (data: { ids: string[]; status?: string; readiness?: number; timezone?: string; year?: number | null; isMixYear?: boolean; currency?: string; partnerId?: string | null }) =>
+        api.post('/batches/bulk-update', data),
 };
 
 // Invoice MCCs (MI) API

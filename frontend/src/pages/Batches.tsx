@@ -88,6 +88,10 @@ export default function Batches() {
     const [showBulkEditModal, setShowBulkEditModal] = useState(false);
     const [bulkStatus, setBulkStatus] = useState('');
     const [bulkReadiness, setBulkReadiness] = useState<number | undefined>(undefined);
+    const [bulkTimezone, setBulkTimezone] = useState('');
+    const [bulkYear, setBulkYear] = useState<string>('');
+    const [bulkCurrency, setBulkCurrency] = useState('');
+    const [bulkPartnerId, setBulkPartnerId] = useState('');
     const [isSearchOpen, setIsSearchOpen] = useState(false);
 
 
@@ -101,6 +105,7 @@ export default function Batches() {
     const [editedTimezone, setEditedTimezone] = useState('');
     const [editedYear, setEditedYear] = useState<string>('');
     const [editedReadiness, setEditedReadiness] = useState(5);
+    const [editedPartnerId, setEditedPartnerId] = useState('');
     const [parseError, setParseError] = useState<string | null>(null);
 
     // CRUD State
@@ -236,11 +241,22 @@ export default function Batches() {
         e.preventDefault();
         if (selectedIds.size === 0) return;
 
-        bulkUpdateMutation.mutate({
-            ids: Array.from(selectedIds),
-            status: bulkStatus || undefined,
-            readiness: bulkReadiness
-        });
+        const updateData: any = { ids: Array.from(selectedIds) };
+        if (bulkStatus) updateData.status = bulkStatus;
+        if (bulkReadiness !== undefined) updateData.readiness = bulkReadiness;
+        if (bulkTimezone) updateData.timezone = bulkTimezone;
+        if (bulkYear === 'Mix') {
+            updateData.isMixYear = true;
+            updateData.year = null;
+        } else if (bulkYear) {
+            updateData.year = parseInt(bulkYear);
+            updateData.isMixYear = false;
+        }
+        if (bulkCurrency) updateData.currency = bulkCurrency;
+        if (bulkPartnerId === '__CLEAR__') updateData.partnerId = null;
+        else if (bulkPartnerId) updateData.partnerId = bulkPartnerId;
+
+        bulkUpdateMutation.mutate(updateData);
     };
 
     const { data: partnersData } = useQuery({
@@ -250,14 +266,18 @@ export default function Batches() {
 
     // Bulk Update Mutation
     const bulkUpdateMutation = useMutation({
-        mutationFn: (data: { ids: string[], status?: string, readiness?: number }) =>
-            batchesApi.bulkUpdate(data.ids, data.status, data.readiness),
+        mutationFn: (data: any) =>
+            batchesApi.bulkUpdate(data),
         onSuccess: () => {
             queryClient.invalidateQueries({ queryKey: ['batches'] });
             setShowBulkEditModal(false);
             setSelectedIds(new Set());
             setBulkStatus('');
             setBulkReadiness(undefined);
+            setBulkTimezone('');
+            setBulkYear('');
+            setBulkCurrency('');
+            setBulkPartnerId('');
             showToast(`Cập nhật thành công!`, 'success');
         },
         onError: () => showToast('Cập nhật thất bại', 'error')
@@ -289,6 +309,7 @@ export default function Batches() {
             year?: number | null;
             isMixYear: boolean;
             readiness?: number;
+            partnerId?: string | null;
             accounts: ParsedAccount[];
         }) => importApi.createBatchWithAccounts(data),
         onSuccess: () => {
@@ -363,6 +384,7 @@ export default function Batches() {
             year: editedYear === 'Mix' ? null : (editedYear !== '' ? parseInt(editedYear) : null),
             isMixYear: editedYear === 'Mix',
             readiness: editedReadiness,
+            partnerId: editedPartnerId || null,
             accounts: parsedData.accounts,
         });
     };
@@ -398,6 +420,7 @@ export default function Batches() {
         setEditedTimezone('');
         setEditedYear('');
         setEditedReadiness(5);
+        setEditedPartnerId('');
     };
 
     const statusLabels: Record<string, { label: string; class: string }> = {
@@ -548,11 +571,11 @@ export default function Batches() {
                         }
                         items={[
                             { key: 'all', label: 'Tất cả múi giờ', onClick: () => setTimezoneFilter('') },
-                            { key: 'mix', label: 'Mix', onClick: () => setTimezoneFilter('Mix') },
-                            { key: 'utc8', label: 'UTC+8', onClick: () => setTimezoneFilter('UTC+8') },
-                            { key: 'utc7', label: 'UTC+7', onClick: () => setTimezoneFilter('UTC+7') },
-                            { key: 'utc-3', label: 'UTC-3', onClick: () => setTimezoneFilter('UTC-3') },
-                            { key: 'utc0', label: 'UTC+0', onClick: () => setTimezoneFilter('UTC+0') },
+                            ...TIMEZONES.map(tz => ({
+                                key: tz,
+                                label: tz,
+                                onClick: () => setTimezoneFilter(tz)
+                            }))
                         ]}
                     />
 
@@ -774,7 +797,7 @@ export default function Batches() {
                                         </td>
                                         <td>
                                             <span style={{ fontWeight: 600, fontSize: 13, color: (batch.rangeSpending || 0) > 0 ? '#10b981' : 'inherit' }}>
-                                                {new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD' }).format(batch.rangeSpending || 0)}
+                                                ${new Intl.NumberFormat('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 }).format(batch.rangeSpending || 0)}
                                             </span>
                                         </td>
                                         <td>
@@ -1044,6 +1067,19 @@ export default function Batches() {
                                                         onChange={(e) => setEditedReadiness(parseInt(e.target.value) || 0)}
                                                     />
                                                 </div>
+                                            </div>
+                                            <div className="form-group" style={{ margin: 0 }}>
+                                                <label className="form-label">Đối tác</label>
+                                                <select
+                                                    className="form-select"
+                                                    value={editedPartnerId}
+                                                    onChange={(e) => setEditedPartnerId(e.target.value)}
+                                                >
+                                                    <option value="">-- Chọn đối tác --</option>
+                                                    {partners.map((p: Partner) => (
+                                                        <option key={p.id} value={p.id}>{p.name}</option>
+                                                    ))}
+                                                </select>
                                             </div>
                                         </div>
 
@@ -1333,7 +1369,64 @@ export default function Batches() {
                                             setBulkReadiness(val === '' ? undefined : Number(val));
                                         }}
                                     />
-                                    <small style={{ color: 'var(--text-muted)' }}>Nhập số từ 0 - 10</small>
+                                    <small style={{ color: 'var(--text-muted)' }}>Để trống hoặc nhập số từ 0 - 10</small>
+                                </div>
+                                <div className="form-group">
+                                    <label className="form-label">Múi giờ (để trống nếu không đổi)</label>
+                                    <select
+                                        className="form-select"
+                                        value={bulkTimezone}
+                                        onChange={e => setBulkTimezone(e.target.value)}
+                                    >
+                                        <option value="">-- Giữ nguyên --</option>
+                                        {TIMEZONES.map(tz => (
+                                            <option key={tz} value={tz}>{tz}</option>
+                                        ))}
+                                    </select>
+                                </div>
+                                <div className="form-group">
+                                    <label className="form-label">Năm (để trống nếu không đổi)</label>
+                                    <select
+                                        className="form-select"
+                                        value={bulkYear}
+                                        onChange={e => setBulkYear(e.target.value)}
+                                    >
+                                        <option value="">-- Giữ nguyên --</option>
+                                        <option value="Mix">Mix (nhiều năm)</option>
+                                        <option value="2024">2024</option>
+                                        <option value="2025">2025</option>
+                                        <option value="2026">2026</option>
+                                    </select>
+                                </div>
+                                <div className="form-group">
+                                    <label className="form-label">Tiền tệ (để trống nếu không đổi)</label>
+                                    <select
+                                        className="form-select"
+                                        value={bulkCurrency}
+                                        onChange={e => setBulkCurrency(e.target.value)}
+                                    >
+                                        <option value="">-- Giữ nguyên --</option>
+                                        <option value="USD">USD</option>
+                                        <option value="VND">VND</option>
+                                        <option value="EUR">EUR</option>
+                                        <option value="GBP">GBP</option>
+                                        <option value="SGD">SGD</option>
+                                        <option value="MYR">MYR</option>
+                                    </select>
+                                </div>
+                                <div className="form-group">
+                                    <label className="form-label">Đối tác (để trống nếu không đổi)</label>
+                                    <select
+                                        className="form-select"
+                                        value={bulkPartnerId}
+                                        onChange={e => setBulkPartnerId(e.target.value)}
+                                    >
+                                        <option value="">-- Giữ nguyên --</option>
+                                        <option value="__CLEAR__">Xóa đối tác</option>
+                                        {partners.map((p: Partner) => (
+                                            <option key={p.id} value={p.id}>{p.name}</option>
+                                        ))}
+                                    </select>
                                 </div>
                             </div>
                             <div className="modal-footer">

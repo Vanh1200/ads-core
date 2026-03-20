@@ -54,6 +54,8 @@ export default function InvoiceMCCs() {
     const [selectionAnchor, setSelectionAnchor] = useState<number | null>(null);
     const [showBulkEditStatus, setShowBulkEditStatus] = useState(false);
     const [bulkStatus, setBulkStatus] = useState('');
+    const [bulkCreditStatus, setBulkCreditStatus] = useState('');
+    const [bulkPartnerId, setBulkPartnerId] = useState('');
     const [confirmBulkDelete, setConfirmBulkDelete] = useState(false);
 
     // Import State
@@ -149,15 +151,24 @@ export default function InvoiceMCCs() {
     };
 
     const bulkUpdateStatusMutation = useMutation({
-        mutationFn: ({ ids, status }: { ids: string[]; status: string }) =>
-            Promise.all(ids.map(id => invoiceMCCsApi.update(id, { status }))),
+        mutationFn: ({ ids, status, creditStatus, partnerId }: { ids: string[]; status?: string; creditStatus?: string; partnerId?: string }) =>
+            Promise.all(ids.map(id => {
+                const updateData: any = {};
+                if (status) updateData.status = status;
+                if (creditStatus) updateData.creditStatus = creditStatus;
+                if (partnerId !== undefined) updateData.partnerId = partnerId || null;
+                return invoiceMCCsApi.update(id, updateData);
+            })),
         onSuccess: () => {
             queryClient.invalidateQueries({ queryKey: ['invoiceMCCs'] });
-            showToast(`Đã cập nhật trạng thái cho ${selectedIds.size} Invoice MCC thành công!`, 'success');
+            showToast(`Đã cập nhật thông tin cho ${selectedIds.size} Invoice MCC thành công!`, 'success');
             setSelectedIds(new Set());
             setShowBulkEditStatus(false);
+            setBulkStatus('');
+            setBulkCreditStatus('');
+            setBulkPartnerId('');
         },
-        onError: () => showToast('Có lỗi xảy ra khi cập nhật trạng thái!', 'error')
+        onError: () => showToast('Có lỗi xảy ra khi cập nhật!', 'error')
     });
 
     const bulkDeleteMutation = useMutation({
@@ -427,7 +438,7 @@ export default function InvoiceMCCs() {
                                     items={[
                                         {
                                             key: 'update-status',
-                                            label: 'Thay đổi trạng thái',
+                                            label: 'Cập nhật thông tin',
                                             icon: <Edit2 size={14} />,
                                             onClick: () => setShowBulkEditStatus(true)
                                         },
@@ -605,7 +616,7 @@ export default function InvoiceMCCs() {
                                         </td>
                                         <td style={{ textAlign: 'right' }}>
                                             <span style={{ fontWeight: 600, fontSize: 13, color: (mi.rangeSpending || 0) > 0 ? '#10b981' : 'inherit' }}>
-                                                {new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD' }).format(mi.rangeSpending || 0)}
+                                                ${new Intl.NumberFormat('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 }).format(mi.rangeSpending || 0)}
                                             </span>
                                         </td>
                                         <td>
@@ -844,28 +855,55 @@ export default function InvoiceMCCs() {
                 )
             }
 
-            {/* Bulk Status Edit Modal */}
+            {/* Bulk Info Edit Modal */}
             {
                 showBulkEditStatus && (
                     <div className="modal-overlay" onClick={() => setShowBulkEditStatus(false)}>
-                        <div className="modal" style={{ maxWidth: '400px' }} onClick={(e) => e.stopPropagation()}>
+                        <div className="modal" style={{ maxWidth: '460px' }} onClick={(e) => e.stopPropagation()}>
                             <div className="modal-header">
-                                <h3 className="modal-title">Cập nhật trạng thái ({selectedIds.size})</h3>
+                                <h3 className="modal-title">Cập nhật thông tin ({selectedIds.size} MI)</h3>
                                 <button className="modal-close" onClick={() => setShowBulkEditStatus(false)}>×</button>
                             </div>
                             <div className="modal-body">
                                 <div className="form-group">
-                                    <label className="form-label">Trạng thái mới</label>
+                                    <label className="form-label">Trạng thái</label>
                                     <select
                                         className="form-select"
                                         value={bulkStatus}
                                         onChange={(e) => setBulkStatus(e.target.value)}
                                     >
-                                        <option value="">-- Chọn trạng thái --</option>
+                                        <option value="">-- Không thay đổi --</option>
                                         <option value="ACTIVE">Hoạt động</option>
                                         <option value="PENDING">Chờ kết nối</option>
                                         <option value="EXHAUSTED">Hết tín dụng</option>
                                         <option value="INACTIVE">Không hoạt động</option>
+                                    </select>
+                                </div>
+                                <div className="form-group">
+                                    <label className="form-label">Tín dụng</label>
+                                    <select
+                                        className="form-select"
+                                        value={bulkCreditStatus}
+                                        onChange={(e) => setBulkCreditStatus(e.target.value)}
+                                    >
+                                        <option value="">-- Không thay đổi --</option>
+                                        <option value="PENDING">Chờ kết nối</option>
+                                        <option value="CONNECTED">Đã kết nối</option>
+                                        <option value="FAILED">Lỗi</option>
+                                    </select>
+                                </div>
+                                <div className="form-group">
+                                    <label className="form-label">Đối tác</label>
+                                    <select
+                                        className="form-select"
+                                        value={bulkPartnerId}
+                                        onChange={(e) => setBulkPartnerId(e.target.value)}
+                                    >
+                                        <option value="">-- Không thay đổi --</option>
+                                        <option value="__CLEAR__">Xóa đối tác</option>
+                                        {partners.map((p: Partner) => (
+                                            <option key={p.id} value={p.id}>{p.name}</option>
+                                        ))}
                                     </select>
                                 </div>
                             </div>
@@ -874,14 +912,15 @@ export default function InvoiceMCCs() {
                                 <button
                                     className="btn btn-primary"
                                     onClick={() => {
-                                        if (bulkStatus) {
-                                            bulkUpdateStatusMutation.mutate({
-                                                ids: Array.from(selectedIds),
-                                                status: bulkStatus
-                                            });
-                                        }
+                                        if (!bulkStatus && !bulkCreditStatus && !bulkPartnerId) return;
+                                        bulkUpdateStatusMutation.mutate({
+                                            ids: Array.from(selectedIds),
+                                            status: bulkStatus || undefined,
+                                            creditStatus: bulkCreditStatus || undefined,
+                                            partnerId: bulkPartnerId === '__CLEAR__' ? '' : (bulkPartnerId || undefined),
+                                        });
                                     }}
-                                    disabled={bulkUpdateStatusMutation.isPending || !bulkStatus}
+                                    disabled={bulkUpdateStatusMutation.isPending || (!bulkStatus && !bulkCreditStatus && !bulkPartnerId)}
                                 >
                                     {bulkUpdateStatusMutation.isPending ? 'Đang cập nhật...' : 'Cập nhật hàng loạt'}
                                 </button>
