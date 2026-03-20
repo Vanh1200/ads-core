@@ -37,8 +37,17 @@ interface InvoiceMCC {
     status: string;
 }
 
-type SortField = 'googleAccountId' | 'accountName' | 'status' | 'currency' | 'batch' | 'currentMi' | 'currentMc' | 'totalSpending';
+type SortField = 'googleAccountId' | 'accountName' | 'status' | 'currency' | 'batch' | 'currentMi' | 'currentMc' | 'totalSpending' | 'batch.year' | 'batch.timezone';
 type SortOrder = 'asc' | 'desc';
+
+const TIMEZONES = [
+    'Mix', 'UTC-12', 'UTC-11', 'UTC-10', 'UTC-9', 'UTC-8', 'UTC-7', 'UTC-6', 'UTC-5', 'UTC-4', 'UTC-3', 'UTC-2', 'UTC-1',
+    'UTC+0', 'UTC+1', 'UTC+2', 'UTC+3', 'UTC+4', 'UTC+5', 'UTC+6', 'UTC+7', 'UTC+8', 'UTC+9', 'UTC+10', 'UTC+11', 'UTC+12'
+];
+
+const CURRENCIES = [
+    'USD', 'VND', 'EUR', 'GBP', 'AUD', 'SGD', 'THB', 'CAD', 'JPY', 'KRW', 'BRL', 'MXN', 'INR'
+];
 
 export default function Accounts() {
     const queryClient = useQueryClient();
@@ -54,6 +63,9 @@ export default function Accounts() {
     const [batchId, setBatchId] = useState<string>(searchParams.get('batchId') || '');
     const [miId, setMiId] = useState<string>(searchParams.get('miId') || '');
     const [mcId, setMcId] = useState<string>(searchParams.get('mcId') || '');
+    const [timezoneFilter, setTimezoneFilter] = useState<string>(searchParams.get('timezone') || '');
+    const [yearFilter, setYearFilter] = useState<string>(searchParams.get('year') || '');
+    const [currencyFilter, setCurrencyFilter] = useState<string>(searchParams.get('currency') || '');
 
     const [page, setPage] = useState(1);
     const [limit, setLimit] = useState(50);
@@ -75,7 +87,7 @@ export default function Accounts() {
         }
         setPage(1);
         setSelectionAnchor(null);
-    }, [search, statusFilter, idsFilter, batchId, miId, mcId, limit, sortField, sortOrder]);
+    }, [search, statusFilter, idsFilter, batchId, miId, mcId, timezoneFilter, yearFilter, currencyFilter, limit, sortField, sortOrder]);
 
     // State
     const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
@@ -117,6 +129,9 @@ export default function Accounts() {
         const urlBatchId = searchParams.get('batchId') || '';
         const urlMiId = searchParams.get('miId') || '';
         const urlMcId = searchParams.get('mcId') || '';
+        const urlTimezone = searchParams.get('timezone') || '';
+        const urlYear = searchParams.get('year') || '';
+        const urlCurrency = searchParams.get('currency') || '';
         const urlIds = searchParams.get('ids');
 
         setSearch(urlSearch);
@@ -124,6 +139,9 @@ export default function Accounts() {
         setBatchId(urlBatchId);
         setMiId(urlMiId);
         setMcId(urlMcId);
+        setTimezoneFilter(urlTimezone);
+        setYearFilter(urlYear);
+        setCurrencyFilter(urlCurrency);
 
         if (urlIds) {
             setIdsFilter(urlIds.replace(/,/g, '\n'));
@@ -156,15 +174,18 @@ export default function Accounts() {
             if (batchId) next.set('batchId', batchId); else next.delete('batchId');
             if (miId) next.set('miId', miId); else next.delete('miId');
             if (mcId) next.set('mcId', mcId); else next.delete('mcId');
+            if (timezoneFilter) next.set('timezone', timezoneFilter); else next.delete('timezone');
+            if (yearFilter) next.set('year', yearFilter); else next.delete('year');
+            if (currencyFilter) next.set('currency', currencyFilter); else next.delete('currency');
             return next;
         }, { replace: true });
-    }, [search, statusFilter, idsFilter, batchId, miId, mcId, setSearchParams]);
+    }, [search, statusFilter, idsFilter, batchId, miId, mcId, timezoneFilter, yearFilter, currencyFilter, setSearchParams]);
 
     // ... (queries)
 
     // Fetch accounts
     const { data, isLoading } = useQuery({
-        queryKey: ['accounts', search, statusFilter, idsFilter, batchId, miId, mcId, page, limit, sortField, sortOrder, spendingDays],
+        queryKey: ['accounts', search, statusFilter, idsFilter, batchId, miId, mcId, timezoneFilter, yearFilter, currencyFilter, page, limit, sortField, sortOrder, spendingDays],
         queryFn: () => accountsApi.list({
             search,
             status: statusFilter || undefined,
@@ -172,6 +193,9 @@ export default function Accounts() {
             batchId: batchId || undefined,
             miId: miId || undefined,
             mcId: mcId || undefined,
+            timezone: timezoneFilter || undefined,
+            year: yearFilter || undefined,
+            currency: currencyFilter || undefined,
             page,
             limit,
             sortBy: sortField,
@@ -335,7 +359,26 @@ export default function Accounts() {
         setBatchId('');
         setMiId('');
         setMcId('');
-        setPage(1);
+        setTimezoneFilter('');
+        setYearFilter('');
+        setCurrencyFilter('');
+        setSortField('googleAccountId');
+        setSortOrder('desc');
+        setSpendingDays(7);
+        // Only clear params explicitly
+        setSearchParams((prev) => {
+            const next = new URLSearchParams(prev);
+            next.delete('search');
+            next.delete('status');
+            next.delete('ids');
+            next.delete('batchId');
+            next.delete('miId');
+            next.delete('mcId');
+            next.delete('timezone');
+            next.delete('year');
+            next.delete('currency');
+            return next;
+        }, { replace: true });
         setPage(1);
     };
 
@@ -394,6 +437,9 @@ export default function Accounts() {
                 batchId: batchId || undefined,
                 miId: miId || undefined,
                 mcId: mcId || undefined,
+                timezone: timezoneFilter || undefined,
+                year: yearFilter || undefined,
+                currency: currencyFilter || undefined,
             };
 
             const res = await accountsApi.getFilterIds(params);
@@ -855,6 +901,59 @@ export default function Accounts() {
                         ]}
                     />
 
+                    {/* Timezone Filter */}
+                    <Dropdown
+                        trigger={
+                            <button className={`btn ${timezoneFilter ? 'btn-primary' : 'btn-secondary'}`} style={{ gap: 6 }}>
+                                {timezoneFilter || 'Múi giờ'}
+                                <ChevronDown size={14} />
+                            </button>
+                        }
+                        items={[
+                            { key: 'all', label: 'Tất cả Múi giờ', onClick: () => setTimezoneFilter('') },
+                            ...TIMEZONES.map(tz => ({
+                                key: tz,
+                                label: tz,
+                                onClick: () => setTimezoneFilter(tz)
+                            }))
+                        ]}
+                    />
+
+                    {/* Year Filter */}
+                    <Dropdown
+                        trigger={
+                            <button className={`btn ${yearFilter ? 'btn-primary' : 'btn-secondary'}`} style={{ gap: 6 }}>
+                                {yearFilter || 'Năm'}
+                                <ChevronDown size={14} />
+                            </button>
+                        }
+                        items={[
+                            { key: 'all', label: 'Tất cả Năm', onClick: () => setYearFilter('') },
+                            { key: 'mix', label: 'Năm hỗn hợp (Mix)', onClick: () => setYearFilter('mix') },
+                            { key: '2024', label: '2024', onClick: () => setYearFilter('2024') },
+                            { key: '2025', label: '2025', onClick: () => setYearFilter('2025') },
+                            { key: '2026', label: '2026', onClick: () => setYearFilter('2026') },
+                        ]}
+                    />
+
+                    {/* Currency Filter */}
+                    <Dropdown
+                        trigger={
+                            <button className={`btn ${currencyFilter ? 'btn-primary' : 'btn-secondary'}`} style={{ gap: 6 }}>
+                                {currencyFilter || 'Tiền tệ'}
+                                <ChevronDown size={14} />
+                            </button>
+                        }
+                        items={[
+                            { key: 'all', label: 'Tất cả Tiền tệ', onClick: () => setCurrencyFilter('') },
+                            ...CURRENCIES.map(cur => ({
+                                key: cur,
+                                label: cur,
+                                onClick: () => setCurrencyFilter(cur)
+                            }))
+                        ]}
+                    />
+
 
                     {/* Spending Days Filter */}
                     <Dropdown
@@ -877,7 +976,7 @@ export default function Accounts() {
                         ]}
                     />
 
-                    {(search || statusFilter || idsFilter || batchId || miId || mcId) && (
+                    {(search || statusFilter || idsFilter || batchId || miId || mcId || timezoneFilter || yearFilter || currencyFilter) && (
                         <button
                             className="btn btn-secondary"
                             onClick={resetFilters}

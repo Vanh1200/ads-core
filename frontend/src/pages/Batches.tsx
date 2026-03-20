@@ -23,12 +23,17 @@ interface Batch {
     notes?: string | null;
     createdAt: string;
     rangeSpending?: number;
+    currency?: string | null;
     _count?: { accounts: number };
 }
 
 const TIMEZONES = [
     'Mix', 'UTC-12', 'UTC-11', 'UTC-10', 'UTC-9', 'UTC-8', 'UTC-7', 'UTC-6', 'UTC-5', 'UTC-4', 'UTC-3', 'UTC-2', 'UTC-1',
     'UTC+0', 'UTC+1', 'UTC+2', 'UTC+3', 'UTC+4', 'UTC+5', 'UTC+6', 'UTC+7', 'UTC+8', 'UTC+9', 'UTC+10', 'UTC+11', 'UTC+12'
+];
+
+const CURRENCIES = [
+    'USD', 'VND', 'EUR', 'GBP', 'AUD', 'SGD', 'THB', 'CAD', 'JPY', 'KRW', 'BRL', 'MXN', 'INR'
 ];
 
 interface Partner {
@@ -45,7 +50,7 @@ interface ParsedAccount {
     existingBatchId: string | null;
 }
 
-type SortField = 'mccAccountName' | 'mccAccountId' | 'status' | 'readiness' | 'timezone' | 'year' | 'partner' | 'createdAt' | 'rangeSpending';
+type SortField = 'mccAccountName' | 'mccAccountId' | 'status' | 'readiness' | 'timezone' | 'year' | 'partner' | 'createdAt' | 'rangeSpending' | 'currency';
 type SortOrder = 'asc' | 'desc';
 
 interface ParsedBatchData {
@@ -70,7 +75,8 @@ export default function Batches() {
     const [idsFilter, setIdsFilter] = useState(searchParams.get('ids') || '');
     const [statusFilter, setStatusFilter] = useState(searchParams.get('status') || '');
     const [timezoneFilter, setTimezoneFilter] = useState(searchParams.get('timezone') || '');
-    const [yearFilter, setYearFilter] = useState<number | 'mix' | ''>(searchParams.get('year') ? (searchParams.get('year') === 'mix' ? 'mix' : parseInt(searchParams.get('year')!)) : '');
+    const [yearFilter, setYearFilter] = useState<string>(searchParams.get('year') || '');
+    const [currencyFilter, setCurrencyFilter] = useState<string>(searchParams.get('currency') || '');
     const [partnerFilter, setPartnerFilter] = useState(searchParams.get('partnerId') || '');
 
     const [spendingDays, setSpendingDays] = useState(7);
@@ -93,6 +99,7 @@ export default function Batches() {
     const [bulkCurrency, setBulkCurrency] = useState('');
     const [bulkPartnerId, setBulkPartnerId] = useState('');
     const [isSearchOpen, setIsSearchOpen] = useState(false);
+    const [isYearSearchOpen, setIsYearSearchOpen] = useState(false);
 
 
     const [showImportModal, setShowImportModal] = useState(false);
@@ -140,22 +147,24 @@ export default function Batches() {
             if (idsFilter) next.set('ids', idsFilter); else next.delete('ids');
             if (statusFilter) next.set('status', statusFilter); else next.delete('status');
             if (timezoneFilter) next.set('timezone', timezoneFilter); else next.delete('timezone');
-            if (yearFilter) next.set('year', yearFilter.toString()); else next.delete('year');
+            if (yearFilter) next.set('year', yearFilter); else next.delete('year');
+            if (currencyFilter) next.set('currency', currencyFilter); else next.delete('currency');
             if (partnerFilter) next.set('partnerId', partnerFilter); else next.delete('partnerId');
             return next;
         }, { replace: true });
-    }, [search, idsFilter, statusFilter, timezoneFilter, yearFilter, partnerFilter, setSearchParams]);
+    }, [search, idsFilter, statusFilter, timezoneFilter, yearFilter, currencyFilter, partnerFilter, setSearchParams]);
 
     const { data, isLoading } = useQuery({
-        queryKey: ['batches', search, spendingDays, idsFilter, statusFilter, timezoneFilter, yearFilter, partnerFilter, page, limit, sortField, sortOrder],
+        queryKey: ['batches', search, spendingDays, idsFilter, statusFilter, timezoneFilter, yearFilter, currencyFilter, partnerFilter, page, limit, sortField, sortOrder],
         queryFn: () => batchesApi.list({
             search,
             spendingDays,
             ids: idsFilter || undefined,
             status: statusFilter || undefined,
             timezone: timezoneFilter || undefined,
-            year: typeof yearFilter === 'number' ? yearFilter : undefined,
-            isMixYear: yearFilter === 'mix' ? true : undefined,
+            currency: currencyFilter || undefined,
+            year: yearFilter && yearFilter.toLowerCase() !== 'mix' ? parseInt(yearFilter) : undefined,
+            isMixYear: yearFilter && yearFilter.toLowerCase() === 'mix' ? true : undefined,
             partnerId: partnerFilter || undefined,
             page,
             limit,
@@ -176,6 +185,7 @@ export default function Batches() {
         setStatusFilter('');
         setTimezoneFilter('');
         setYearFilter('');
+        setCurrencyFilter('');
         setPartnerFilter('');
         setPage(1);
         setSearchParams({});
@@ -580,19 +590,49 @@ export default function Batches() {
                     />
 
                     {/* Year Filter */}
+                    <div style={{ position: 'relative' }}>
+                        <button 
+                            className={`btn ${yearFilter ? 'btn-primary' : 'btn-secondary'}`} 
+                            style={{ gap: 6 }}
+                            onClick={() => setIsYearSearchOpen(true)}
+                        >
+                            {yearFilter.toLowerCase() === 'mix' ? 'Mix' : yearFilter || 'Năm'}
+                            <ChevronDown size={14} />
+                        </button>
+
+                        <SearchDropdown
+                            isOpen={isYearSearchOpen}
+                            onClose={() => setIsYearSearchOpen(false)}
+                            onApply={(value) => {
+                                setYearFilter(value.trim());
+                                setIsYearSearchOpen(false);
+                                setPage(1);
+                            }}
+                            onClear={() => {
+                                setYearFilter('');
+                                setIsYearSearchOpen(false);
+                                setPage(1);
+                            }}
+                            initialValue={yearFilter}
+                            placeholder="Nhập năm (VD: 2024) hoặc 'mix'..."
+                        />
+                    </div>
+
+                    {/* Currency Filter */}
                     <Dropdown
                         trigger={
-                            <button className={`btn ${yearFilter ? 'btn-primary' : 'btn-secondary'}`} style={{ gap: 6 }}>
-                                {yearFilter || 'Năm'}
+                            <button className={`btn ${currencyFilter ? 'btn-primary' : 'btn-secondary'}`} style={{ gap: 6 }}>
+                                {currencyFilter || 'Tiền tệ'}
                                 <ChevronDown size={14} />
                             </button>
                         }
                         items={[
-                            { key: 'all', label: 'Tất cả', onClick: () => setYearFilter('') },
-                            { key: 'mix', label: 'Năm hỗn hợp (Mix)', onClick: () => setYearFilter('mix') },
-                            { key: '2024', label: '2024', onClick: () => setYearFilter(2024) },
-                            { key: '2025', label: '2025', onClick: () => setYearFilter(2025) },
-                            { key: '2026', label: '2026', onClick: () => setYearFilter(2026) },
+                            { key: 'all', label: 'Tất cả tiền tệ', onClick: () => setCurrencyFilter('') },
+                            ...CURRENCIES.map(cur => ({
+                                key: cur,
+                                label: cur,
+                                onClick: () => setCurrencyFilter(cur)
+                            }))
                         ]}
                     />
 
@@ -684,6 +724,14 @@ export default function Batches() {
                                         Năm <SortIcon field="year" />
                                     </div>
                                 </th>
+                                <th
+                                    style={{ width: '8%', cursor: 'pointer', userSelect: 'none' }}
+                                    onClick={() => handleSort('currency')}
+                                >
+                                    <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
+                                        Tiền tệ <SortIcon field="currency" />
+                                    </div>
+                                </th>
                                 <th style={{ width: '8%' }}>Tài khoản</th>
                                 <th style={{ width: '8%' }}>Sóng</th>
                                 <th
@@ -709,7 +757,7 @@ export default function Batches() {
                         <tbody>
                             {isLoading ? (
                                 <tr>
-                                    <td colSpan={10} style={{ textAlign: 'center', padding: 40 }}>
+                                    <td colSpan={11} style={{ textAlign: 'center', padding: 40 }}>
                                         <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', gap: 12 }}>
                                             <div className="spinner" />
                                             <span style={{ color: 'var(--text-muted)' }}>Đang tải dữ liệu...</span>
@@ -769,6 +817,13 @@ export default function Batches() {
                                                 <span className="badge badge-warning" style={{ background: 'rgba(245, 158, 11, 0.2)', color: '#f59e0b', fontSize: '11px' }}>Mix</span>
                                             ) : (
                                                 batch.year || '-'
+                                            )}
+                                        </td>
+                                        <td>
+                                            {batch.currency === 'Mix' ? (
+                                                <span className="badge badge-warning" style={{ background: 'rgba(245, 158, 11, 0.2)', color: '#f59e0b', fontSize: '11px' }}>Mix</span>
+                                            ) : (
+                                                batch.currency || '-'
                                             )}
                                         </td>
                                         <td>
@@ -845,7 +900,7 @@ export default function Batches() {
                                 ))
                             ) : (
                                 <tr>
-                                    <td colSpan={10} style={{ textAlign: 'center', padding: 40, color: 'var(--text-muted)' }}>
+                                    <td colSpan={11} style={{ textAlign: 'center', padding: 40, color: 'var(--text-muted)' }}>
                                         <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 12 }}>
                                             <Search size={32} style={{ opacity: 0.3 }} />
                                             <span>Không tìm thấy lô tài khoản nào phù hợp</span>

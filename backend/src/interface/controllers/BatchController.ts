@@ -12,7 +12,7 @@ export class BatchController {
         const { page, limit, search, sortBy, sortOrder, ids } = query.success
             ? query.data
             : { page: 1, limit: 20, search: undefined, sortBy: undefined, sortOrder: 'desc' as const, ids: undefined };
-        const { status, year, isMixYear, timezone, partnerId, spendingDays } = req.query;
+        const { status, year, isMixYear, timezone, currency, partnerId, spendingDays } = req.query;
 
         let startDate: Date | undefined;
         let endDate: Date | undefined;
@@ -31,6 +31,7 @@ export class BatchController {
             year: year ? parseInt(year as string) : undefined,
             isMixYear: isMixYear === 'true' ? true : isMixYear === 'false' ? false : undefined,
             timezone: timezone as string,
+            currency: currency as string,
             partnerId: partnerId as string,
             sortBy,
             sortOrder,

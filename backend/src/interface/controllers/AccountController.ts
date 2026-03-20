@@ -33,7 +33,7 @@ export class AccountController {
             if (ids.length === 0) ids = undefined;
         }
 
-        const { status, batchId, miId, mcId, spendingDays } = req.query;
+        const { status, batchId, miId, mcId, spendingDays, timezone, year, currency } = req.query;
 
         let startDate: Date | undefined;
         let endDate: Date | undefined;
@@ -52,6 +52,9 @@ export class AccountController {
             batchId: batchId as string,
             miId: miId as string,
             mcId: mcId as string,
+            timezone: timezone as string,
+            currency: currency as string,
+            year: year as string | number,
             sortBy,
             sortOrder,
             ids,
@@ -64,7 +67,7 @@ export class AccountController {
 
 
     getFilterIds = asyncHandler(async (req: any, res: any) => {
-        const { search, status, batchId, miId, mcId } = req.query;
+        const { search, status, batchId, miId, mcId, timezone, year, currency } = req.query;
 
         const ids = await accountService.getFilterIds({
             q: search,
@@ -72,6 +75,9 @@ export class AccountController {
             batchId: batchId as string,
             miId: miId as string,
             mcId: mcId as string,
+            timezone: timezone as string,
+            year: year as string | number,
+            currency: currency as string,
         });
 
         res.json(ids);

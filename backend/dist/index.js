@@ -44,9 +44,11 @@ const import_routes_1 = __importDefault(require("./web/routes/import.routes"));
 const activityLog_routes_1 = __importDefault(require("./web/routes/activityLog.routes"));
 const creditLinking_routes_1 = __importDefault(require("./web/routes/creditLinking.routes"));
 const stats_routes_1 = __importDefault(require("./web/routes/stats.routes"));
+const googleAds_routes_1 = __importDefault(require("./web/routes/googleAds.routes"));
 // Import infrastructure
 const Logger_1 = require("./infrastructure/logging/Logger");
 const errorHandler_1 = require("./infrastructure/middleware/errorHandler");
+// Initialize Express app
 const app = (0, express_1.default)();
 const PORT = Number(process.env.PORT) || 3001;
 // Middleware
@@ -58,6 +60,7 @@ app.use(Logger_1.requestLogger);
 app.use((0, cors_1.default)({
     origin: [
         'http://localhost:5173',
+        'http://127.0.0.1:5173',
         'http://localhost:5174',
         'http://localhost:5175',
         process.env.FRONTEND_URL || 'http://localhost:5173'
@@ -90,6 +93,7 @@ app.use('/api/import', import_routes_1.default);
 app.use('/api/activity-logs', activityLog_routes_1.default);
 app.use('/api/credit-linking', creditLinking_routes_1.default);
 app.use('/api/stats', stats_routes_1.default);
+app.use('/api/google-ads', googleAds_routes_1.default);
 // Global Error Handler
 app.use(errorHandler_1.errorHandler);
 // 404 handler for API routes

@@ -24,6 +24,7 @@ export class PrismaBatchRepository implements IBatchRepository {
         year?: number;
         isMixYear?: boolean;
         timezone?: string;
+        currency?: string;
         partnerId?: string;
         sortBy?: string;
         sortOrder?: 'asc' | 'desc';
@@ -31,12 +32,13 @@ export class PrismaBatchRepository implements IBatchRepository {
         startDate?: Date;
         endDate?: Date;
     }): Promise<{ data: AccountBatch[]; total: number }> {
-        const { page, limit, search, status, year, isMixYear, timezone, partnerId, sortBy, sortOrder, ids, startDate, endDate } = params;
+        const { page, limit, search, status, year, isMixYear, timezone, currency, partnerId, sortBy, sortOrder, ids, startDate, endDate } = params;
         const where: any = {};
         if (status) where.status = status as BatchStatus;
         if (year) where.year = year;
         if (isMixYear !== undefined) where.isMixYear = isMixYear;
         if (timezone) where.timezone = timezone;
+        if (currency) where.accounts = { some: { currency } };
         if (partnerId) where.partnerId = partnerId;
         if (ids && ids.length > 0) {
             where.mccAccountId = { in: ids };
@@ -69,8 +71,8 @@ export class PrismaBatchRepository implements IBatchRepository {
         };
 
         // Handle dynamic sorting
-        // If sorting by rangeSpending, we must fetch all and sort in memory
-        if (sortBy === 'rangeSpending') {
+        // If sorting by rangeSpending or currency, we must fetch all and sort in memory
+        if (sortBy === 'rangeSpending' || sortBy === 'currency') {
             const batches = await prisma.accountBatch.findMany({
                 where,
                 include,
@@ -79,9 +81,15 @@ export class PrismaBatchRepository implements IBatchRepository {
             const mappedBatches = batches.map(b => this.mapToEntity(b)!);
 
             mappedBatches.sort((a, b) => {
-                const spendA = a.rangeSpending || 0;
-                const spendB = b.rangeSpending || 0;
-                return sortOrder === 'asc' ? spendA - spendB : spendB - spendA;
+                if (sortBy === 'currency') {
+                    const currA = a.currency || '';
+                    const currB = b.currency || '';
+                    return sortOrder === 'asc' ? currA.localeCompare(currB) : currB.localeCompare(currA);
+                } else {
+                    const spendA = a.rangeSpending || 0;
+                    const spendB = b.rangeSpending || 0;
+                    return sortOrder === 'asc' ? spendA - spendB : spendB - spendA;
+                }
             });
 
             const startIndex = (page - 1) * limit;
@@ -198,7 +206,15 @@ export class PrismaBatchRepository implements IBatchRepository {
         if (!prismaBatch) return null;
 
         let rangeSpending = 0;
+        let currency: string | null = null;
+        
         if (prismaBatch.accounts && Array.isArray(prismaBatch.accounts)) {
+            if (prismaBatch.accounts.length > 0) {
+                const firstCurrency = prismaBatch.accounts[0].currency;
+                const isMixed = prismaBatch.accounts.some((a: any) => a.currency !== firstCurrency);
+                currency = isMixed ? 'Mix' : firstCurrency;
+            }
+
             for (const account of prismaBatch.accounts) {
                 if (account.spendingRecords && Array.isArray(account.spendingRecords)) {
                     const accountSpending = account.spendingRecords.reduce((sum: number, r: any) => sum + Number(r.amount), 0);
@@ -212,6 +228,7 @@ export class PrismaBatchRepository implements IBatchRepository {
             totalAccounts: prismaBatch._count?.accounts ?? prismaBatch.totalAccounts ?? 0,
             status: prismaBatch.status as 'ACTIVE' | 'INACTIVE',
             rangeSpending,
+            currency,
         } as AccountBatch;
     }
 }

@@ -16,4 +16,5 @@ export interface AccountBatch {
     createdAt: Date;
     updatedAt: Date;
     rangeSpending?: number;
+    currency?: string | null;
 }

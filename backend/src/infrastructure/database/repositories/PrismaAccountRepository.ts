@@ -10,9 +10,25 @@ export class PrismaAccountRepository implements IAccountRepository {
         batchId?: string;
         miId?: string;
         mcId?: string;
+        timezone?: string;
+        year?: string | number;
+        currency?: string;
     }): Promise<{ id: string; googleAccountId: string }[]> {
-        const { q, status, batchId, miId, mcId } = params;
+        const { q, status, batchId, miId, mcId, timezone, year, currency } = params;
         const where: Prisma.AccountWhereInput = {};
+
+        if (timezone || year) {
+            where.batch = {};
+            if (timezone) where.batch.timezone = timezone;
+            if (year) {
+                if (String(year) === 'mix') {
+                    where.batch.isMixYear = true;
+                } else {
+                    where.batch.year = Number(year);
+                }
+            }
+        }
+        if (currency) where.currency = currency;
 
         if (status) where.status = status as AccountStatus;
         if (batchId) where.batchId = batchId;
@@ -63,9 +79,25 @@ export class PrismaAccountRepository implements IAccountRepository {
         ids?: string[];
         startDate?: Date;
         endDate?: Date;
+        timezone?: string;
+        year?: string | number;
+        currency?: string;
     }): Promise<{ data: Account[]; total: number }> {
-        const { page, limit, q, status, batchId, miId, mcId, sortBy, sortOrder, ids, startDate, endDate } = params;
+        const { page, limit, q, status, batchId, miId, mcId, sortBy, sortOrder, ids, startDate, endDate, timezone, year, currency } = params;
         const where: Prisma.AccountWhereInput = {};
+
+        if (timezone || year) {
+            where.batch = {};
+            if (timezone) where.batch.timezone = timezone;
+            if (year) {
+                if (String(year) === 'mix') {
+                    where.batch.isMixYear = true;
+                } else {
+                    where.batch.year = Number(year);
+                }
+            }
+        }
+        if (currency) where.currency = currency;
 
         if (status) where.status = status as AccountStatus;
         if (batchId) where.batchId = batchId;
@@ -126,7 +158,17 @@ export class PrismaAccountRepository implements IAccountRepository {
 
         const orderBy: any = {};
         if (sortBy) {
-            orderBy[sortBy] = sortOrder || 'desc';
+            if (sortBy.includes('.')) {
+                const parts = sortBy.split('.');
+                let current = orderBy;
+                for (let i = 0; i < parts.length - 1; i++) {
+                    current[parts[i]] = {};
+                    current = current[parts[i]];
+                }
+                current[parts[parts.length - 1]] = sortOrder || 'desc';
+            } else {
+                orderBy[sortBy] = sortOrder || 'desc';
+            }
         } else {
             orderBy.createdAt = 'desc';
         }
