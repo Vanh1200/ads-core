@@ -70,6 +70,8 @@ export default function Accounts() {
     const [page, setPage] = useState(1);
     const [limit, setLimit] = useState(50);
     const [selectionAnchor, setSelectionAnchor] = useState<number | null>(null);
+    const [isSearchOpen, setIsSearchOpen] = useState(false);
+    const [isYearSearchOpen, setIsYearSearchOpen] = useState(false);
 
     // Sorting
     const [sortField, setSortField] = useState<SortField>('googleAccountId');
@@ -257,7 +259,7 @@ export default function Accounts() {
     // Fetch batches for filter badge
     const { data: batchesData } = useQuery({
         queryKey: ['batches'],
-        queryFn: () => batchesApi.list(),
+        queryFn: () => batchesApi.list({ limit: 1000 }),
     });
     const batches: Batch[] = Array.isArray(batchesData?.data?.data) ? batchesData?.data?.data : [];
 
@@ -580,9 +582,6 @@ export default function Accounts() {
     };
 
     // Unified Search Logic
-    const [isSearchOpen, setIsSearchOpen] = useState(false);
-
-
     return (
         <div>
             <div className="page-header">
@@ -823,7 +822,7 @@ export default function Accounts() {
                     <Dropdown
                         trigger={
                             <button className={`btn ${batchId ? 'btn-primary' : 'btn-secondary'} `} style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-                                {batchId ? (batches.find(b => b.id === batchId)?.mccAccountName || 'Lô: Đang chọn') : 'Tất cả Lô (MA)'}
+                                {batchId ? (batches.find(b => b.id === batchId)?.mccAccountName || `Lô: ${batchId.slice(0, 8)}...`) : 'Tất cả Lô (MA)'}
                                 <ChevronDown size={14} />
                             </button>
                         }
@@ -850,7 +849,7 @@ export default function Accounts() {
                     <Dropdown
                         trigger={
                             <button className={`btn ${miId ? 'btn-primary' : 'btn-secondary'} `} style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-                                {miId ? (miList.find(m => m.id === miId)?.name || 'MI: Đang chọn') : 'Tất cả MCC (MI)'}
+                                {miId ? (miList.find(m => m.id === miId)?.name || `MI: ${miId.slice(0, 8)}...`) : 'Tất cả MCC (MI)'}
                                 <ChevronDown size={14} />
                             </button>
                         }
@@ -877,7 +876,7 @@ export default function Accounts() {
                     <Dropdown
                         trigger={
                             <button className={`btn ${mcId ? 'btn-primary' : 'btn-secondary'} `} style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-                                {mcId ? (customerList.find((c: any) => c.id === mcId)?.name || 'MC: Đang chọn') : 'Tất cả Khách (MC)'}
+                                {mcId ? (customerList.find((c: any) => c.id === mcId)?.name || `MC: ${mcId.slice(0, 8)}...`) : 'Tất cả Khách (MC)'}
                                 <ChevronDown size={14} />
                             </button>
                         }
@@ -920,21 +919,33 @@ export default function Accounts() {
                     />
 
                     {/* Year Filter */}
-                    <Dropdown
-                        trigger={
-                            <button className={`btn ${yearFilter ? 'btn-primary' : 'btn-secondary'}`} style={{ gap: 6 }}>
-                                {yearFilter || 'Năm'}
-                                <ChevronDown size={14} />
-                            </button>
-                        }
-                        items={[
-                            { key: 'all', label: 'Tất cả Năm', onClick: () => setYearFilter('') },
-                            { key: 'mix', label: 'Năm hỗn hợp (Mix)', onClick: () => setYearFilter('mix') },
-                            { key: '2024', label: '2024', onClick: () => setYearFilter('2024') },
-                            { key: '2025', label: '2025', onClick: () => setYearFilter('2025') },
-                            { key: '2026', label: '2026', onClick: () => setYearFilter('2026') },
-                        ]}
-                    />
+                    <div style={{ position: 'relative' }}>
+                        <button 
+                            className={`btn ${yearFilter ? 'btn-primary' : 'btn-secondary'}`} 
+                            style={{ gap: 6 }}
+                            onClick={() => setIsYearSearchOpen(true)}
+                        >
+                            {yearFilter.toLowerCase() === 'mix' ? 'Mix' : yearFilter || 'Năm'}
+                            <ChevronDown size={14} />
+                        </button>
+
+                        <SearchDropdown
+                            isOpen={isYearSearchOpen}
+                            onClose={() => setIsYearSearchOpen(false)}
+                            onApply={(value) => {
+                                setYearFilter(value.trim());
+                                setIsYearSearchOpen(false);
+                                setPage(1);
+                            }}
+                            onClear={() => {
+                                setYearFilter('');
+                                setIsYearSearchOpen(false);
+                                setPage(1);
+                            }}
+                            initialValue={yearFilter}
+                            placeholder="Nhập năm (VD: 2024) hoặc 'mix'..."
+                        />
+                    </div>
 
                     {/* Currency Filter */}
                     <Dropdown
