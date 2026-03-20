@@ -37,7 +37,7 @@ export class PrismaAccountRepository implements IAccountRepository {
         const account = await prisma.account.findUnique({
             where: { id },
             include: {
-                batch: { select: { id: true, mccAccountName: true } },
+                batch: { select: { id: true, mccAccountName: true, timezone: true, year: true } },
                 currentMi: { select: { id: true, name: true, mccInvoiceId: true } },
                 currentMc: { select: { id: true, name: true } },
             },
@@ -85,7 +85,7 @@ export class PrismaAccountRepository implements IAccountRepository {
         const include = {
             currentMi: { select: { id: true, name: true, mccInvoiceId: true } },
             currentMc: { select: { id: true, name: true } },
-            batch: { select: { id: true, mccAccountName: true, mccAccountId: true } },
+            batch: { select: { id: true, mccAccountName: true, mccAccountId: true, timezone: true, year: true } },
             spendingRecords: startDate && endDate ? {
                 where: {
                     spendingDate: {

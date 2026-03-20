@@ -32,7 +32,7 @@ export class CreditLinkingService {
                         accountIds: accountsToTake.map((a: any) => a.id),
                         accounts: accountsToTake.map((a: any) => ({
                             id: a.id, accountName: a.accountName, googleAccountId: a.googleAccountId,
-                            timezone: batch.timezone, currency: req.currency, batchName: batch.mccAccountName, readiness: batch.readiness,
+                            timezone: batch.timezone, currency: req.currency, batchName: batch.mccAccountName, readiness: batch.readiness, year: batch.year
                         })),
                         accountsCount: accountsToTake.length,
                         otherBatches: (batches as any[])

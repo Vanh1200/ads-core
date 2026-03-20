@@ -29,6 +29,7 @@ interface Account {
     currency: string;
     batchName: string;
     readiness: number;
+    year?: number;
 }
 
 
@@ -713,7 +714,7 @@ export default function QuickLinkTool() {
                                                                 </td>
                                                                 <td>{acc.timezone}</td>
                                                                 <td>{acc.currency}</td>
-                                                                <td>2025</td> {/* Placeholder */}
+                                                                <td>{acc.year || 'Mix'}</td>
                                                                 <td>{acc.batchName}</td>
                                                                 <td>
                                                                     <div style={{

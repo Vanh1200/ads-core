@@ -15,7 +15,7 @@ interface Account {
     status: string;
     currency: string;
     mccAccountId: string | null;
-    batch: { id: string; mccAccountName: string; mccAccountId?: string | null } | null;
+    batch: { id: string; mccAccountName: string; mccAccountId?: string | null; timezone?: string; year?: number } | null;
     currentMi: { id: string; name: string; mccInvoiceId?: string | null } | null;
     currentMc: { id: string; name: string } | null;
     createdAt: string;
@@ -938,6 +938,16 @@ export default function Accounts() {
                                         Tiền tệ <SortIcon field="currency" />
                                     </div>
                                 </th>
+                                <th>
+                                    <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
+                                        Năm
+                                    </div>
+                                </th>
+                                <th>
+                                    <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
+                                        Múi giờ
+                                    </div>
+                                </th>
                                 <th
                                     onClick={() => handleSort('totalSpending')}
                                     style={{ cursor: 'pointer', userSelect: 'none' }}
@@ -1019,6 +1029,8 @@ export default function Accounts() {
                                             </span>
                                         </td>
                                         <td>{account.currency}</td>
+                                        <td>{account.batch?.year || '-'}</td>
+                                        <td>{account.batch?.timezone || '-'}</td>
                                         <td>
                                             <span style={{ fontWeight: 600, fontSize: 13, color: (account.totalSpending || 0) > 0 ? '#059669' : 'inherit' }}>
                                                 {new Intl.NumberFormat('en-US', { style: 'currency', currency: account.currency }).format(account.totalSpending || 0)}
