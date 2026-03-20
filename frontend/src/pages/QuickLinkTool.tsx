@@ -7,7 +7,9 @@ import {
     Trash2,
     AlertCircle,
     X,
-    ArrowRight
+    ArrowRight,
+    Copy,
+    Check
 } from 'lucide-react';
 import { creditLinkingApi, invoiceMCCsApi, partnersApi } from '../api/client';
 import ConfirmModal from '../components/ConfirmModal';
@@ -91,7 +93,12 @@ export default function QuickLinkTool() {
 
     // Suggestions State
     const [suggestions, setSuggestions] = useState<any[] | null>(null);
-    const [selectedLinks, setSelectedLinks] = useState<Record<string, any>>({}); // Maps requirementId to selected link (batch + accounts)
+    const [selectedLinks, setSelectedLinks] = useState<Record<string, any>>({}); // reqId -> selected batch data
+    const [isExecuting, setIsExecuting] = useState(false);
+    
+    // Copy state
+    const [copiedAll, setCopiedAll] = useState(false);
+    const [copiedBatchIds, setCopiedBatchIds] = useState<Record<string, boolean>>({});
 
     // Destination State
     const [targetType, setTargetType] = useState<'EXISTING' | 'NEW'>('EXISTING');
@@ -105,6 +112,8 @@ export default function QuickLinkTool() {
     // Toast State
     const [toast, setToast] = useState<{ message: string, type: 'error' | 'success' } | null>(null);
 
+    const [showConfirm, setShowConfirm] = useState(false);
+
     // Auto-hide toast
     useEffect(() => {
         if (toast) {
@@ -116,9 +125,6 @@ export default function QuickLinkTool() {
     const showToast = (message: string, type: 'error' | 'success' = 'error') => {
         setToast({ message, type });
     };
-
-    const [isExecuting, setIsExecuting] = useState(false);
-    const [showConfirm, setShowConfirm] = useState(false);
 
     // Fetch existing MIs and Partners
     const { data: misData } = useQuery({
@@ -239,7 +245,32 @@ export default function QuickLinkTool() {
         suggestMutation.mutate(payload);
     };
 
+    const handleCopyAllIds = () => {
+        if (!suggestions) return;
+        const allIds = suggestions.flatMap((_, index) => {
+            const reqId = requirements[index].id;
+            const selected = selectedLinks[reqId];
+            if (!selected || !selected.accounts) return [];
+            return selected.accounts.map((a: any) => a.googleAccountId || a.id);
+        }).filter(Boolean);
 
+        if (allIds.length === 0) return;
+
+        navigator.clipboard.writeText(allIds.join('\n'));
+        setCopiedAll(true);
+        setTimeout(() => setCopiedAll(false), 2000);
+    };
+
+    const handleCopyBatchIds = (reqId: string, accounts: Account[] | undefined) => {
+        if (!accounts || accounts.length === 0) return;
+        const ids = accounts.map((a: any) => a.googleAccountId || a.id).filter(Boolean);
+        navigator.clipboard.writeText(ids.join('\n'));
+        
+        setCopiedBatchIds(prev => ({ ...prev, [reqId]: true }));
+        setTimeout(() => {
+            setCopiedBatchIds(prev => ({ ...prev, [reqId]: false }));
+        }, 2000);
+    };
 
     const handleExecuteClick = () => {
         // Validation with Toast
@@ -435,7 +466,7 @@ export default function QuickLinkTool() {
                                                         placeholder="123..."
                                                         value={newMiData.mccInvoiceId}
                                                         onChange={(e) => setNewMiData({ ...newMiData, mccInvoiceId: e.target.value })}
-                                                    />
+                                                />
                                                 </div>
                                                 <div>
                                                     <Label>Đối tác</Label>
@@ -753,8 +784,18 @@ export default function QuickLinkTool() {
                                                         ))}
                                                     </tbody>
                                                 </table>
-                                                <div style={{ padding: '12px 16px', borderTop: '1px solid var(--border-muted)', textAlign: 'right', fontSize: 13, background: 'var(--surface)' }}>
-                                                    Đã chọn: <strong style={{ color: 'var(--primary)' }}>{selected?.accounts?.length || 0}</strong> tài khoản
+                                                <div style={{ padding: '12px 16px', borderTop: '1px solid var(--border-muted)', display: 'flex', justifyContent: 'space-between', alignItems: 'center', fontSize: 13, background: 'var(--surface)' }}>
+                                                    <button 
+                                                        className="btn btn-secondary btn-sm" 
+                                                        onClick={() => handleCopyBatchIds(reqId, selected?.accounts)}
+                                                        style={{ gap: 6, fontWeight: 500 }}
+                                                    >
+                                                        {copiedBatchIds[reqId] ? <Check size={14} style={{ color: '#10b981' }} /> : <Copy size={14} />}
+                                                        {copiedBatchIds[reqId] ? 'Đã copy' : 'Copy ID'}
+                                                    </button>
+                                                    <div>
+                                                        Đã chọn: <strong style={{ color: 'var(--primary)' }}>{selected?.accounts?.length || 0}</strong> tài khoản
+                                                    </div>
                                                 </div>
                                             </div>
                                         ) : (
@@ -783,7 +824,17 @@ export default function QuickLinkTool() {
 
 
 
-                            <div style={{ display: 'flex', justifyContent: 'flex-end', marginTop: 16 }}>
+                            <div style={{ display: 'flex', justifyContent: 'flex-end', alignItems: 'center', gap: 12, marginTop: 16 }}>
+                                {totalSelectedAccounts > 0 && (
+                                    <button
+                                        className="btn btn-secondary"
+                                        onClick={handleCopyAllIds}
+                                        style={{ height: 48, padding: '0 24px', fontSize: 14, fontWeight: 500, borderRadius: 8, gap: 8 }}
+                                    >
+                                        {copiedAll ? <Check size={18} style={{ color: '#10b981' }} /> : <Copy size={18} />}
+                                        {copiedAll ? 'Đã copy tất cả ID' : `Copy tất cả ${totalSelectedAccounts} ID`}
+                                    </button>
+                                )}
                                 <button
                                     className="btn btn-primary"
                                     onClick={handleExecuteClick}
