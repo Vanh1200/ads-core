@@ -71,7 +71,6 @@ export default function Accounts() {
     const [limit, setLimit] = useState(50);
     const [selectionAnchor, setSelectionAnchor] = useState<number | null>(null);
     const [isSearchOpen, setIsSearchOpen] = useState(false);
-    const [isYearSearchOpen, setIsYearSearchOpen] = useState(false);
 
     // Sorting
     const [sortField, setSortField] = useState<SortField>('googleAccountId');
@@ -919,36 +918,26 @@ export default function Accounts() {
                     />
 
                     {/* Year Filter */}
-                    <div style={{ position: 'relative' }}>
-                        <button 
-                            className={`btn ${yearFilter ? 'btn-primary' : 'btn-secondary'}`} 
-                            style={{ gap: 6 }}
-                            onClick={() => setIsYearSearchOpen(true)}
-                        >
-                            {yearFilter.toLowerCase() === 'mix' ? 'Mix' : yearFilter || 'Năm'}
-                            <ChevronDown size={14} />
-                        </button>
-
-                        <SearchDropdown
-                            isOpen={isYearSearchOpen}
-                            onClose={() => setIsYearSearchOpen(false)}
-                            onApply={(value) => {
-                                setYearFilter(value.trim());
-                                setIsYearSearchOpen(false);
-                                setPage(1);
-                            }}
-                            onClear={() => {
-                                setYearFilter('');
-                                setIsYearSearchOpen(false);
-                                setPage(1);
-                            }}
-                            initialValue={yearFilter}
-                            placeholder="Nhập năm, VD: 2024..."
-                            singleLine={true}
-                            width={320}
-                            presets={['Mix', '2024', '2025', '2026', '2027']}
-                        />
-                    </div>
+                    <Dropdown
+                        trigger={
+                            <button className={`btn ${yearFilter ? 'btn-primary' : 'btn-secondary'}`} style={{ gap: 6 }}>
+                                {yearFilter.toLowerCase() === 'mix' ? 'Mix' : yearFilter || 'Năm'}
+                                <ChevronDown size={14} />
+                            </button>
+                        }
+                        searchable={true}
+                        searchPlaceholder="Tìm năm..."
+                        items={[
+                            { key: 'all', label: 'Tất cả Năm', onClick: () => { setYearFilter(''); setPage(1); } },
+                            { key: 'mix', label: 'Năm hỗn hợp (Mix)', onClick: () => { setYearFilter('mix'); setPage(1); } },
+                            ...Array.from({ length: new Date().getFullYear() - 2000 + 1 }, (_, i) => (new Date().getFullYear() - i).toString()).map(y => ({
+                                key: y,
+                                label: y,
+                                searchKeywords: y,
+                                onClick: () => { setYearFilter(y); setPage(1); }
+                            }))
+                        ]}
+                    />
 
                     {/* Currency Filter */}
                     <Dropdown
