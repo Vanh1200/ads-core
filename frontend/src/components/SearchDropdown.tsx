@@ -9,6 +9,9 @@ interface SearchDropdownProps {
     onClear: () => void;
     initialValue: string;
     placeholder?: string;
+    presets?: string[];
+    singleLine?: boolean;
+    width?: number;
 }
 
 const SearchDropdown: React.FC<SearchDropdownProps> = ({
@@ -17,7 +20,10 @@ const SearchDropdown: React.FC<SearchDropdownProps> = ({
     onApply,
     onClear,
     initialValue,
-    placeholder = 'Nhập thông tin tìm kiếm...'
+    placeholder = 'Nhập thông tin tìm kiếm...',
+    presets,
+    singleLine = false,
+    width = 400
 }) => {
     const [draftValue, setDraftValue] = useState(initialValue);
     const markerRef = useRef<HTMLDivElement>(null);
@@ -47,7 +53,7 @@ const SearchDropdown: React.FC<SearchDropdownProps> = ({
                 let left = parentRect.left;
                 // Min width 320px or button width, max 400px or viewport-margin
                 // Actually the design wants a wide dropdown.
-                const widthVal = Math.min(400, viewportWidth - 32);
+                const widthVal = Math.min(width, viewportWidth - 32);
 
                 // Shift if going off screen
                 if (left + widthVal > viewportWidth - margin) {
@@ -124,28 +130,70 @@ const SearchDropdown: React.FC<SearchDropdownProps> = ({
                         gap: 12,
                     }}
                 >
+                    {presets && presets.length > 0 && (
+                        <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6, marginBottom: singleLine ? 0 : 8 }}>
+                            {presets.map(preset => (
+                                <button
+                                    key={preset}
+                                    className="btn btn-secondary btn-sm"
+                                    onClick={(e) => {
+                                        e.stopPropagation();
+                                        setDraftValue(preset);
+                                        onApply(preset);
+                                    }}
+                                    style={{ padding: '4px 10px', fontSize: 13 }}
+                                >
+                                    {preset}
+                                </button>
+                            ))}
+                        </div>
+                    )}
                     <div style={{ position: 'relative' }}>
-                        <Search size={16} style={{ position: 'absolute', left: 12, top: 12, color: 'var(--text-muted)' }} />
-                        <textarea
-                            autoFocus
-                            className="form-input"
-                            placeholder={placeholder}
-                            value={draftValue}
-                            onChange={(e) => setDraftValue(e.target.value)}
-                            onKeyDown={(e) => {
-                                if (e.key === 'Enter' && !e.shiftKey) {
-                                    e.preventDefault();
-                                    onApply(draftValue);
-                                }
-                            }}
-                            style={{
-                                paddingLeft: 36,
-                                minHeight: 100,
-                                resize: 'vertical',
-                                fontSize: 14,
-                                lineHeight: 1.6
-                            }}
-                        />
+                        <Search size={16} style={{ position: 'absolute', left: 12, top: singleLine ? 12 : 12, color: 'var(--text-muted)' }} />
+                        {singleLine ? (
+                            <input
+                                autoFocus
+                                type="text"
+                                className="form-input"
+                                placeholder={placeholder}
+                                value={draftValue}
+                                onChange={(e) => setDraftValue(e.target.value)}
+                                onKeyDown={(e) => {
+                                    if (e.key === 'Enter') {
+                                        e.preventDefault();
+                                        onApply(draftValue);
+                                    }
+                                }}
+                                style={{
+                                    paddingLeft: 36,
+                                    height: 40,
+                                    fontSize: 14,
+                                    width: '100%'
+                                }}
+                            />
+                        ) : (
+                            <textarea
+                                autoFocus
+                                className="form-input"
+                                placeholder={placeholder}
+                                value={draftValue}
+                                onChange={(e) => setDraftValue(e.target.value)}
+                                onKeyDown={(e) => {
+                                    if (e.key === 'Enter' && !e.shiftKey) {
+                                        e.preventDefault();
+                                        onApply(draftValue);
+                                    }
+                                }}
+                                style={{
+                                    paddingLeft: 36,
+                                    minHeight: 100,
+                                    resize: 'vertical',
+                                    fontSize: 14,
+                                    lineHeight: 1.6,
+                                    width: '100%'
+                                }}
+                            />
+                        )}
                     </div>
                     <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 8 }}>
                         <button

@@ -614,7 +614,10 @@ export default function Batches() {
                                 setPage(1);
                             }}
                             initialValue={yearFilter}
-                            placeholder="Nhập năm (VD: 2024) hoặc 'mix'..."
+                            placeholder="Nhập năm, VD: 2024..."
+                            singleLine={true}
+                            width={320}
+                            presets={['Mix', '2024', '2025', '2026', '2027']}
                         />
                     </div>
 
