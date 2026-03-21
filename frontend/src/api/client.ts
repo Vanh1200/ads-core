@@ -166,6 +166,7 @@ export const importApi = {
         year?: number | null;
         isMixYear?: boolean;
         readiness?: number;
+        partnerId?: string | null;
         accounts: Array<{
             googleAccountId: string;
             accountName: string;

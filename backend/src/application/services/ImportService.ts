@@ -18,14 +18,30 @@ export class ImportService {
             const existing = await accountRepository.findByGoogleId(acc.googleAccountId);
             accountsWithFlags.push({
                 ...acc,
-                existsInDb: !!existing
+                existsInDb: !!existing,
+                existingBatchId: existing?.batchId || null
+            });
+        }
+
+        let existingBatch = null;
+        if (parsed.mccAccountId) {
+            existingBatch = await prisma.accountBatch.findUnique({
+                where: { mccAccountId: parsed.mccAccountId }
             });
         }
 
         return {
             accounts: accountsWithFlags,
-            mccAccountName: parsed.batchName,
+            mccAccountName: existingBatch?.mccAccountName || parsed.batchName,
             mccAccountId: parsed.mccAccountId,
+            existingBatch: !!existingBatch,
+            existingBatchDetails: existingBatch ? {
+                timezone: existingBatch.timezone,
+                year: existingBatch.year,
+                isMixYear: existingBatch.isMixYear,
+                readiness: existingBatch.readiness,
+                partnerId: existingBatch.partnerId
+            } : null,
             summary: {
                 total: accountsWithFlags.length,
                 new: accountsWithFlags.filter(a => !a.existsInDb).length,
@@ -103,20 +119,46 @@ export class ImportService {
     }
 
     async createBatchWithAccounts(data: any, userId: string, ipAddress?: string) {
-        const { mccAccountId, mccAccountName, timezone, year, readiness, accounts } = data;
+        const { mccAccountId, mccAccountName, timezone, year, readiness, accounts, partnerId } = data;
 
-        const batch = await prisma.accountBatch.create({
-            data: {
-                mccAccountId: mccAccountId || null,
-                mccAccountName: mccAccountName || null,
-                timezone: timezone || null,
-                year: year ? parseInt(year.toString()) : null,
-                isMixYear: data.isMixYear || false,
-                readiness: readiness ? parseInt(readiness.toString()) : 0,
-                status: 'ACTIVE',
-                createdById: userId,
-            }
-        });
+        let batch;
+        const isMixYear = data.isMixYear || false;
+
+        if (mccAccountId) {
+            batch = await prisma.accountBatch.findUnique({
+                where: { mccAccountId }
+            });
+        }
+
+        let isUpdate = false;
+        if (batch) {
+            isUpdate = true;
+            batch = await prisma.accountBatch.update({
+                where: { id: batch.id },
+                data: {
+                    mccAccountName: mccAccountName || batch.mccAccountName,
+                    timezone: timezone || batch.timezone,
+                    year: year ? parseInt(year.toString()) : batch.year,
+                    isMixYear: isMixYear !== undefined ? isMixYear : batch.isMixYear,
+                    readiness: readiness !== undefined ? parseInt(readiness.toString()) : batch.readiness,
+                    partnerId: partnerId !== undefined ? partnerId : batch.partnerId,
+                }
+            });
+        } else {
+            batch = await prisma.accountBatch.create({
+                data: {
+                    mccAccountId: mccAccountId || null,
+                    mccAccountName: mccAccountName || null,
+                    timezone: timezone || null,
+                    year: year ? parseInt(year.toString()) : null,
+                    isMixYear: isMixYear,
+                    readiness: readiness ? parseInt(readiness.toString()) : 0,
+                    partnerId: partnerId || null,
+                    status: 'ACTIVE',
+                    createdById: userId,
+                }
+            });
+        }
 
         const results = { created: 0, updated: 0, skipped: 0, errors: 0 };
 
@@ -132,8 +174,8 @@ export class ImportService {
                         accountName,
                         status,
                         batchId: batch.id,
-                        mccAccountName: mccAccountName || null,
-                        mccAccountId: mccAccountId || null,
+                        mccAccountName: batch.mccAccountName || null,
+                        mccAccountId: batch.mccAccountId || null,
                     });
                     results.updated++;
                 } else {
@@ -143,8 +185,8 @@ export class ImportService {
                         status: status || 'ACTIVE',
                         currency: currency || 'USD',
                         batchId: batch.id,
-                        mccAccountName: mccAccountName || null,
-                        mccAccountId: mccAccountId || null,
+                        mccAccountName: batch.mccAccountName || null,
+                        mccAccountId: batch.mccAccountId || null,
                     });
                     results.created++;
                 }
@@ -157,16 +199,16 @@ export class ImportService {
 
         await logActivity({
             userId,
-            action: 'CREATE',
+            action: isUpdate ? 'UPDATE' : 'CREATE',
             entityType: 'AccountBatch',
             entityId: batch.id,
-            newValues: { mccAccountName, accountsCreated: results.created, accountsUpdated: results.updated },
-            description: `Tạo Lô "${mccAccountName}" với ${results.created + results.updated} tài khoản`,
+            newValues: { mccAccountName: batch.mccAccountName, accountsCreated: results.created, accountsUpdated: results.updated },
+            description: `${isUpdate ? 'Cập nhật' : 'Tạo'} Lô "${batch.mccAccountName}" với ${results.created + results.updated} tài khoản`,
             ipAddress
         });
 
         return {
-            message: 'Batch created successfully',
+            message: `Batch ${isUpdate ? 'updated' : 'created'} successfully`,
             batch,
             results
         };

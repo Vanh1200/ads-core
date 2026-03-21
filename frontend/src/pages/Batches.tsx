@@ -57,6 +57,8 @@ interface ParsedBatchData {
     mccAccountId: string;
     mccAccountName: string;
     dateRange: string;
+    existingBatch?: boolean;
+    existingBatchDetails?: any;
     accounts: ParsedAccount[];
     summary: {
         total: number;
@@ -299,9 +301,19 @@ export default function Batches() {
             setParsedData(data);
             setEditedMccAccountId(data.mccAccountId || '');
             setEditedMccAccountName(data.mccAccountName || '');
-            setEditedTimezone('');
-            setEditedYear('');
-            setEditedReadiness(5); // Default to 5 on FE
+            
+            if (data.existingBatchDetails) {
+                 setEditedTimezone(data.existingBatchDetails.timezone || '');
+                 setEditedYear(data.existingBatchDetails.isMixYear ? 'Mix' : (data.existingBatchDetails.year?.toString() || ''));
+                 setEditedReadiness(data.existingBatchDetails.readiness ?? 5);
+                 setEditedPartnerId(data.existingBatchDetails.partnerId || '');
+            } else {
+                 setEditedTimezone('');
+                 setEditedYear('');
+                 setEditedReadiness(5); // Default to 5 on FE
+                 setEditedPartnerId('');
+            }
+            
             setModalStep('preview');
             setParseError(null);
         },
@@ -324,7 +336,7 @@ export default function Batches() {
         onSuccess: () => {
             queryClient.invalidateQueries({ queryKey: ['batches'] });
             closeImportModal();
-            showToast('Tạo lô tài khoản thành công', 'success');
+            showToast(parsedData?.existingBatch ? 'Cập nhật lô tài khoản thành công' : 'Tạo lô tài khoản thành công', 'success');
         },
         onError: (error: any) => {
             showToast(error.response?.data?.error || 'Có lỗi xảy ra', 'error');
@@ -1200,11 +1212,11 @@ export default function Batches() {
                                             onClick={handleCreate}
                                         >
                                             {createMutation.isPending ? (
-                                                'Đang tạo...'
+                                                parsedData?.existingBatch ? 'Đang cập nhật...' : 'Đang tạo...'
                                             ) : (
                                                 <>
                                                     <CheckCircle size={18} />
-                                                    Xác nhận tạo lô ({parsedData?.accounts.length} tài khoản)
+                                                    {parsedData?.existingBatch ? 'Xác nhận cập nhật lô' : 'Xác nhận tạo lô'} ({parsedData?.accounts.length} tài khoản)
                                                 </>
                                             )}
                                         </button>
