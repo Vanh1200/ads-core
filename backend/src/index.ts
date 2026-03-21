@@ -123,6 +123,15 @@ app.get('*', (req, res) => {
     res.sendFile(path.join(frontendPath, 'index.html'));
 });
 
+import { execSync } from 'child_process';
+try {
+    console.log('\n[DB] Đang chạy Prisma Migrations tự động...');
+    execSync('npx prisma migrate deploy', { stdio: 'inherit' });
+    console.log('[DB] Đã cập nhật database schema thành công.\n');
+} catch (err) {
+    console.error('[DB] Lỗi khi chạy migrations:', err);
+}
+
 // Bind explicitly to 0.0.0.0
 app.listen(PORT, '0.0.0.0', () => {
     console.log(`🚀 Ads Core System running on http://0.0.0.0:${PORT}`);
