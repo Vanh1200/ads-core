@@ -246,7 +246,7 @@ export class ImportService {
         }
 
         // 2. Process accounts - no longer mandatory to belong to an MA
-        const results = { created: 0, updated: 0, linked: 0, errors: 0 };
+        const results = { created: 0, updated: 0, linked: 0, errors: 0, errorMessages: [] as string[] };
         const affectedBatchIds = new Set<string>();
         for (const account of accounts) {
             try {
@@ -281,6 +281,9 @@ export class ImportService {
                 results.linked++;
             } catch (err: any) {
                 results.errors++;
+                if (results.errorMessages.length < 5) {
+                    results.errorMessages.push(err.message || String(err));
+                }
             }
         }
 
