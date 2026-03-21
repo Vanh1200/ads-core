@@ -56,13 +56,13 @@ export function parseBatchExcel(buffer: Buffer): ParsedBatchData {
 
     // Keywords mapping
     const keywords: Record<string, string[]> = {
-        status: ['tình trạng', 'status'],
-        accountName: ['tên tài khoản', 'account name', 'account'],
-        googleAccountId: ['id khách hàng bên ngoài', 'customer id'], // Removed 'mã khách hàng' to avoid collision with MCC ID
-        batchName: ['tên người quản lý', 'manager name', 'tên người quản lý trực tiếp'],
-        mccAccountId: ['mã khách hàng của người quản lý', 'manager customer id', 'mã khách hàng của người quản lý trực tiếp', 'mã khách hàng'],
-        currency: ['mã đơn vị tiền tệ', 'currency'],
-        spending: ['chi phi', 'chi phí', 'cost', 'spending']
+        status: ['tình trạng', 'status', 'trạng thái'],
+        accountName: ['tên tài khoản', 'account name', 'account', 'tên khách hàng', 'tài khoản'],
+        googleAccountId: ['id khách hàng bên ngoài', 'customer id', 'id khách hàng', 'mã khách hàng', 'account id', 'mã tài khoản'], 
+        batchName: ['tên người quản lý', 'manager name', 'tên người quản lý trực tiếp', 'mcc name', 'tên mcc', 'hóa đơn'],
+        mccAccountId: ['mã khách hàng của người quản lý', 'manager customer id', 'mã khách hàng của người quản lý trực tiếp', 'mcc id', 'mã mcc'],
+        currency: ['mã đơn vị tiền tệ', 'currency', 'tiền tệ'],
+        spending: ['chi phi', 'chi phí', 'cost', 'spending', 'ngân sách']
     };
 
     // Auto-detect header row and column indices
