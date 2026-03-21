@@ -249,7 +249,13 @@ export default function InvoiceMCCs() {
             setParsedData(data);
             setEditedMccInvoiceId(data.mccInvoiceId || '');
             setEditedMiName(data.miName || '');
-            setEditedPartnerId('');
+            
+            if (data.existingMiDetails) {
+                 setEditedPartnerId(data.existingMiDetails.partnerId || '');
+            } else {
+                 setEditedPartnerId('');
+            }
+            
             setModalStep('preview');
             setParseError(null);
         },
@@ -263,7 +269,7 @@ export default function InvoiceMCCs() {
         onSuccess: () => {
             queryClient.invalidateQueries({ queryKey: ['invoiceMCCs'] });
             closeImportModal();
-            showToast('Tạo Invoice MCC từ file thành công', 'success');
+            showToast(parsedData?.existingMi ? 'Cập nhật Invoice MCC thành công' : 'Tạo Invoice MCC từ file thành công', 'success');
         },
         onError: (error: any) => {
             showToast(error.response?.data?.error || 'Có lỗi xảy ra', 'error');
@@ -1151,11 +1157,11 @@ export default function InvoiceMCCs() {
                                             onClick={handleImportCreate}
                                         >
                                             {createImportMutation.isPending ? (
-                                                'Đang tạo...'
+                                                parsedData?.existingMi ? 'Đang cập nhật...' : 'Đang tạo...'
                                             ) : (
                                                 <>
                                                     <CheckCircle size={18} />
-                                                    Xác nhận tạo MI ({parsedData?.accounts.length} tài khoản)
+                                                    {parsedData?.existingMi ? 'Xác nhận cập nhật MI' : 'Xác nhận tạo MI'} ({parsedData?.accounts.length} tài khoản)
                                                 </>
                                             )}
                                         </button>

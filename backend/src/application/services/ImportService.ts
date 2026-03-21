@@ -58,14 +58,19 @@ export class ImportService {
             const existing = await accountRepository.findByGoogleId(acc.googleAccountId);
             accountsWithFlags.push({
                 ...acc,
-                existsInDb: !!existing
+                existsInDb: !!existing,
+                existingMiId: existing?.currentMiId || null,
             });
         }
+        
+        const existingMi = await invoiceMCCRepository.findByMccId(parsed.mccAccountId);
 
         return {
             accounts: accountsWithFlags,
             miName: parsed.batchName, // Use manager name as MI name
             mccInvoiceId: parsed.mccAccountId, // Use manager ID as MI ID
+            existingMi: !!existingMi,
+            existingMiDetails: existingMi,
             summary: {
                 total: accountsWithFlags.length,
                 new: accountsWithFlags.filter(a => !a.existsInDb).length,
@@ -217,17 +222,28 @@ export class ImportService {
     async createInvoiceMCCWithAccounts(data: any, userId: string, ipAddress?: string) {
         const { mccInvoiceId, name, partnerId, notes, accounts } = data;
 
-        // 1. Create MI
-        const mi = await prisma.invoiceMCC.create({
-            data: {
-                mccInvoiceId,
+        // 1. Check if existing MI
+        let mi = await invoiceMCCRepository.findByMccId(mccInvoiceId);
+        let isUpdate = false;
+        
+        if (mi) {
+            isUpdate = true;
+            mi = await invoiceMCCRepository.update(mi.id, {
                 name,
                 partnerId: partnerId || null,
                 notes: notes || null,
+            });
+        } else {
+            mi = await invoiceMCCRepository.create({
+                name,
+                mccInvoiceId,
                 status: 'ACTIVE',
+                creditStatus: 'PENDING',
+                notes: notes || null,
+                partnerId: partnerId || null,
                 createdById: userId,
-            }
-        });
+            } as any);
+        }
 
         // 2. Process accounts - no longer mandatory to belong to an MA
         const results = { created: 0, updated: 0, linked: 0, errors: 0 };
@@ -279,15 +295,15 @@ export class ImportService {
 
         await logActivity({
             userId,
-            action: 'CREATE',
+            action: isUpdate ? 'UPDATE' : 'CREATE',
             entityType: 'InvoiceMCC',
             entityId: mi.id,
-            description: `Tạo MI "${name}" từ file với ${results.linked} tài khoản`,
+            description: `${isUpdate ? 'Cập nhật' : 'Tạo'} MI "${name}" từ file với ${results.linked} tài khoản`,
             ipAddress
         });
 
         return {
-            message: 'MI created successfully',
+            message: `MI ${isUpdate ? 'updated' : 'created'} successfully`,
             mi,
             results
         };
