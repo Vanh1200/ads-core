@@ -5,8 +5,8 @@
   "main": "dist/index.js",
   "scripts": {
     "dev": "nodemon --exec ts-node src/index.ts",
-    "build": "prisma generate && prisma migrate deploy && tsc",
-    "start": "node dist/index.js",
+    "build": "prisma generate && tsc",
+    "start": "prisma migrate deploy && node dist/index.js",
     "test": "vitest",
     "test:coverage": "vitest run --coverage",
     "db:generate": "prisma generate",
