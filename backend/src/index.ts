@@ -123,14 +123,20 @@ app.get('*', (req, res) => {
     res.sendFile(path.join(frontendPath, 'index.html'));
 });
 
-import { execSync } from 'child_process';
-try {
-    console.log('\n[DB] Đang chạy Prisma Migrations tự động...');
-    execSync('npx prisma migrate deploy', { stdio: 'inherit' });
-    console.log('[DB] Đã cập nhật database schema thành công.\n');
-} catch (err) {
-    console.error('[DB] Lỗi khi chạy migrations:', err);
+import prisma from './infrastructure/database/prisma';
+
+async function applyDatabasePatches() {
+    try {
+        console.log('\n[DB] Đang chạy Database Patches tự động (xóa bỏ NOT NULL constraint cho batch_id)...');
+        // Execute raw SQL directly through Prisma Client without resorting to Prisma CLI
+        await prisma.$executeRawUnsafe('ALTER TABLE "accounts" ALTER COLUMN "batch_id" DROP NOT NULL;');
+        console.log('[DB] Đã cập nhật database schema thành công.\n');
+    } catch (err: any) {
+        // Only log if it's a real error, if it's already dropped it might or might not error
+        console.error('[DB] Lỗi khi chạy database patches:', err.message);
+    }
 }
+applyDatabasePatches();
 
 // Bind explicitly to 0.0.0.0
 app.listen(PORT, '0.0.0.0', () => {
