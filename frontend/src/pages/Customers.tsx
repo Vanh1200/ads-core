@@ -438,22 +438,22 @@ export default function Customers() {
                                     Trạng thái <SortIcon field="status" />
                                 </div>
                             </th>
-                            <th style={{ cursor: 'pointer', userSelect: 'none' }} onClick={() => handleSort('totalAccounts')}>
-                                <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
+                            <th style={{ cursor: 'pointer', userSelect: 'none', textAlign: 'right' }} onClick={() => handleSort('totalAccounts')}>
+                                <div style={{ display: 'flex', alignItems: 'center', gap: 4, justifyContent: 'flex-end' }}>
                                     Tài khoản <SortIcon field="totalAccounts" />
                                 </div>
                             </th>
-                            <th style={{ cursor: 'pointer', userSelect: 'none' }} onClick={() => handleSort('totalSpending')}>
-                                <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
+                            <th style={{ cursor: 'pointer', userSelect: 'none', textAlign: 'right' }} onClick={() => handleSort('totalSpending')}>
+                                <div style={{ display: 'flex', alignItems: 'center', gap: 4, justifyContent: 'flex-end' }}>
                                     Tổng chi phí <SortIcon field="totalSpending" />
                                 </div>
                             </th>
-                            <th style={{ width: '10%', cursor: 'pointer', userSelect: 'none' }} onClick={() => handleSort('rangeSpending')}>
-                                <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
+                            <th style={{ width: '10%', cursor: 'pointer', userSelect: 'none', textAlign: 'right' }} onClick={() => handleSort('rangeSpending')}>
+                                <div style={{ display: 'flex', alignItems: 'center', gap: 4, justifyContent: 'flex-end' }}>
                                     Chi phí <SortIcon field="rangeSpending" />
                                 </div>
                             </th>
-                            <th style={{ width: '15%', paddingLeft: '24px' }}>NV phụ trách</th>
+                            <th style={{ width: '15%', textAlign: 'center' }}>NV phụ trách</th>
                             <th style={{ width: '120px', textAlign: 'right' }}>Thao tác</th>
                         </tr>
                     </thead>
@@ -501,7 +501,7 @@ export default function Customers() {
                                             {statusLabels[customer.status]?.label || customer.status}
                                         </span>
                                     </td>
-                                    <td>
+                                    <td style={{ textAlign: 'right' }}>
                                         <a
                                             href={`/accounts?mcId=${customer.id}`}
                                             className="link"
@@ -520,15 +520,13 @@ export default function Customers() {
                                             {customer._count?.accounts ?? customer.totalAccounts ?? 0}
                                         </a>
                                     </td>
-                                    <td>${parseFloat(customer.totalSpending || '0').toLocaleString()}</td>
-                                    <td>
+                                    <td style={{ textAlign: 'right' }}>${parseFloat(customer.totalSpending || '0').toLocaleString()}</td>
+                                    <td style={{ textAlign: 'right' }}>
                                         <span style={{ fontWeight: 600, fontSize: 13, color: (customer.rangeSpending || 0) > 0 ? '#10b981' : 'inherit' }}>
                                             {new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD' }).format(customer.rangeSpending || 0)}
                                         </span>
                                     </td>
-                                    <td style={{ paddingLeft: '24px' }}>
-                                        {customer.assignedStaff?.fullName || '-'}
-                                    </td>
+                                    <td style={{ textAlign: 'center' }}>{customer.assignedStaff?.fullName || '-'}</td>
                                     <td>
                                         {canAssignMC(user?.role || 'VIEWER') && (
                                             <div className="actions" style={{ justifyContent: 'flex-end' }} onClick={(e) => e.stopPropagation()}>

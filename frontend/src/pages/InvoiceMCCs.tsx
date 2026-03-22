@@ -556,13 +556,13 @@ export default function InvoiceMCCs() {
                                         Tín dụng <SortIcon field="creditStatus" />
                                     </div>
                                 </th>
-                                <th style={{ textAlign: 'left' }}>Tài khoản</th>               <th style={{ textAlign: 'left' }}>Sống</th>
-                                <th style={{ width: '10%', cursor: 'pointer', userSelect: 'none' }} onClick={() => handleSort('rangeSpending')}>
+                                <th style={{ textAlign: 'right' }}>Tài khoản</th>               <th style={{ textAlign: 'right' }}>Sống</th>
+                                <th style={{ width: '10%', cursor: 'pointer', userSelect: 'none', textAlign: 'right' }} onClick={() => handleSort('rangeSpending')}>
                                     <div style={{ display: 'flex', alignItems: 'center', gap: 4, justifyContent: 'flex-end' }}>
                                         Chi phí <SortIcon field="rangeSpending" />
                                     </div>
                                 </th>
-                                <th style={{ width: '15%', paddingLeft: '24px' }}>Đối tác</th>
+                                <th style={{ width: '15%', textAlign: 'center' }}>Đối tác</th>
                                 <th style={{ width: '120px', textAlign: 'right' }}>Thao tác</th>
                             </tr>
                         </thead>
@@ -613,7 +613,7 @@ export default function InvoiceMCCs() {
                                                 {creditStatusLabels[mi.creditStatus]?.label || mi.creditStatus}
                                             </span>
                                         </td>
-                                        <td>
+                                        <td style={{ textAlign: 'right' }}>
                                             <a
                                                 href={`/accounts?miId=${mi.id}`}
                                                 className="link"
@@ -632,7 +632,7 @@ export default function InvoiceMCCs() {
                                                 {mi._count?.accounts ?? mi.linkedAccountsCount ?? 0}
                                             </a>
                                         </td>
-                                        <td>
+                                        <td style={{ textAlign: 'right' }}>
                                             <a
                                                 href={`/accounts?miId=${mi.id}&status=ACTIVE`}
                                                 className="link"
@@ -651,12 +651,12 @@ export default function InvoiceMCCs() {
                                                 {mi.activeAccountsCount}
                                             </a>
                                         </td>
-                                        <td>
+                                        <td style={{ textAlign: 'right' }}>
                                             <span style={{ fontWeight: 600, fontSize: 13, color: (mi.rangeSpending || 0) > 0 ? '#10b981' : 'inherit' }}>
                                                 ${new Intl.NumberFormat('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 }).format(mi.rangeSpending || 0)}
                                             </span>
                                         </td>
-                                        <td style={{ paddingLeft: '24px' }}>
+                                        <td style={{ textAlign: 'center' }}>
                                             {mi.partner ? (
                                                 <a
                                                     href={`/partners/${mi.partner?.id}`}
