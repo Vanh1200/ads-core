@@ -514,9 +514,13 @@ export default function Import() {
                                 <tbody>
                                     {previewData.data.slice(0, 50).map((item, idx) => (
                                         <tr key={item.googleAccountId + idx}>
-                                            <td>
-                                                <div style={{ fontWeight: 500, fontFamily: 'monospace' }}>{item.googleAccountId}</div>
-                                                <div style={{ fontSize: '12px', color: 'var(--text-muted)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{item.accountName}</div>
+                                            <td style={{ padding: '12px 16px' }}>
+                                                <div style={{ fontWeight: 600, color: 'var(--text-primary)', marginBottom: '2px' }}>
+                                                    {item.googleAccountId}
+                                                </div>
+                                                <div style={{ fontSize: '12px', color: 'var(--text-muted)', maxWidth: '280px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                                                    {item.accountName}
+                                                </div>
                                             </td>
                                             <td>
                                                 <div style={{ display: 'flex', alignItems: 'center', gap: '6px', flexWrap: 'wrap' }}>

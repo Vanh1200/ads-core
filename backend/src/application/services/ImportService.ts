@@ -140,10 +140,19 @@ export class ImportService {
             });
         }
 
-        // Look up MI if miId is provided
+        // Look up MI if miId is provided or try find by name/mccId from parsed data
         let mi: any = null;
         if (miId) {
             mi = await prisma.invoiceMCC.findUnique({ where: { id: miId } });
+        } else if (parsed.batchName || parsed.mccAccountId) {
+            mi = await prisma.invoiceMCC.findFirst({
+                where: {
+                    OR: [
+                        { name: { contains: parsed.batchName, mode: 'insensitive' } },
+                        { mccInvoiceId: parsed.mccAccountId }
+                    ]
+                }
+            });
         }
 
         const targetDate = new Date(spendingDate + 'T00:00:00.000Z');
@@ -182,12 +191,13 @@ export class ImportService {
                 newAccountsCount++;
             }
 
+            const finalAccountName = existing?.accountName || acc.accountName;
             const finalNewStatus = (existing?.status === 'INACTIVE') ? 'INACTIVE' : acc.status;
             totalAmount += acc.spending;
 
             previewItems.push({
                 googleAccountId: acc.googleAccountId,
-                accountName: acc.accountName,
+                accountName: finalAccountName,
                 status: existing?.status || acc.status,
                 newStatus: finalNewStatus,
                 newAmount: acc.spending,
