@@ -84,7 +84,7 @@ export class PrismaCustomerRepository implements ICustomerRepository {
         if (sortBy) {
             orderBy[sortBy] = sortOrder || 'desc';
         } else {
-            orderBy.createdAt = 'desc';
+            orderBy.updatedAt = 'desc';
         }
 
         const [customers, total] = await Promise.all([

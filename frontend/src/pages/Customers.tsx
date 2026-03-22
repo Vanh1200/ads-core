@@ -28,7 +28,7 @@ interface User {
     email: string;
 }
 
-type SortField = 'name' | 'status' | 'totalSpending' | 'totalAccounts' | 'rangeSpending' | 'createdAt';
+type SortField = 'name' | 'status' | 'totalSpending' | 'totalAccounts' | 'rangeSpending' | 'createdAt' | 'updatedAt';
 type SortOrder = 'asc' | 'desc';
 
 export default function Customers() {
@@ -44,7 +44,7 @@ export default function Customers() {
     const [toast, setToast] = useState<{ message: string; type: 'success' | 'error' } | null>(null);
 
     // Sorting
-    const [sortField, setSortField] = useState<SortField>('createdAt');
+    const [sortField, setSortField] = useState<SortField>('updatedAt');
     const [sortOrder, setSortOrder] = useState<SortOrder>('desc');
 
     const [isSearchOpen, setIsSearchOpen] = useState(false);

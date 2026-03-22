@@ -28,7 +28,7 @@ interface Partner {
     name: string;
 }
 
-type SortField = 'name' | 'mccInvoiceId' | 'status' | 'creditStatus' | 'rangeSpending' | 'createdAt';
+type SortField = 'name' | 'mccInvoiceId' | 'status' | 'creditStatus' | 'rangeSpending' | 'createdAt' | 'updatedAt';
 type SortOrder = 'asc' | 'desc';
 
 export default function InvoiceMCCs() {
@@ -44,7 +44,7 @@ export default function InvoiceMCCs() {
     const [toast, setToast] = useState<{ message: string; type: 'success' | 'error' } | null>(null);
 
     // Sorting
-    const [sortField, setSortField] = useState<SortField>('createdAt');
+    const [sortField, setSortField] = useState<SortField>('updatedAt');
     const [sortOrder, setSortOrder] = useState<SortOrder>('desc');
 
     const [isSearchOpen, setIsSearchOpen] = useState(false);

@@ -105,7 +105,7 @@ export class PrismaBatchRepository implements IBatchRepository {
         if (sortBy) {
             orderBy[sortBy] = sortOrder || 'desc';
         } else {
-            orderBy.createdAt = 'desc';
+            orderBy.updatedAt = 'desc';
         }
 
         const [batches, total] = await Promise.all([

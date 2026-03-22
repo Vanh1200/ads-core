@@ -50,7 +50,7 @@ interface ParsedAccount {
     existingBatchId: string | null;
 }
 
-type SortField = 'mccAccountName' | 'mccAccountId' | 'status' | 'readiness' | 'timezone' | 'year' | 'partner' | 'createdAt' | 'rangeSpending' | 'currency';
+type SortField = 'mccAccountName' | 'mccAccountId' | 'status' | 'readiness' | 'timezone' | 'year' | 'partner' | 'createdAt' | 'updatedAt' | 'rangeSpending' | 'currency';
 type SortOrder = 'asc' | 'desc';
 
 interface ParsedBatchData {
@@ -87,7 +87,7 @@ export default function Batches() {
     const [limit, setLimit] = useState(50);
 
     // Sorting
-    const [sortField, setSortField] = useState<SortField>('createdAt');
+    const [sortField, setSortField] = useState<SortField>('updatedAt');
     const [sortOrder, setSortOrder] = useState<SortOrder>('desc');
 
     // Selection State

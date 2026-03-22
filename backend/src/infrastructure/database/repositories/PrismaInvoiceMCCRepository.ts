@@ -99,7 +99,7 @@ export class PrismaInvoiceMCCRepository implements IInvoiceMCCRepository {
         if (sortBy) {
             orderBy[sortBy] = sortOrder || 'desc';
         } else {
-            orderBy.createdAt = 'desc';
+            orderBy.updatedAt = 'desc';
         }
 
         const [mccs, total] = await Promise.all([
