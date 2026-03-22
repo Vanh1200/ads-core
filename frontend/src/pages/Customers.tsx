@@ -438,18 +438,18 @@ export default function Customers() {
                                     Trạng thái <SortIcon field="status" />
                                 </div>
                             </th>
-                            <th style={{ cursor: 'pointer', userSelect: 'none', textAlign: 'right' }} onClick={() => handleSort('totalAccounts')}>
-                                <div style={{ display: 'flex', alignItems: 'center', gap: 4, justifyContent: 'flex-end' }}>
+                            <th style={{ cursor: 'pointer', userSelect: 'none' }} onClick={() => handleSort('totalAccounts')}>
+                                <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
                                     Tài khoản <SortIcon field="totalAccounts" />
                                 </div>
                             </th>
-                            <th style={{ cursor: 'pointer', userSelect: 'none', textAlign: 'right' }} onClick={() => handleSort('totalSpending')}>
-                                <div style={{ display: 'flex', alignItems: 'center', gap: 4, justifyContent: 'flex-end' }}>
+                            <th style={{ cursor: 'pointer', userSelect: 'none' }} onClick={() => handleSort('totalSpending')}>
+                                <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
                                     Tổng chi phí <SortIcon field="totalSpending" />
                                 </div>
                             </th>
-                            <th style={{ width: '10%', cursor: 'pointer', userSelect: 'none', textAlign: 'right' }} onClick={() => handleSort('rangeSpending')}>
-                                <div style={{ display: 'flex', alignItems: 'center', gap: 4, justifyContent: 'flex-end' }}>
+                            <th style={{ width: '10%', cursor: 'pointer', userSelect: 'none' }} onClick={() => handleSort('rangeSpending')}>
+                                <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
                                     Chi phí <SortIcon field="rangeSpending" />
                                 </div>
                             </th>
@@ -501,7 +501,7 @@ export default function Customers() {
                                             {statusLabels[customer.status]?.label || customer.status}
                                         </span>
                                     </td>
-                                    <td style={{ textAlign: 'right' }}>
+                                    <td>
                                         <a
                                             href={`/accounts?mcId=${customer.id}`}
                                             className="link"
@@ -520,8 +520,8 @@ export default function Customers() {
                                             {customer._count?.accounts ?? customer.totalAccounts ?? 0}
                                         </a>
                                     </td>
-                                    <td style={{ textAlign: 'right' }}>${parseFloat(customer.totalSpending || '0').toLocaleString()}</td>
-                                    <td style={{ textAlign: 'right' }}>
+                                    <td>${parseFloat(customer.totalSpending || '0').toLocaleString()}</td>
+                                    <td>
                                         <span style={{ fontWeight: 600, fontSize: 13, color: (customer.rangeSpending || 0) > 0 ? '#10b981' : 'inherit' }}>
                                             {new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD' }).format(customer.rangeSpending || 0)}
                                         </span>
