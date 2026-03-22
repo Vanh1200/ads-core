@@ -6,15 +6,16 @@ import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContai
 import { invoiceMCCsApi, activityLogsApi, spendingApi } from '../api/client';
 import CustomChartTooltip from '../components/ChartTooltip';
 
-type DateRange = '7' | '14' | '30' | 'custom';
+type DateRange = '0' | '1' | '7' | '14' | '30' | 'custom';
 
 export default function InvoiceMCCDetail() {
     const { id } = useParams<{ id: string }>();
     const navigate = useNavigate();
     const [activeTab, setActiveTab] = useState<'info' | 'spending'>('info');
-    const [dateRange, setDateRange] = useState<DateRange>('7');
+    const [dateRange, setDateRange] = useState<DateRange>('1');
     const [customStartDate, setCustomStartDate] = useState('');
     const [customEndDate, setCustomEndDate] = useState('');
+    const [accountIdList, setAccountIdList] = useState('');
 
     const { data: miData, isLoading: isLoadingMi, error: miError } = useQuery({
         queryKey: ['invoice-mcc', id],
@@ -29,7 +30,13 @@ export default function InvoiceMCCDetail() {
         }
         const end = new Date();
         const start = new Date();
-        start.setDate(end.getDate() - parseInt(dateRange));
+        const days = parseInt(dateRange);
+        if (!isNaN(days)) {
+            start.setDate(end.getDate() - days);
+        } else {
+            // Default or fallback for 'custom' when no dates set
+            start.setDate(end.getDate() - 7);
+        }
         return {
             startDate: start.toISOString().split('T')[0],
             endDate: end.toISOString().split('T')[0],
@@ -48,6 +55,12 @@ export default function InvoiceMCCDetail() {
         queryKey: ['miActivities', id],
         queryFn: () => activityLogsApi.getEntityLogs('InvoiceMCC', id!),
         enabled: !!id && activeTab === 'info',
+    });
+
+    const { data: accountWiseData, isLoading: isAccountWiseLoading } = useQuery({
+        queryKey: ['miAccountSpending', id, startDate, endDate],
+        queryFn: () => spendingApi.getAccountWiseSpending('invoice-mcc', id!, startDate, endDate).then(res => res.data),
+        enabled: !!id && activeTab === 'spending',
     });
 
     const mi = miData;
@@ -93,6 +106,37 @@ export default function InvoiceMCCDetail() {
     const formatDateTime = (dateStr: string) => {
         return new Date(dateStr).toLocaleString('vi-VN');
     };
+
+    const copyToClipboard = (text: string) => {
+        navigator.clipboard.writeText(text);
+        alert('Đã copy vào bộ nhớ tạm');
+    };
+
+    const getOrderedAccounts = () => {
+        if (!accountWiseData) return [];
+        
+        const filterIds = accountIdList.split('\n')
+            .map(id => id.trim())
+            .filter(id => id.length > 0);
+
+        if (filterIds.length === 0) {
+            // Default: show accounts with spending > 0
+            return accountWiseData.filter((a: any) => a.totalAmount > 0);
+        }
+
+        // Ordered by filterIds
+        const dataMap = new Map<string, any>(accountWiseData.map((a: any) => [a.googleAccountId, a]));
+        return filterIds.map(gid => {
+            const existing = dataMap.get(gid);
+            return existing || {
+                googleAccountId: gid,
+                accountName: 'Chưa có dữ liệu',
+                totalAmount: 0
+            };
+        });
+    };
+
+    const orderedAccounts = getOrderedAccounts();
 
     if (isLoadingMi) {
         return (
@@ -339,20 +383,20 @@ export default function InvoiceMCCDetail() {
                             {/* Date Range Selector */}
                             <div style={{ marginBottom: '24px' }}>
                                 <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap', alignItems: 'center' }}>
-                                    {(['7', '14', '30'] as DateRange[]).map((range) => (
+                                    {(['0', '1', '7', '14', '30'] as DateRange[]).map((range) => (
                                         <button
                                             key={range}
                                             className={`btn btn-sm ${dateRange === range ? 'btn-primary' : 'btn-secondary'}`}
                                             onClick={() => setDateRange(range)}
                                         >
-                                            {range} ngày
+                                            {range === '0' ? 'Hôm nay' : range === '1' ? 'Hôm qua' : `${range} ngày`}
                                         </button>
                                     ))}
                                     <button
                                         className={`btn btn-sm ${dateRange === 'custom' ? 'btn-primary' : 'btn-secondary'}`}
                                         onClick={() => setDateRange('custom')}
                                     >
-                                        Tùy chỉnh
+                                        Tuỳ chỉnh
                                     </button>
 
                                     {dateRange === 'custom' && (
@@ -377,92 +421,176 @@ export default function InvoiceMCCDetail() {
                                 </div>
                             </div>
 
-                            {/* Total Spending */}
-                            <div style={{
-                                padding: '20px',
-                                background: 'var(--bg-secondary)',
-                                borderRadius: 'var(--radius-sm)',
-                                marginBottom: '24px',
-                            }}>
-                                <div style={{ fontSize: '14px', color: 'var(--text-muted)', marginBottom: '4px' }}>
-                                    Tổng chi tiêu ({startDate} - {endDate})
-                                </div>
-                                <div style={{ fontSize: '28px', fontWeight: 600, color: 'var(--secondary)' }}>
-                                    ${formatCurrency(spendingData?.totalSpending || 0)}
+                            {/* Account List Input */}
+                            <div style={{ marginBottom: '24px' }}>
+                                <label style={{ display: 'block', fontSize: '14px', fontWeight: 500, marginBottom: '8px' }}>
+                                    Thứ tự / Lọc theo ID tài khoản (Mỗi dòng 1 ID):
+                                </label>
+                                <textarea
+                                    style={{
+                                        width: '100%',
+                                        padding: '12px',
+                                        background: 'var(--bg-secondary)',
+                                        border: '1px solid var(--border-color)',
+                                        borderRadius: 'var(--radius-sm)',
+                                        color: 'var(--text-primary)',
+                                        fontFamily: 'monospace',
+                                        fontSize: '13px',
+                                        minHeight: '120px'
+                                    }}
+                                    placeholder="Ví dụ:&#10;123-456-7890&#10;098-765-4321"
+                                    value={accountIdList}
+                                    onChange={(e) => setAccountIdList(e.target.value)}
+                                />
+                                <div style={{ fontSize: '12px', color: 'var(--text-muted)', marginTop: '4px' }}>
+                                    Nếu để trống, sẽ hiển thị tất cả các tài khoản có phát sinh chi tiêu.
                                 </div>
                             </div>
 
-                            {/* Chart */}
-                            {isSpendingLoading ? (
-                                <div style={{ height: '300px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                                    <div className="spinner"></div>
-                                </div>
-                            ) : processedChartData.length > 0 ? (
-                                <div style={{ height: '300px' }}>
-                                    <ResponsiveContainer width="100%" height="100%">
-                                        <LineChart data={processedChartData}>
-                                            <CartesianGrid strokeDasharray="3 3" stroke="var(--border-color)" />
-                                            <XAxis
-                                                dataKey="date"
-                                                tickFormatter={(value) => formatDate(String(value)).split('/')[0] + '/' + formatDate(String(value)).split('/')[1]}
-                                                stroke="var(--text-muted)"
-                                                fontSize={12}
-                                            />
-                                            <YAxis
-                                                tickFormatter={(value) => `$${value}`}
-                                                stroke="var(--text-muted)"
-                                                fontSize={12}
-                                            />
-                                            <Tooltip content={<CustomChartTooltip />} />
-                                            <Line
-                                                type="monotone"
-                                                dataKey="amount"
-                                                stroke="var(--secondary)"
-                                                strokeWidth={2}
-                                                dot={{ r: 4 }}
-                                                activeDot={{ r: 6 }}
-                                            />
-                                        </LineChart>
-                                    </ResponsiveContainer>
-                                </div>
-                            ) : (
-                                <div style={{
-                                    height: '300px',
-                                    display: 'flex',
-                                    alignItems: 'center',
-                                    justifyContent: 'center',
-                                    color: 'var(--text-muted)',
-                                }}>
-                                    Chưa có dữ liệu chi tiêu trong khoảng thời gian này
-                                </div>
-                            )}
-
-                            {/* Daily Spending Table */}
-                            {processedChartData.length > 0 && (
-                                <div style={{ marginTop: '24px' }}>
-                                    <h4 style={{ marginBottom: '12px' }}>Chi tiết theo ngày</h4>
-                                    <div className="table-container">
-                                        <table className="data-table" style={{ width: '100%' }}>
-                                            <thead>
-                                                <tr>
-                                                    <th>Ngày</th>
-                                                    <th style={{ textAlign: 'right' }}>Chi tiêu</th>
-                                                </tr>
-                                            </thead>
-                                            <tbody>
-                                                {[...processedChartData].reverse().map((row, index) => (
-                                                    <tr key={`${row.date}-${index}`}>
-                                                        <td>{formatDate(row.date)}</td>
-                                                        <td style={{ textAlign: 'right', fontWeight: 500, color: 'var(--secondary)' }}>
-                                                            ${formatCurrency(row.amount)}
-                                                        </td>
-                                                    </tr>
-                                                ))}
-                                            </tbody>
-                                        </table>
+                            {/* Summary & Chart Grid */}
+                            <div style={{ display: 'grid', gridTemplateColumns: '1fr 2fr', gap: '24px', marginBottom: '32px' }}>
+                                {/* Left: Summary */}
+                                <div>
+                                    <div style={{
+                                        padding: '20px',
+                                        background: 'var(--bg-secondary)',
+                                        borderRadius: 'var(--radius-sm)',
+                                        height: '100%',
+                                        display: 'flex',
+                                        flexDirection: 'column',
+                                        justifyContent: 'center'
+                                    }}>
+                                        <div style={{ fontSize: '14px', color: 'var(--text-muted)', marginBottom: '8px' }}>
+                                            Tổng chi tiêu trong khoảng
+                                        </div>
+                                        <div style={{ fontSize: '32px', fontWeight: 600, color: 'var(--secondary)' }}>
+                                            ${formatCurrency(spendingData?.totalSpending || 0)}
+                                        </div>
+                                        <div style={{ fontSize: '12px', color: 'var(--text-muted)', marginTop: '16px' }}>
+                                            {startDate} đến {endDate}
+                                        </div>
                                     </div>
                                 </div>
-                            )}
+
+                                {/* Right: Chart */}
+                                <div style={{
+                                    padding: '20px',
+                                    background: 'var(--bg-secondary)',
+                                    borderRadius: 'var(--radius-sm)',
+                                }}>
+                                    {isSpendingLoading ? (
+                                        <div style={{ height: '240px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                                            <div className="spinner"></div>
+                                        </div>
+                                    ) : processedChartData.length > 0 ? (
+                                        <div style={{ height: '240px' }}>
+                                            <ResponsiveContainer width="100%" height="100%">
+                                                <LineChart data={processedChartData}>
+                                                    <CartesianGrid strokeDasharray="3 3" stroke="var(--border-color)" vertical={false} />
+                                                    <XAxis
+                                                        dataKey="date"
+                                                        tickFormatter={(value) => formatDate(String(value)).split('/')[0] + '/' + formatDate(String(value)).split('/')[1]}
+                                                        stroke="var(--text-muted)"
+                                                        fontSize={11}
+                                                    />
+                                                    <YAxis
+                                                        tickFormatter={(value) => `$${value}`}
+                                                        stroke="var(--text-muted)"
+                                                        fontSize={11}
+                                                    />
+                                                    <Tooltip content={<CustomChartTooltip />} />
+                                                    <Line
+                                                        type="monotone"
+                                                        dataKey="amount"
+                                                        stroke="var(--secondary)"
+                                                        strokeWidth={2}
+                                                        dot={{ r: 3 }}
+                                                        activeDot={{ r: 5 }}
+                                                    />
+                                                </LineChart>
+                                            </ResponsiveContainer>
+                                        </div>
+                                    ) : (
+                                        <div style={{ height: '240px', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--text-muted)' }}>
+                                            Chưa có dữ liệu biểu đồ
+                                        </div>
+                                    )}
+                                </div>
+                            </div>
+
+                            {/* Account Breakdown Table */}
+                            <div style={{ marginTop: '32px' }}>
+                                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', marginBottom: '16px' }}>
+                                    <h4 style={{ margin: 0 }}>Chi tiết theo tài khoản</h4>
+                                    <div style={{ fontSize: '13px', color: 'var(--text-muted)' }}>
+                                        Hiển thị {orderedAccounts.length} tài khoản
+                                    </div>
+                                </div>
+
+                                <div className="table-container">
+                                    <table className="data-table" style={{ width: '100%' }}>
+                                        <thead>
+                                            <tr>
+                                                <th style={{ width: '50%' }}>
+                                                    Tên tài khoản
+                                                    <button 
+                                                        style={{ marginLeft: '12px', fontSize: '11px', padding: '2px 6px' }}
+                                                        className="btn btn-secondary btn-xs"
+                                                        onClick={() => copyToClipboard(orderedAccounts.map((a: any) => a.accountName).join('\n'))}
+                                                    >
+                                                        Copy
+                                                    </button>
+                                                </th>
+                                                <th style={{ width: '25%' }}>
+                                                    ID tài khoản
+                                                    <button 
+                                                        style={{ marginLeft: '12px', fontSize: '11px', padding: '2px 6px' }}
+                                                        className="btn btn-secondary btn-xs"
+                                                        onClick={() => copyToClipboard(orderedAccounts.map((a: any) => a.googleAccountId).join('\n'))}
+                                                    >
+                                                        Copy
+                                                    </button>
+                                                </th>
+                                                <th style={{ width: '25%', textAlign: 'right' }}>
+                                                    Tổng chi tiêu
+                                                    <button 
+                                                        style={{ marginLeft: '12px', fontSize: '11px', padding: '2px 6px' }}
+                                                        className="btn btn-secondary btn-xs"
+                                                        onClick={() => copyToClipboard(orderedAccounts.map((a: any) => a.totalAmount.toFixed(2).replace('.', ',')).join('\n'))}
+                                                    >
+                                                        Copy
+                                                    </button>
+                                                </th>
+                                            </tr>
+                                        </thead>
+                                        <tbody>
+                                            {isAccountWiseLoading ? (
+                                                <tr>
+                                                    <td colSpan={3} style={{ textAlign: 'center', padding: '40px' }}>
+                                                        <div className="spinner" style={{ margin: '0 auto' }}></div>
+                                                    </td>
+                                                </tr>
+                                            ) : orderedAccounts.length > 0 ? (
+                                                orderedAccounts.map((acc: any, idx: number) => (
+                                                    <tr key={acc.id || `acc-${idx}`}>
+                                                        <td>{acc.accountName}</td>
+                                                        <td style={{ fontFamily: 'monospace', fontSize: '13px' }}>{acc.googleAccountId}</td>
+                                                        <td style={{ textAlign: 'right', fontWeight: 600, color: acc.totalAmount > 0 ? 'var(--secondary)' : 'var(--text-muted)' }}>
+                                                            ${formatCurrency(acc.totalAmount)}
+                                                        </td>
+                                                    </tr>
+                                                ))
+                                            ) : (
+                                                <tr>
+                                                    <td colSpan={3} style={{ textAlign: 'center', padding: '40px', color: 'var(--text-muted)' }}>
+                                                        Không tìm thấy dữ liệu tài khoản
+                                                    </td>
+                                                </tr>
+                                            )}
+                                        </tbody>
+                                    </table>
+                                </div>
+                            </div>
                         </div>
                     )}
                 </div>

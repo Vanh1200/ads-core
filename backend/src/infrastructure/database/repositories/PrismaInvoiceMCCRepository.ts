@@ -51,15 +51,19 @@ export class PrismaInvoiceMCCRepository implements IInvoiceMCCRepository {
                 }
             },
             partner: { select: { id: true, name: true } },
-            spendingRecords: startDate && endDate ? {
-                where: {
-                    spendingDate: {
-                        gte: startDate,
-                        lte: endDate
-                    }
-                },
-                select: { amount: true }
-            } : undefined
+            accounts: {
+                include: {
+                    spendingRecords: startDate && endDate ? {
+                        where: {
+                            spendingDate: {
+                                gte: startDate,
+                                lte: endDate
+                            }
+                        },
+                        select: { amount: true }
+                    } : undefined,
+                }
+            }
         };
 
         // Handle dynamic sorting
@@ -171,8 +175,12 @@ export class PrismaInvoiceMCCRepository implements IInvoiceMCCRepository {
         if (!prismaMcc) return null;
 
         let rangeSpending = 0;
-        if (prismaMcc.spendingRecords && Array.isArray(prismaMcc.spendingRecords)) {
-            rangeSpending = prismaMcc.spendingRecords.reduce((sum: number, r: any) => sum + Number(r.amount), 0);
+        if (prismaMcc.accounts && Array.isArray(prismaMcc.accounts)) {
+            for (const account of prismaMcc.accounts) {
+                if (account.spendingRecords && Array.isArray(account.spendingRecords)) {
+                    rangeSpending += account.spendingRecords.reduce((sum: number, r: any) => sum + Number(r.amount), 0);
+                }
+            }
         }
 
         return {
