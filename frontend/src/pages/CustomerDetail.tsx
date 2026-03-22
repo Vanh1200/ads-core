@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
-import { ArrowLeft, User, DollarSign, FileText, List, Activity, Clock } from 'lucide-react';
+import { ArrowLeft, User, DollarSign, FileText, List, Activity, Clock, CheckCircle, AlertCircle, Copy } from 'lucide-react';
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
 import { customersApi, activityLogsApi, spendingApi } from '../api/client';
 import CustomChartTooltip from '../components/ChartTooltip';
@@ -16,6 +16,12 @@ export default function CustomerDetail() {
     const [customStartDate, setCustomStartDate] = useState('');
     const [customEndDate, setCustomEndDate] = useState('');
     const [accountIdList, setAccountIdList] = useState('');
+    const [toast, setToast] = useState<{ message: string; type: 'success' | 'error' } | null>(null);
+
+    const showToast = (message: string, type: 'success' | 'error') => {
+        setToast({ message, type });
+        setTimeout(() => setToast(null), 3000);
+    };
 
     const { data: customerData, isLoading: isLoadingCustomer, error: customerError } = useQuery({
         queryKey: ['customer', id],
@@ -109,7 +115,7 @@ export default function CustomerDetail() {
 
     const copyToClipboard = (text: string) => {
         navigator.clipboard.writeText(text);
-        alert('Đã copy vào bộ nhớ tạm');
+        showToast('Đã copy vào bộ nhớ tạm', 'success');
     };
 
     const getOrderedAccounts = () => {
@@ -427,43 +433,35 @@ export default function CustomerDetail() {
                                 </div>
                             </div>
 
-                            {/* Summary & Chart Grid */}
-                            <div style={{ display: 'grid', gridTemplateColumns: '1fr 2fr', gap: '24px', marginBottom: '32px' }}>
-                                {/* Left: Summary */}
-                                <div>
-                                    <div style={{
-                                        padding: '20px',
-                                        background: 'var(--bg-secondary)',
-                                        borderRadius: 'var(--radius-sm)',
-                                        height: '100%',
-                                        display: 'flex',
-                                        flexDirection: 'column',
-                                        justifyContent: 'center'
-                                    }}>
-                                        <div style={{ fontSize: '14px', color: 'var(--text-muted)', marginBottom: '8px' }}>
-                                            Tổng chi tiêu trong khoảng
-                                        </div>
-                                        <div style={{ fontSize: '32px', fontWeight: 600, color: 'var(--secondary)' }}>
-                                            ${formatCurrency(spendingData?.totalSpending || 0)}
-                                        </div>
-                                        <div style={{ fontSize: '12px', color: 'var(--text-muted)', marginTop: '16px' }}>
-                                            {startDate} đến {endDate}
-                                        </div>
+                            {/* Summary & Chart */}
+                            <div style={{ marginBottom: '32px' }}>
+                                {/* Summary */}
+                                <div style={{
+                                    padding: '20px',
+                                    background: 'var(--bg-secondary)',
+                                    borderRadius: 'var(--radius-sm)',
+                                    marginBottom: '20px',
+                                }}>
+                                    <div style={{ fontSize: '14px', color: 'var(--text-muted)', marginBottom: '8px' }}>
+                                        Tổng chi tiêu trong khoảng ({startDate} đến {endDate})
+                                    </div>
+                                    <div style={{ fontSize: '32px', fontWeight: 600, color: 'var(--secondary)' }}>
+                                        ${formatCurrency(spendingData?.totalSpending || 0)}
                                     </div>
                                 </div>
 
-                                {/* Right: Chart */}
+                                {/* Chart - Full Width */}
                                 <div style={{
                                     padding: '20px',
                                     background: 'var(--bg-secondary)',
                                     borderRadius: 'var(--radius-sm)',
                                 }}>
                                     {isSpendingLoading ? (
-                                        <div style={{ height: '240px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                                        <div style={{ height: '300px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
                                             <div className="spinner"></div>
                                         </div>
                                     ) : processedChartData.length > 0 ? (
-                                        <div style={{ height: '240px' }}>
+                                        <div style={{ height: '300px' }}>
                                             <ResponsiveContainer width="100%" height="100%">
                                                 <LineChart data={processedChartData}>
                                                     <CartesianGrid strokeDasharray="3 3" stroke="var(--border-color)" vertical={false} />
@@ -491,7 +489,7 @@ export default function CustomerDetail() {
                                             </ResponsiveContainer>
                                         </div>
                                     ) : (
-                                        <div style={{ height: '240px', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--text-muted)' }}>
+                                        <div style={{ height: '300px', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--text-muted)' }}>
                                             Chưa có dữ liệu biểu đồ
                                         </div>
                                     )}
@@ -511,35 +509,32 @@ export default function CustomerDetail() {
                                     <table className="data-table" style={{ width: '100%' }}>
                                         <thead>
                                             <tr>
-                                                <th style={{ width: '50%' }}>
-                                                    Tên tài khoản
-                                                    <button 
-                                                        style={{ marginLeft: '12px', fontSize: '11px', padding: '2px 6px' }}
-                                                        className="btn btn-secondary btn-xs"
-                                                        onClick={() => copyToClipboard(orderedAccounts.map((a: any) => a.accountName).join('\n'))}
-                                                    >
-                                                        Copy
-                                                    </button>
+                                                <th 
+                                                    style={{ width: '50%', cursor: 'pointer' }}
+                                                    onClick={() => copyToClipboard(orderedAccounts.map((a: any) => a.accountName).join('\n'))}
+                                                >
+                                                    <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                                                        Tên tài khoản
+                                                        <Copy size={14} style={{ color: 'var(--text-muted)' }} />
+                                                    </div>
                                                 </th>
-                                                <th style={{ width: '25%' }}>
-                                                    ID tài khoản
-                                                    <button 
-                                                        style={{ marginLeft: '12px', fontSize: '11px', padding: '2px 6px' }}
-                                                        className="btn btn-secondary btn-xs"
-                                                        onClick={() => copyToClipboard(orderedAccounts.map((a: any) => a.googleAccountId).join('\n'))}
-                                                    >
-                                                        Copy
-                                                    </button>
+                                                <th 
+                                                    style={{ width: '25%', cursor: 'pointer' }}
+                                                    onClick={() => copyToClipboard(orderedAccounts.map((a: any) => a.googleAccountId).join('\n'))}
+                                                >
+                                                    <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                                                        ID tài khoản
+                                                        <Copy size={14} style={{ color: 'var(--text-muted)' }} />
+                                                    </div>
                                                 </th>
-                                                <th style={{ width: '25%', textAlign: 'right' }}>
-                                                    Tổng chi tiêu
-                                                    <button 
-                                                        style={{ marginLeft: '12px', fontSize: '11px', padding: '2px 6px' }}
-                                                        className="btn btn-secondary btn-xs"
-                                                        onClick={() => copyToClipboard(orderedAccounts.map((a: any) => a.totalAmount.toFixed(2).replace('.', ',')).join('\n'))}
-                                                    >
-                                                        Copy
-                                                    </button>
+                                                <th 
+                                                    style={{ width: '25%', textAlign: 'right', cursor: 'pointer' }}
+                                                    onClick={() => copyToClipboard(orderedAccounts.map((a: any) => a.totalAmount.toFixed(2).replace('.', ',')).join('\n'))}
+                                                >
+                                                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'flex-end', gap: '8px' }}>
+                                                        Tổng chi tiêu
+                                                        <Copy size={14} style={{ color: 'var(--text-muted)' }} />
+                                                    </div>
                                                 </th>
                                             </tr>
                                         </thead>
@@ -575,6 +570,12 @@ export default function CustomerDetail() {
                     )}
                 </div>
             </div>
+            {toast && (
+                <div className={`toast toast-${toast.type}`}>
+                    {toast.type === 'success' ? <CheckCircle size={18} /> : <AlertCircle size={18} />}
+                    <span>{toast.message}</span>
+                </div>
+            )}
         </div>
     );
 }
