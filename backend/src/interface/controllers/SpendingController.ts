@@ -89,6 +89,18 @@ export class SpendingController {
         );
         res.json(result);
     });
+
+    getAccountWiseSpending = asyncHandler(async (req: any, res: any) => {
+        const { type, id } = req.params;
+        const { startDate, endDate } = req.query;
+        const result = await spendingService.getAccountWiseSpending({
+            type: type as 'customer' | 'invoice-mcc' | 'batch',
+            id,
+            startDate: startDate as string,
+            endDate: endDate as string
+        });
+        res.json(result);
+    });
 }
 
 export const spendingController = new SpendingController();

@@ -141,16 +141,20 @@ export class SpendingService {
     }
 
     async getDetailedSummary(params: any) {
-        const summary = await this.getSummary(params);
+        const { startDate, endDate } = params;
+        const start = startDate ? new Date(startDate + 'T00:00:00.000Z') : undefined;
+        const end = endDate ? new Date(endDate + 'T23:59:59.999Z') : undefined;
+
+        const summary = await this.getSummary({ ...params, startDate: start, endDate: end });
         
         // Get daily spending for the chart/table
         const dailySpending = await prisma.spendingRecord.groupBy({
             by: ['spendingDate'],
             _sum: { amount: true },
             where: {
-                spendingDate: params.startDate && params.endDate ? {
-                    gte: new Date(params.startDate),
-                    lte: new Date(params.endDate)
+                spendingDate: start && end ? {
+                    gte: start,
+                    lte: end
                 } : undefined,
                 accountId: params.accountId,
                 customerId: params.mcId || (params.type === 'customer' ? params.id : undefined),
@@ -166,6 +170,46 @@ export class SpendingService {
             totalSpending: Number(summary._sum.amount || 0),
             recordCount: summary._count
         };
+    }
+
+    async getAccountWiseSpending(params: { type: 'customer' | 'invoice-mcc' | 'batch', id: string, startDate?: string, endDate?: string }) {
+        const start = params.startDate ? new Date(params.startDate + 'T00:00:00.000Z') : undefined;
+        const end = params.endDate ? new Date(params.endDate + 'T23:59:59.999Z') : undefined;
+
+        const where: any = {
+            spendingDate: start && end ? { gte: start, lte: end } : undefined
+        };
+
+        if (params.type === 'customer') where.customerId = params.id;
+        else if (params.type === 'invoice-mcc') where.invoiceMccId = params.id;
+        else if (params.type === 'batch') where.account = { batchId: params.id };
+
+        const records = await prisma.spendingRecord.groupBy({
+            by: ['accountId'],
+            where,
+            _sum: { amount: true }
+        });
+
+        // Get account details
+        const accountIds = records.map(r => r.accountId);
+        const accounts = await prisma.account.findMany({
+            where: { id: { in: accountIds } },
+            select: { id: true, googleAccountId: true, accountName: true }
+        });
+
+        const accountMap = new Map(accounts.map(a => [a.id, a]));
+
+        const results = records.map(r => {
+            const acc = accountMap.get(r.accountId);
+            return {
+                id: r.accountId,
+                googleAccountId: acc?.googleAccountId || 'N/A',
+                accountName: acc?.accountName || 'Unknown',
+                totalAmount: Number(r._sum.amount || 0)
+            };
+        });
+
+        return results;
     }
 
     async getRangeSpendingMap(type: 'batch' | 'customer' | 'invoice-mcc', ids: string[], days: number = 7) {

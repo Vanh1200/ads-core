@@ -128,7 +128,8 @@ export const spendingApi = {
         api.get(`/spending/summary/invoice-mcc/${id}`, { params: { startDate, endDate } }),
     getBatchSummary: (id: string, startDate?: string, endDate?: string) =>
         api.get(`/spending/summary/batch/${id}`, { params: { startDate, endDate } }),
-    // ... existing methods
+    getAccountWiseSpending: (type: string, id: string, startDate?: string, endDate?: string) =>
+        api.get(`/spending/accounts/${type}/${id}`, { params: { startDate, endDate } }),
     getAccountChart: (accountId: string, startDate?: string, endDate?: string) =>
         api.get(`/spending/account/${accountId}/chart`, { params: { startDate, endDate } }),
     getGlobalChart: (startDate?: string, endDate?: string) =>

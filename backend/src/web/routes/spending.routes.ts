@@ -12,6 +12,7 @@ router.get('/summary/customer/:id', authenticateToken, canView, spendingControll
 router.get('/summary/invoice-mcc/:id', authenticateToken, canView, spendingController.getInvoiceMCCSummary);
 router.get('/summary/batch/:id', authenticateToken, canView, spendingController.getBatchSummary);
 router.get('/account/:id/chart', authenticateToken, canView, spendingController.getAccountChart);
+router.get('/accounts/:type/:id', authenticateToken, canView, spendingController.getAccountWiseSpending);
 router.get('/chart', authenticateToken, canView, spendingController.getGlobalChart);
 
 export default router;
