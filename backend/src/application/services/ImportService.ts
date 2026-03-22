@@ -118,6 +118,19 @@ export class ImportService {
 
     async previewSpending(buffer: Buffer, spendingDate: string, miId?: string) {
         const parsed = parseBatchExcel(buffer);
+        const googleAccountIds = parsed.accounts.map(a => a.googleAccountId);
+
+        // Batch look up all accounts by Google Account ID
+        const accounts = await prisma.account.findMany({
+            where: { googleAccountId: { in: googleAccountIds } },
+            include: {
+                currentMi: { select: { name: true } },
+                currentMc: { select: { name: true } },
+            }
+        });
+
+        const accountMap = new Map(accounts.map(a => [a.googleAccountId, a]));
+        const accountDbIds = accounts.map(a => a.id);
 
         // Look up the batch by MCC Account ID
         let batch: any = null;
@@ -133,30 +146,37 @@ export class ImportService {
             mi = await prisma.invoiceMCC.findUnique({ where: { id: miId } });
         }
 
+        const targetDate = new Date(spendingDate + 'T00:00:00.000Z');
+
+        // Batch look up all latest DAILY_FINAL snapshots for these accounts on the target date
+        const snapshots = await prisma.spendingSnapshot.findMany({
+            where: {
+                accountId: { in: accountDbIds },
+                spendingDate: targetDate,
+                snapshotType: 'DAILY_FINAL',
+            },
+            orderBy: { snapshotAt: 'desc' },
+        });
+
+        // Create a map of accountId -> most recent snapshot amount
+        const snapshotMap = new Map();
+        snapshots.forEach(s => {
+            if (!snapshotMap.has(s.accountId)) {
+                snapshotMap.set(s.accountId, Number(s.cumulativeAmount));
+            }
+        });
+
         const previewItems: any[] = [];
         let newAccountsCount = 0;
         let existingAccountsCount = 0;
 
-        const targetDate = new Date(spendingDate + 'T00:00:00.000Z');
-
         for (const acc of parsed.accounts) {
-            const existing = await accountRepository.findByGoogleId(acc.googleAccountId);
-
-            // Check for existing spending on the target date
+            const existing = accountMap.get(acc.googleAccountId);
             let existingAmount: number | null = null;
+
             if (existing) {
                 existingAccountsCount++;
-                const existingSnapshots = await prisma.spendingSnapshot.findMany({
-                    where: {
-                        accountId: existing.id,
-                        spendingDate: targetDate,
-                    },
-                    orderBy: { snapshotAt: 'desc' },
-                    take: 1,
-                });
-                if (existingSnapshots.length > 0) {
-                    existingAmount = Number(existingSnapshots[0].cumulativeAmount);
-                }
+                existingAmount = snapshotMap.get(existing.id) ?? null;
             } else {
                 newAccountsCount++;
             }
@@ -168,12 +188,12 @@ export class ImportService {
                 newStatus: acc.status,
                 newAmount: acc.spending,
                 existingAmount,
-                hasConflict: existingAmount !== null && existingAmount !== acc.spending,
+                hasConflict: existingAmount !== null && Math.abs(existingAmount - acc.spending) > 0.001,
                 hasExisting: existingAmount !== null,
                 isNewAccount: !existing,
                 accountId: existing?.id || null,
-                miName: null,
-                mcName: null,
+                miName: existing?.currentMi?.name || null,
+                mcName: existing?.currentMc?.name || null,
             });
         }
 
@@ -388,29 +408,62 @@ export class ImportService {
     }
 
     async confirmSpending(data: any, userId: string, ipAddress?: string) {
-        // Implementation logic for confirming spending, similar to ConfirmSpendingUseCase
-        // We can use spendingService.createSnapshot and spendingService.calculateRecords here
-        const results = { snapshots: 0, accountsAffected: new Set<string>() };
+        const { spendingDate, records, overwrite, miId } = {
+            spendingDate: data.spendingDate,
+            records: data.data || [], // Frontend sends it as 'data'
+            overwrite: data.overwrite || false,
+            miId: data.miId
+        };
+
+        if (records.length === 0) return { message: 'No records to import', results: { snapshotsCreated: 0 } };
+
+        const targetDate = new Date(spendingDate + 'T00:00:00.000Z');
+        const accountIds = records.filter((r: any) => r.accountId).map((r: any) => r.accountId);
+        const uniqueAccountIds = [...new Set(accountIds)] as string[];
+
+        const results = { snapshotsCreated: 0, accountsAffected: uniqueAccountIds.length };
 
         await prisma.$transaction(async (tx: any) => {
-            for (const item of data.records) {
-                const snapshot = await spendingSnapshotRepository.create({
+            // 1. Handle Overwrite
+            if (overwrite) {
+                await tx.spendingSnapshot.deleteMany({
+                    where: {
+                        accountId: { in: uniqueAccountIds },
+                        spendingDate: targetDate,
+                        snapshotType: 'DAILY_FINAL'
+                    }
+                });
+            }
+
+            // 2. Batch Create Snapshots
+            const snapshotData = records
+                .filter((r: any) => r.accountId)
+                .map((item: any) => ({
                     accountId: item.accountId,
-                    cumulativeAmount: item.amount,
-                    snapshotAt: new Date(data.spendingDate),
-                    spendingDate: new Date(data.spendingDate),
+                    cumulativeAmount: item.newAmount, // Use newAmount from frontend
+                    snapshotAt: targetDate,
+                    spendingDate: targetDate,
                     snapshotType: 'DAILY_FINAL',
                     createdById: userId,
-                    invoiceMccId: item.invoiceMccId,
-                    customerId: item.customerId
+                    invoiceMccId: miId || item.currentMiId || null,
+                    customerId: item.currentMcId || null
+                }));
+
+            if (snapshotData.length > 0) {
+                const created = await tx.spendingSnapshot.createMany({
+                    data: snapshotData,
+                    skipDuplicates: true // In case some were not deleted or we have duplicates in file
                 });
-                results.snapshots++;
-                results.accountsAffected.add(item.accountId);
+                results.snapshotsCreated = created.count;
             }
         });
 
-        for (const accountId of results.accountsAffected) {
-            await spendingService.calculateRecords(accountId, data.spendingDate);
+        // 3. Batch Sync Records (Post-transaction)
+        // We do this in chunks to avoid overwhelming the system, but still faster than one-by-one in a loop
+        const chunkSize = 20;
+        for (let i = 0; i < uniqueAccountIds.length; i += chunkSize) {
+            const chunk = uniqueAccountIds.slice(i, i + chunkSize);
+            await Promise.all(chunk.map(id => spendingService.calculateRecords(id, spendingDate).catch(e => console.error(`Failed to sync account ${id}:`, e))));
         }
 
         await logActivity({
@@ -418,11 +471,17 @@ export class ImportService {
             action: 'IMPORT_SPENDING',
             entityType: 'Spending',
             entityId: 'BULK',
-            description: `Imported spending for ${results.accountsAffected.size} accounts.`,
+            description: `Imported spending for ${results.accountsAffected} accounts (${results.snapshotsCreated} snapshots). Overwrite: ${overwrite}`,
             ipAddress
         });
 
-        return { snapshotsCreated: results.snapshots, accountsAffected: results.accountsAffected.size };
+        return { 
+            message: `Successfully imported ${results.snapshotsCreated} snapshots for ${results.accountsAffected} accounts.`,
+            results: {
+                spendingCreated: results.snapshotsCreated,
+                accountsAffected: results.accountsAffected
+            }
+        };
     }
 }
 

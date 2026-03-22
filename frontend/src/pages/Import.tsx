@@ -137,7 +137,7 @@ export default function Import() {
 
     // Auto-preview when file is selected or date changes
     useEffect(() => {
-        if (file && spendingDate && !previewData) {
+        if (file && spendingDate && !previewData && !previewSpendingMutation.isPending && !previewSpendingMutation.isError) {
             previewSpendingMutation.mutate(file);
         }
     }, [file, spendingDate, previewData, previewSpendingMutation]);
