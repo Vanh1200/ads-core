@@ -169,6 +169,7 @@ export class ImportService {
         const previewItems: any[] = [];
         let newAccountsCount = 0;
         let existingAccountsCount = 0;
+        let totalAmount = 0;
 
         for (const acc of parsed.accounts) {
             const existing = accountMap.get(acc.googleAccountId);
@@ -181,11 +182,14 @@ export class ImportService {
                 newAccountsCount++;
             }
 
+            const finalNewStatus = (existing?.status === 'INACTIVE') ? 'INACTIVE' : acc.status;
+            totalAmount += acc.spending;
+
             previewItems.push({
                 googleAccountId: acc.googleAccountId,
                 accountName: acc.accountName,
                 status: existing?.status || acc.status,
-                newStatus: acc.status,
+                newStatus: finalNewStatus,
                 newAmount: acc.spending,
                 existingAmount,
                 hasConflict: existingAmount !== null && Math.abs(existingAmount - acc.spending) > 0.001,
@@ -209,6 +213,7 @@ export class ImportService {
             miName: mi?.name || null,
             dateRange: parsed.dateRange,
             totalItems: previewItems.length,
+            totalAmount,
             conflictCount,
             existingCount,
             hasConflicts: conflictCount > 0,

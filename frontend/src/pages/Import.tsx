@@ -29,6 +29,7 @@ interface PreviewResult {
     miName: string | null;
     dateRange: string;
     totalItems: number;
+    totalAmount: number;
     conflictCount: number;
     existingCount: number;
     hasConflicts: boolean;
@@ -60,8 +61,8 @@ export default function Import() {
     // Spending import states
     const [spendingDate, setSpendingDate] = useState(() => {
         if (savedState?.spendingDate) return savedState.spendingDate;
-        const today = new Date();
-        return today.toISOString().split('T')[0];
+        const date = new Date(Date.now() - 86400000); // Default to Yesterday
+        return date.toISOString().split('T')[0];
     });
     const [importMode, setImportMode] = useState<'MA' | 'MI'>(savedState?.importMode || 'MA');
     const [previewData, setPreviewData] = useState<PreviewResult | null>(savedState?.previewData || null);
@@ -448,13 +449,19 @@ export default function Import() {
                                 <div style={{ fontWeight: 600 }}>{formatDate(previewData.spendingDate)}</div>
                             </div>
                             <div>
-                                <div style={{ fontSize: '12px', color: 'var(--text-muted)' }}>Tổng tài khoản</div>
+                                <div style={{ fontSize: '12px', color: 'var(--text-muted)' }}>Tổng chi khoản</div>
                                 <div style={{ fontWeight: 600 }}>{previewData.totalItems}</div>
                             </div>
                             <div>
                                 <div style={{ fontSize: '12px', color: 'var(--text-muted)' }}>Đã có dữ liệu</div>
                                 <div style={{ fontWeight: 600, color: existingRecordsCount > 0 ? 'var(--warning)' : 'var(--secondary)' }}>
                                     {existingRecordsCount}
+                                </div>
+                            </div>
+                            <div>
+                                <div style={{ fontSize: '12px', color: 'var(--text-muted)' }}>Tổng chi phí</div>
+                                <div style={{ fontWeight: 600, color: 'var(--secondary)' }}>
+                                    ${formatCurrency(previewData.totalAmount)}
                                 </div>
                             </div>
                         </div>
@@ -499,7 +506,7 @@ export default function Import() {
                                         <th style={{ width: '25%' }}>Tài khoản</th>
                                         <th style={{ width: '18%' }}>Trạng thái</th>
                                         <th style={{ width: '14%', textAlign: 'right' }}>Chi phí mới</th>
-                                        <th style={{ width: '14%', textAlign: 'right' }}>Chi phí cũ</th>
+                                        <th style={{ width: '14%', textAlign: 'right', paddingRight: '20px' }}>Chi phí cũ</th>
                                         <th style={{ width: '29%' }}>Ghi chú</th>
                                     </tr>
                                 </thead>
@@ -524,7 +531,7 @@ export default function Import() {
                                             <td style={{ textAlign: 'right', fontWeight: 500, color: 'var(--secondary)' }}>
                                                 ${formatCurrency(item.newAmount)}
                                             </td>
-                                            <td style={{ textAlign: 'right', color: 'var(--text-muted)' }}>
+                                            <td style={{ textAlign: 'right', color: 'var(--text-muted)', paddingRight: '20px' }}>
                                                 {item.existingAmount !== null ? `$${formatCurrency(item.existingAmount)}` : '-'}
                                             </td>
                                             <td>
