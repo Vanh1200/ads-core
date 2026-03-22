@@ -562,7 +562,7 @@ export default function InvoiceMCCs() {
                                         Chi phí <SortIcon field="rangeSpending" />
                                     </div>
                                 </th>
-                                <th style={{ width: '15%', textAlign: 'center' }}>Đối tác</th>
+                                <th style={{ width: '15%' }}>Đối tác</th>
                                 <th style={{ width: '120px', textAlign: 'right' }}>Thao tác</th>
                             </tr>
                         </thead>
