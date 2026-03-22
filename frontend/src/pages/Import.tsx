@@ -27,6 +27,7 @@ interface PreviewResult {
     mccAccountId: string | null;
     miId: string | null;
     miName: string | null;
+    mccInvoiceId: string | null;
     dateRange: string;
     totalItems: number;
     totalAmount: number;
@@ -438,9 +439,9 @@ export default function Import() {
                                         : (previewData.batchName || 'N/A')
                                     }
                                 </div>
-                                {previewData.mccAccountId && (
+                                {(importMode === 'MI' ? previewData.mccInvoiceId : previewData.mccAccountId) && (
                                     <div style={{ fontSize: '12px', color: 'var(--text-muted)', marginTop: '2px' }}>
-                                        {previewData.mccAccountId}
+                                        {importMode === 'MI' ? previewData.mccInvoiceId : previewData.mccAccountId}
                                     </div>
                                 )}
                             </div>

@@ -211,6 +211,7 @@ export class ImportService {
             mccAccountId: batch?.mccAccountId || parsed.mccAccountId || null,
             miId: mi?.id || null,
             miName: mi?.name || null,
+            mccInvoiceId: mi?.mccInvoiceId || null,
             dateRange: parsed.dateRange,
             totalItems: previewItems.length,
             totalAmount,
