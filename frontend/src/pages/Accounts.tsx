@@ -261,6 +261,21 @@ export default function Accounts() {
         queryFn: () => batchesApi.list({ limit: 1000 }),
     });
     const batches: Batch[] = Array.isArray(batchesData?.data?.data) ? batchesData?.data?.data : [];
+    
+    // Filtered MI list for modal search
+    const filteredMiList = miList.filter(mi => {
+        if (!miSearch) return true;
+        const search = miSearch.toLowerCase();
+        return mi.name.toLowerCase().includes(search) || 
+               (mi.mccInvoiceId && mi.mccInvoiceId.toLowerCase().includes(search));
+    });
+
+    // Filtered MC list for modal search
+    const filteredCustomerList = customerList.filter((mc: any) => {
+        if (!mcSearch) return true;
+        const search = mcSearch.toLowerCase();
+        return mc.name.toLowerCase().includes(search);
+    });
 
     // Derived state for badges removed as unnecessary
     // const currentBatch = batches.find((b: Batch) => b.id === batchId) || batchDetail?.data;
@@ -1293,10 +1308,9 @@ export default function Accounts() {
                                     />
                                 </div>
 
-                                {/* MI List */}
                                 <div style={{ maxHeight: 300, overflow: 'auto', marginBottom: 16 }}>
-                                    {miList.length > 0 ? (
-                                        miList.map((mi) => (
+                                    {filteredMiList.length > 0 ? (
+                                        filteredMiList.map((mi) => (
                                             <div
                                                 key={mi.id}
                                                 onClick={() => handleLinkToMi(mi.id)}
@@ -1316,14 +1330,12 @@ export default function Accounts() {
                                             >
                                                 <div>
                                                     <div style={{ fontWeight: 500 }}>{mi.name}</div>
-                                                    {mi.mccAccountId && (
-                                                        <div style={{ fontSize: 12, color: 'var(--text-muted)' }}>
-                                                            {mi.mccAccountId}
-                                                        </div>
-                                                    )}
+                                                    <div style={{ fontSize: 12, color: 'var(--text-muted)' }}>
+                                                        {mi.mccInvoiceId || '-'}
+                                                    </div>
                                                 </div>
-                                                <span className={`badge badge - ${mi.status === 'ACTIVE' ? 'success' : 'secondary'} `}>
-                                                    {mi.status}
+                                                <span className={`badge badge-${mi.status === 'ACTIVE' ? 'success' : 'secondary'}`}>
+                                                    {mi.status === 'ACTIVE' ? 'Hoạt động' : 'Tắt'}
                                                 </span>
                                             </div>
                                         ))
@@ -1446,10 +1458,9 @@ export default function Accounts() {
                                     />
                                 </div>
 
-                                {/* MC List */}
                                 <div style={{ maxHeight: 300, overflow: 'auto', marginBottom: 16 }}>
-                                    {customerList.length > 0 ? (
-                                        customerList.map((mc: any) => (
+                                    {filteredCustomerList.length > 0 ? (
+                                        filteredCustomerList.map((mc: any) => (
                                             <div
                                                 key={mc.id}
                                                 onClick={() => handleAssignToMc(mc.id)}
@@ -1476,7 +1487,7 @@ export default function Accounts() {
                                                     )}
                                                 </div>
                                                 <div style={{ textAlign: 'right' }}>
-                                                    <span className={`badge badge - ${mc.status === 'ACTIVE' ? 'success' : 'secondary'} `}>
+                                                    <span className={`badge badge-${mc.status === 'ACTIVE' ? 'success' : 'secondary'}`}>
                                                         {mc.status === 'ACTIVE' ? 'Hoạt động' : 'Không hoạt động'}
                                                     </span>
                                                     <div style={{ fontSize: 12, color: 'var(--text-muted)', marginTop: 4 }}>
