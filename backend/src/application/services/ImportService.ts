@@ -1,4 +1,4 @@
-import * as XLSX from 'xlsx';
+
 import { parseBatchExcel } from '../../infrastructure/parsers/excelParser';
 import { accountRepository } from '../../infrastructure/database/repositories/PrismaAccountRepository';
 import { batchRepository } from '../../infrastructure/database/repositories/PrismaBatchRepository';
@@ -116,11 +116,86 @@ export class ImportService {
         return { results };
     }
 
-    async previewSpending(buffer: Buffer) {
-        const workbook = XLSX.read(buffer, { type: 'buffer' });
-        const sheetName = workbook.SheetNames[0];
-        const data = XLSX.utils.sheet_to_json(workbook.Sheets[sheetName]);
-        return data; // Simplified for now
+    async previewSpending(buffer: Buffer, spendingDate: string, miId?: string) {
+        const parsed = parseBatchExcel(buffer);
+
+        // Look up the batch by MCC Account ID
+        let batch: any = null;
+        if (parsed.mccAccountId) {
+            batch = await prisma.accountBatch.findUnique({
+                where: { mccAccountId: parsed.mccAccountId }
+            });
+        }
+
+        // Look up MI if miId is provided
+        let mi: any = null;
+        if (miId) {
+            mi = await prisma.invoiceMCC.findUnique({ where: { id: miId } });
+        }
+
+        const previewItems: any[] = [];
+        let newAccountsCount = 0;
+        let existingAccountsCount = 0;
+
+        const targetDate = new Date(spendingDate + 'T00:00:00.000Z');
+
+        for (const acc of parsed.accounts) {
+            const existing = await accountRepository.findByGoogleId(acc.googleAccountId);
+
+            // Check for existing spending on the target date
+            let existingAmount: number | null = null;
+            if (existing) {
+                existingAccountsCount++;
+                const existingSnapshots = await prisma.spendingSnapshot.findMany({
+                    where: {
+                        accountId: existing.id,
+                        spendingDate: targetDate,
+                    },
+                    orderBy: { snapshotAt: 'desc' },
+                    take: 1,
+                });
+                if (existingSnapshots.length > 0) {
+                    existingAmount = Number(existingSnapshots[0].cumulativeAmount);
+                }
+            } else {
+                newAccountsCount++;
+            }
+
+            previewItems.push({
+                googleAccountId: acc.googleAccountId,
+                accountName: acc.accountName,
+                status: existing?.status || acc.status,
+                newStatus: acc.status,
+                newAmount: acc.spending,
+                existingAmount,
+                hasConflict: existingAmount !== null && existingAmount !== acc.spending,
+                hasExisting: existingAmount !== null,
+                isNewAccount: !existing,
+                accountId: existing?.id || null,
+                miName: null,
+                mcName: null,
+            });
+        }
+
+        const existingCount = previewItems.filter(i => i.hasExisting).length;
+        const conflictCount = previewItems.filter(i => i.hasConflict).length;
+
+        return {
+            spendingDate,
+            batchName: batch?.mccAccountName || parsed.batchName || 'N/A',
+            batchId: batch?.id || null,
+            miId: mi?.id || null,
+            miName: mi?.name || null,
+            dateRange: parsed.dateRange,
+            totalItems: previewItems.length,
+            conflictCount,
+            existingCount,
+            hasConflicts: conflictCount > 0,
+            hasExisting: existingCount > 0,
+            newAccounts: newAccountsCount,
+            existingAccounts: existingAccountsCount,
+            data: previewItems,
+        };
     }
 
     async createBatchWithAccounts(data: any, userId: string, ipAddress?: string) {

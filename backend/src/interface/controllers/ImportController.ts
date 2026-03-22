@@ -52,7 +52,9 @@ export class ImportController {
 
     previewSpending = asyncHandler(async (req: any, res: any) => {
         if (!req.file) { res.status(400).json({ error: 'No file uploaded' }); return; }
-        const result = await importService.previewSpending(req.file.buffer);
+        const { spendingDate, miId } = req.body;
+        if (!spendingDate) { res.status(400).json({ error: 'Spending date is required' }); return; }
+        const result = await importService.previewSpending(req.file.buffer, spendingDate, miId);
         res.json(result);
     });
 
