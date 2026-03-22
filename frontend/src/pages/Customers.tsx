@@ -448,8 +448,8 @@ export default function Customers() {
                                     Tổng chi phí <SortIcon field="totalSpending" />
                                 </div>
                             </th>
-                            <th style={{ width: '10%', cursor: 'pointer', userSelect: 'none', textAlign: 'right' }} onClick={() => handleSort('rangeSpending')}>
-                                <div style={{ display: 'flex', alignItems: 'center', gap: 4, justifyContent: 'flex-end' }}>
+                            <th style={{ width: '10%', cursor: 'pointer', userSelect: 'none' }} onClick={() => handleSort('rangeSpending')}>
+                                <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
                                     Chi phí <SortIcon field="rangeSpending" />
                                 </div>
                             </th>
