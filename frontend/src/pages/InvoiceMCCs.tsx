@@ -556,7 +556,7 @@ export default function InvoiceMCCs() {
                                         Tín dụng <SortIcon field="creditStatus" />
                                     </div>
                                 </th>
-                                <th style={{ textAlign: 'right' }}>Tài khoản</th>               <th style={{ textAlign: 'right' }}>Sóng</th>
+                                <th style={{ textAlign: 'right' }}>Tài khoản</th>               <th style={{ textAlign: 'right' }}>Sống</th>
                                 <th style={{ width: '10%', cursor: 'pointer', userSelect: 'none', textAlign: 'right' }} onClick={() => handleSort('rangeSpending')}>
                                     <div style={{ display: 'flex', alignItems: 'center', gap: 4, justifyContent: 'flex-end' }}>
                                         Chi phí <SortIcon field="rangeSpending" />
