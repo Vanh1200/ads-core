@@ -10,5 +10,6 @@ export interface Customer {
     assignedStaffId: string | null;
     createdAt: Date;
     updatedAt: Date;
+    googleSheetId: string | null;
     rangeSpending?: number;
 }

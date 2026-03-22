@@ -3,6 +3,7 @@ import { spendingSnapshotRepository, ISpendingSnapshotRepository } from '../../i
 import { accountRepository } from '../../infrastructure/database/repositories/PrismaAccountRepository';
 import { IAccountRepository } from '../../domain/repositories/IAccountRepository';
 import prisma from '../../infrastructure/database/prisma';
+import { googleSheetsService } from './GoogleSheetsService';
 
 export class SpendingService {
     constructor(
@@ -128,6 +129,12 @@ export class SpendingService {
             totalSpending: Number(totalSpending._sum.amount || 0),
             lastSynced: new Date()
         });
+
+        // Trigger Google Sheets sync if account belongs to a customer
+        if (account.currentMcId) {
+            googleSheetsService.updateCustomerSheet(account.currentMcId, date)
+                .catch(err => console.error(`[SpendingService] Auto-sync failed for customer ${account.currentMcId}:`, err));
+        }
 
         return { message: `Created ${records.length} spending records`, records };
     }

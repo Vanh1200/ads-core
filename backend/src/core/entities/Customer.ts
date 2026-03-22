@@ -8,6 +8,7 @@ export interface Customer {
     totalSpending: number;
     totalAccounts: number;
     activeAccounts: number;
+    googleSheetId: string | null;
     notes: string | null;
     createdAt: Date;
     updatedAt: Date;

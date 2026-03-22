@@ -111,6 +111,7 @@ export class PrismaCustomerRepository implements ICustomerRepository {
                 contactInfo: data.contactInfo,
                 status: data.status as CustomerStatus || 'ACTIVE',
                 notes: data.notes,
+                googleSheetId: data.googleSheetId,
                 assignedStaff: data.assignedStaffId ? { connect: { id: data.assignedStaffId } } : undefined,
             },
         });
@@ -123,6 +124,7 @@ export class PrismaCustomerRepository implements ICustomerRepository {
         if (data.contactInfo !== undefined) updateData.contactInfo = data.contactInfo;
         if (data.status) updateData.status = data.status as CustomerStatus;
         if (data.notes !== undefined) updateData.notes = data.notes;
+        if (data.googleSheetId !== undefined) updateData.googleSheetId = data.googleSheetId;
         if (data.assignedStaffId !== undefined) {
             updateData.assignedStaff = data.assignedStaffId ? { connect: { id: data.assignedStaffId } } : { disconnect: true };
         }
@@ -170,6 +172,7 @@ export class PrismaCustomerRepository implements ICustomerRepository {
             totalAccounts: prismaCustomer._count?.accounts ?? prismaCustomer.totalAccounts ?? 0,
             totalSpending: Number(prismaCustomer.totalSpending),
             rangeSpending,
+            googleSheetId: prismaCustomer.googleSheetId || null,
         } as Customer;
     }
 }

@@ -222,8 +222,8 @@ export class PrismaBatchRepository implements IBatchRepository {
                     rangeSpending += accountSpending;
                 }
                 
-                // Count unlinked accounts (MI is null)
-                if (!account.currentMiId) {
+                // Count unlinked accounts (MI is null AND status is ACTIVE)
+                if (!account.currentMiId && account.status === 'ACTIVE') {
                     unlinkedAccounts++;
                 }
             }
