@@ -770,12 +770,17 @@ export default function Batches() {
                                 </tr>
                             ) : batches.length > 0 ? (
                                 batches.map((batch: Batch, index: number) => (
-                                    <tr
-                                        key={batch.id}
-                                        onClick={() => {
-                                            if (window.getSelection()?.toString()) return;
-                                            navigate(`/batches/${batch.id}`);
-                                        }}
+                                        <tr
+                                            key={batch.id}
+                                            onClick={(e) => {
+                                                if (window.getSelection()?.toString()) return;
+                                                const url = `/batches/${batch.id}`;
+                                                if (e.metaKey || e.ctrlKey) {
+                                                    window.open(url, '_blank');
+                                                } else {
+                                                    navigate(url);
+                                                }
+                                            }}
                                         style={{ cursor: 'pointer' }}
                                         className={`clickable-row ${selectedIds.has(batch.id) ? 'selected' : ''}`}
                                     >
@@ -835,7 +840,14 @@ export default function Batches() {
                                                 href={`/accounts?batchId=${batch.id}`}
                                                 className="link"
                                                 onClick={(e) => {
+                                                    e.preventDefault();
                                                     e.stopPropagation();
+                                                    const url = `/accounts?batchId=${batch.id}`;
+                                                    if (e.metaKey || e.ctrlKey) {
+                                                        window.open(url, '_blank');
+                                                    } else {
+                                                        navigate(url);
+                                                    }
                                                 }}
                                                 style={{ color: 'var(--primary)', cursor: 'pointer', fontWeight: 500, textDecoration: 'none' }}
                                             >
@@ -847,7 +859,14 @@ export default function Batches() {
                                                 href={`/accounts?batchId=${batch.id}&status=ACTIVE`}
                                                 className="link"
                                                 onClick={(e) => {
+                                                    e.preventDefault();
                                                     e.stopPropagation();
+                                                    const url = `/accounts?batchId=${batch.id}&status=ACTIVE`;
+                                                    if (e.metaKey || e.ctrlKey) {
+                                                        window.open(url, '_blank');
+                                                    } else {
+                                                        navigate(url);
+                                                    }
                                                 }}
                                                 style={{ color: '#10b981', cursor: 'pointer', fontWeight: 500, textDecoration: 'none' }}
                                             >
@@ -865,7 +884,14 @@ export default function Batches() {
                                                     href={`/partners?search=${batch.partner?.name}`}
                                                     className="link"
                                                     onClick={(e) => {
+                                                        e.preventDefault();
                                                         e.stopPropagation();
+                                                        const url = `/partners?search=${batch.partner?.name}`;
+                                                        if (e.metaKey || e.ctrlKey) {
+                                                            window.open(url, '_blank');
+                                                        } else {
+                                                            navigate(url);
+                                                        }
                                                     }}
                                                     style={{ color: 'var(--primary)', cursor: 'pointer', fontWeight: 500, textDecoration: 'none' }}
                                                 >

@@ -1113,10 +1113,15 @@ export default function Accounts() {
                                 accounts.map((account: Account, index: number) => (
                                     <tr
                                         key={account.id}
-                                        onClick={() => {
+                                        onClick={(e) => {
                                             // Don't navigate if text is selected (user is copying)
                                             if (window.getSelection()?.toString()) return;
-                                            navigate(`/accounts/${account.id}`);
+                                            const url = `/accounts/${account.id}`;
+                                            if (e.metaKey || e.ctrlKey) {
+                                                window.open(url, '_blank');
+                                            } else {
+                                                navigate(url);
+                                            }
                                         }}
                                         style={{
                                             background: selectedIds.has(account.id) ? 'rgba(139, 92, 246, 0.1)' : undefined,
@@ -1160,7 +1165,14 @@ export default function Accounts() {
                                                     <a
                                                         href={`/batches/${account.batch!.id}`}
                                                         onClick={(e) => {
+                                                            e.preventDefault();
                                                             e.stopPropagation();
+                                                            const url = `/batches/${account.batch!.id}`;
+                                                            if (e.metaKey || e.ctrlKey) {
+                                                                window.open(url, '_blank');
+                                                            } else {
+                                                                navigate(url);
+                                                            }
                                                         }}
                                                         className="hover:text-blue-400 hover:underline cursor-pointer"
                                                         style={{ color: 'var(--primary)', textDecoration: 'none' }}
@@ -1181,7 +1193,14 @@ export default function Accounts() {
                                                     <a
                                                         href={`/invoice-mccs/${account.currentMi!.id}`}
                                                         onClick={(e) => {
+                                                            e.preventDefault();
                                                             e.stopPropagation();
+                                                            const url = `/invoice-mccs/${account.currentMi!.id}`;
+                                                            if (e.metaKey || e.ctrlKey) {
+                                                                window.open(url, '_blank');
+                                                            } else {
+                                                                navigate(url);
+                                                            }
                                                         }}
                                                         className="hover:text-blue-400 hover:underline cursor-pointer"
                                                         style={{ color: 'var(--primary)', textDecoration: 'none' }}
@@ -1201,7 +1220,14 @@ export default function Accounts() {
                                                 <a
                                                     href={`/customers/${account.currentMc!.id}`}
                                                     onClick={(e) => {
+                                                        e.preventDefault();
                                                         e.stopPropagation();
+                                                        const url = `/customers/${account.currentMc!.id}`;
+                                                        if (e.metaKey || e.ctrlKey) {
+                                                            window.open(url, '_blank');
+                                                        } else {
+                                                            navigate(url);
+                                                        }
                                                     }}
                                                     className="hover:text-blue-400 hover:underline cursor-pointer"
                                                     style={{ color: 'var(--primary)', textDecoration: 'none' }}

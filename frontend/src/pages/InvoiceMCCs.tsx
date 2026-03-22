@@ -580,9 +580,14 @@ export default function InvoiceMCCs() {
                                 invoiceMCCs.map((mi: InvoiceMCC, index: number) => (
                                     <tr
                                         key={mi.id}
-                                        onClick={() => {
+                                        onClick={(e) => {
                                             if (window.getSelection()?.toString()) return;
-                                            navigate(`/invoice-mccs/${mi.id}`);
+                                            const url = `/invoice-mccs/${mi.id}`;
+                                            if (e.metaKey || e.ctrlKey) {
+                                                window.open(url, '_blank');
+                                            } else {
+                                                navigate(url);
+                                            }
                                         }}
                                         style={{ cursor: 'pointer' }}
                                         className={`clickable-row ${selectedIds.has(mi.id) ? 'selected' : ''}`}
@@ -613,7 +618,14 @@ export default function InvoiceMCCs() {
                                                 href={`/accounts?miId=${mi.id}`}
                                                 className="link"
                                                 onClick={(e) => {
+                                                    e.preventDefault();
                                                     e.stopPropagation();
+                                                    const url = `/accounts?miId=${mi.id}`;
+                                                    if (e.metaKey || e.ctrlKey) {
+                                                        window.open(url, '_blank');
+                                                    } else {
+                                                        navigate(url);
+                                                    }
                                                 }}
                                                 style={{ color: 'var(--primary)', cursor: 'pointer', fontWeight: 500, textDecoration: 'none' }}
                                             >
@@ -631,7 +643,14 @@ export default function InvoiceMCCs() {
                                                     href={`/partners/${mi.partner?.id}`}
                                                     className="link"
                                                     onClick={(e) => {
+                                                        e.preventDefault();
                                                         e.stopPropagation();
+                                                        const url = `/partners/${mi.partner?.id}`;
+                                                        if (e.metaKey || e.ctrlKey) {
+                                                            window.open(url, '_blank');
+                                                        } else {
+                                                            navigate(url);
+                                                        }
                                                     }}
                                                     style={{ color: 'var(--primary)', cursor: 'pointer', fontWeight: 500, textDecoration: 'none' }}
                                                 >

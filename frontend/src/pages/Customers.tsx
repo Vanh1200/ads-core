@@ -472,7 +472,12 @@ export default function Customers() {
                                     onClick={(e) => {
                                         if (window.getSelection()?.toString()) return;
                                         if ((e.target as HTMLElement).tagName.toLowerCase() === 'input') return;
-                                        navigate(`/customers/${customer.id}`);
+                                        const url = `/customers/${customer.id}`;
+                                        if (e.metaKey || e.ctrlKey) {
+                                            window.open(url, '_blank');
+                                        } else {
+                                            navigate(url);
+                                        }
                                     }}
                                     style={{ cursor: 'pointer' }}
                                     className={`clickable-row ${selectedIds.has(customer.id) ? 'selected-row' : ''}`}
@@ -499,7 +504,14 @@ export default function Customers() {
                                             href={`/accounts?mcId=${customer.id}`}
                                             className="link"
                                             onClick={(e) => {
+                                                e.preventDefault();
                                                 e.stopPropagation();
+                                                const url = `/accounts?mcId=${customer.id}`;
+                                                if (e.metaKey || e.ctrlKey) {
+                                                    window.open(url, '_blank');
+                                                } else {
+                                                    navigate(url);
+                                                }
                                             }}
                                             style={{ color: 'var(--primary)', cursor: 'pointer', fontWeight: 500, textDecoration: 'none' }}
                                         >
