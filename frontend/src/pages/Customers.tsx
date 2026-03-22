@@ -451,7 +451,7 @@ export default function Customers() {
                                     Chi phí <SortIcon field="rangeSpending" />
                                 </div>
                             </th>
-                            <th style={{ width: '15%' }}>NV phụ trách</th>
+                            <th style={{ width: '15%', textAlign: 'center' }}>NV phụ trách</th>
                             <th style={{ width: '120px', textAlign: 'right' }}>Thao tác</th>
                         </tr>
                     </thead>
@@ -524,7 +524,7 @@ export default function Customers() {
                                             {new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD' }).format(customer.rangeSpending || 0)}
                                         </span>
                                     </td>
-                                    <td>{customer.assignedStaff?.fullName || '-'}</td>
+                                    <td style={{ textAlign: 'center' }}>{customer.assignedStaff?.fullName || '-'}</td>
                                     <td>
                                         {canAssignMC(user?.role || 'VIEWER') && (
                                             <div className="actions" style={{ justifyContent: 'flex-end' }} onClick={(e) => e.stopPropagation()}>

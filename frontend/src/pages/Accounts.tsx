@@ -37,7 +37,7 @@ interface InvoiceMCC {
     status: string;
 }
 
-type SortField = 'googleAccountId' | 'accountName' | 'status' | 'currency' | 'batch' | 'currentMi' | 'currentMc' | 'totalSpending' | 'batch.year' | 'batch.timezone';
+type SortField = 'googleAccountId' | 'accountName' | 'status' | 'currency' | 'batch' | 'currentMi' | 'currentMc' | 'totalSpending' | 'year' | 'timezone';
 type SortOrder = 'asc' | 'desc';
 
 const TIMEZONES = [
@@ -106,6 +106,8 @@ export default function Accounts() {
 
     const [showMcModal, setShowMcModal] = useState(false);
     const [mcSearch, setMcSearch] = useState('');
+    const [pendingLinkMiId, setPendingLinkMiId] = useState<string | null>(null);
+    const [pendingAssignMcId, setPendingAssignMcId] = useState<string | null>(null);
 
     const [selectedAccountId, setSelectedAccountId] = useState<string | null>(null);
 
@@ -222,11 +224,13 @@ export default function Accounts() {
     const createMiMutation = useMutation({
         mutationFn: (data: { name: string; mccInvoiceId: string; partnerId?: string }) => invoiceMCCsApi.create(data),
         onSuccess: () => {
-            queryClient.invalidateQueries({ queryKey: ['invoice-mccs'] });
+            queryClient.invalidateQueries({ queryKey: ['invoice-mccs-list'] });
             setShowCreateMi(false);
             setNewMiName('');
             setNewMiInvoiceId('');
             setNewMiPartnerId('');
+            setToast({ message: 'Tạo MI thành công', type: 'success' });
+            setTimeout(() => setToast(null), 3000);
         },
     });
 
@@ -241,10 +245,12 @@ export default function Accounts() {
             setTimeout(() => setToast(null), 3000);
             setSelectedIds(new Set());
             setShowMiModal(false);
+            setPendingLinkMiId(null);
         },
         onError: () => {
             setToast({ message: 'Có lỗi xảy ra khi liên kết!', type: 'error' });
             setTimeout(() => setToast(null), 3000);
+            setPendingLinkMiId(null);
         },
     });
 
@@ -338,10 +344,12 @@ export default function Accounts() {
             setTimeout(() => setToast(null), 3000);
             setSelectedIds(new Set());
             setShowMcModal(false);
+            setPendingAssignMcId(null);
         },
         onError: () => {
             setToast({ message: 'Có lỗi xảy ra khi giao tài khoản!', type: 'error' });
             setTimeout(() => setToast(null), 3000);
+            setPendingAssignMcId(null);
         },
     });
 
@@ -539,6 +547,7 @@ export default function Accounts() {
         }
 
         // 3. Safe to proceed
+        setPendingLinkMiId(miId);
         linkMutation.mutate({ miId, accountIds: Array.from(selectedIds) });
     };
 
@@ -570,6 +579,7 @@ export default function Accounts() {
         }
 
         // 3. Safe to proceed
+        setPendingAssignMcId(customerId);
         assignMutation.mutate({ customerId, accountIds: Array.from(selectedIds) });
     };
 
@@ -1055,14 +1065,20 @@ export default function Accounts() {
                                         Tiền tệ <SortIcon field="currency" />
                                     </div>
                                 </th>
-                                <th>
+                                <th
+                                    onClick={() => handleSort('year')}
+                                    style={{ cursor: 'pointer', userSelect: 'none' }}
+                                >
                                     <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
-                                        Năm
+                                        Năm <SortIcon field="year" />
                                     </div>
                                 </th>
-                                <th>
+                                <th
+                                    onClick={() => handleSort('timezone')}
+                                    style={{ cursor: 'pointer', userSelect: 'none' }}
+                                >
                                     <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
-                                        Múi giờ
+                                        Múi giờ <SortIcon field="timezone" />
                                     </div>
                                 </th>
                                 <th
@@ -1339,7 +1355,7 @@ export default function Accounts() {
                                         filteredMiList.map((mi) => (
                                             <div
                                                 key={mi.id}
-                                                onClick={() => handleLinkToMi(mi.id)}
+                                                onClick={() => !pendingLinkMiId && handleLinkToMi(mi.id)}
                                                 style={{
                                                     padding: '12px 16px',
                                                     borderRadius: 8,
@@ -1360,9 +1376,12 @@ export default function Accounts() {
                                                         {mi.mccInvoiceId || '-'}
                                                     </div>
                                                 </div>
-                                                <span className={`badge badge-${mi.status === 'ACTIVE' ? 'success' : 'secondary'}`}>
-                                                    {mi.status === 'ACTIVE' ? 'Hoạt động' : 'Tắt'}
-                                                </span>
+                                                <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                                                    {pendingLinkMiId === mi.id && <div className="spinner spinner-sm" />}
+                                                    <span className={`badge badge-${mi.status === 'ACTIVE' ? 'success' : 'secondary'}`}>
+                                                        {mi.status === 'ACTIVE' ? 'Hoạt động' : 'Tắt'}
+                                                    </span>
+                                                </div>
                                             </div>
                                         ))
                                     ) : (
@@ -1489,7 +1508,7 @@ export default function Accounts() {
                                         filteredCustomerList.map((mc: any) => (
                                             <div
                                                 key={mc.id}
-                                                onClick={() => handleAssignToMc(mc.id)}
+                                                onClick={() => !pendingAssignMcId && handleAssignToMc(mc.id)}
                                                 style={{
                                                     padding: '12px 16px',
                                                     borderRadius: 8,
@@ -1513,9 +1532,12 @@ export default function Accounts() {
                                                     )}
                                                 </div>
                                                 <div style={{ textAlign: 'right' }}>
-                                                    <span className={`badge badge-${mc.status === 'ACTIVE' ? 'success' : 'secondary'}`}>
-                                                        {mc.status === 'ACTIVE' ? 'Hoạt động' : 'Không hoạt động'}
-                                                    </span>
+                                                    <div style={{ display: 'flex', alignItems: 'center', gap: 8, justifyContent: 'flex-end' }}>
+                                                        {pendingAssignMcId === mc.id && <div className="spinner spinner-sm" />}
+                                                        <span className={`badge badge-${mc.status === 'ACTIVE' ? 'success' : 'secondary'}`}>
+                                                            {mc.status === 'ACTIVE' ? 'Hoạt động' : 'Không hoạt động'}
+                                                        </span>
+                                                    </div>
                                                     <div style={{ fontSize: 12, color: 'var(--text-muted)', marginTop: 4 }}>
                                                         {mc._count?.accounts ?? 0} tài khoản
                                                     </div>

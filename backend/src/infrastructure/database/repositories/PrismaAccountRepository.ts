@@ -156,10 +156,19 @@ export class PrismaAccountRepository implements IAccountRepository {
             };
         }
 
+        const sortMapping: Record<string, string> = {
+            'batch': 'batch.mccAccountName',
+            'currentMi': 'currentMi.name',
+            'currentMc': 'currentMc.name',
+            'year': 'batch.year',
+            'timezone': 'batch.timezone'
+        };
+
         const orderBy: any = {};
         if (sortBy) {
-            if (sortBy.includes('.')) {
-                const parts = sortBy.split('.');
+            const actualSortBy = sortMapping[sortBy] || sortBy;
+            if (actualSortBy.includes('.')) {
+                const parts = actualSortBy.split('.');
                 let current = orderBy;
                 for (let i = 0; i < parts.length - 1; i++) {
                     current[parts[i]] = {};
@@ -167,7 +176,7 @@ export class PrismaAccountRepository implements IAccountRepository {
                 }
                 current[parts[parts.length - 1]] = sortOrder || 'desc';
             } else {
-                orderBy[sortBy] = sortOrder || 'desc';
+                orderBy[actualSortBy] = sortOrder || 'desc';
             }
         } else {
             orderBy.createdAt = 'desc';

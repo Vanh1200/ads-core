@@ -24,6 +24,7 @@ interface Batch {
     createdAt: string;
     rangeSpending?: number;
     currency?: string | null;
+    unlinkedAccounts: number;
     _count?: { accounts: number };
 }
 
@@ -738,6 +739,7 @@ export default function Batches() {
                                 </th>
                                 <th style={{ width: '8%' }}>Tài khoản</th>
                                 <th style={{ width: '8%' }}>Sóng</th>
+                                <th style={{ width: '8%' }}>Chưa liên kết</th>
                                 <th
                                     style={{ width: '10%', cursor: 'pointer', userSelect: 'none' }}
                                     onClick={() => handleSort('rangeSpending')}
@@ -871,6 +873,25 @@ export default function Batches() {
                                                 style={{ color: '#10b981', cursor: 'pointer', fontWeight: 500, textDecoration: 'none' }}
                                             >
                                                 {batch.liveAccounts}
+                                            </a>
+                                        </td>
+                                        <td>
+                                            <a
+                                                href={`/accounts?batchId=${batch.id}&noMi=true`}
+                                                className="link"
+                                                onClick={(e) => {
+                                                    e.preventDefault();
+                                                    e.stopPropagation();
+                                                    const url = `/accounts?batchId=${batch.id}&noMi=true`;
+                                                    if (e.metaKey || e.ctrlKey) {
+                                                        window.open(url, '_blank');
+                                                    } else {
+                                                        navigate(url);
+                                                    }
+                                                }}
+                                                style={{ color: '#f59e0b', cursor: 'pointer', fontWeight: 500, textDecoration: 'none' }}
+                                            >
+                                                {batch.unlinkedAccounts}
                                             </a>
                                         </td>
                                         <td>

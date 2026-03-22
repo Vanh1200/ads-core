@@ -207,6 +207,7 @@ export class PrismaBatchRepository implements IBatchRepository {
 
         let rangeSpending = 0;
         let currency: string | null = null;
+        let unlinkedAccounts = 0;
         
         if (prismaBatch.accounts && Array.isArray(prismaBatch.accounts)) {
             if (prismaBatch.accounts.length > 0) {
@@ -220,6 +221,11 @@ export class PrismaBatchRepository implements IBatchRepository {
                     const accountSpending = account.spendingRecords.reduce((sum: number, r: any) => sum + Number(r.amount), 0);
                     rangeSpending += accountSpending;
                 }
+                
+                // Count unlinked accounts (MI is null)
+                if (!account.currentMiId) {
+                    unlinkedAccounts++;
+                }
             }
         }
 
@@ -229,6 +235,7 @@ export class PrismaBatchRepository implements IBatchRepository {
             status: prismaBatch.status as 'ACTIVE' | 'INACTIVE',
             rangeSpending,
             currency,
+            unlinkedAccounts,
         } as AccountBatch;
     }
 }

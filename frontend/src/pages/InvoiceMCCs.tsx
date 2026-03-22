@@ -556,13 +556,13 @@ export default function InvoiceMCCs() {
                                         Tín dụng <SortIcon field="creditStatus" />
                                     </div>
                                 </th>
-                                <th style={{ textAlign: 'right' }}>Tài khoản</th>
+                                <th style={{ textAlign: 'right' }}>Tài khoản</th>               <th style={{ textAlign: 'right' }}>Sóng</th>
                                 <th style={{ width: '10%', cursor: 'pointer', userSelect: 'none', textAlign: 'right' }} onClick={() => handleSort('rangeSpending')}>
                                     <div style={{ display: 'flex', alignItems: 'center', gap: 4, justifyContent: 'flex-end' }}>
                                         Chi phí <SortIcon field="rangeSpending" />
                                     </div>
                                 </th>
-                                <th style={{ width: '15%' }}>Đối tác</th>
+                                <th style={{ width: '15%', textAlign: 'center' }}>Đối tác</th>
                                 <th style={{ width: '120px', textAlign: 'right' }}>Thao tác</th>
                             </tr>
                         </thead>
@@ -630,6 +630,25 @@ export default function InvoiceMCCs() {
                                                 style={{ color: 'var(--primary)', cursor: 'pointer', fontWeight: 500, textDecoration: 'none' }}
                                             >
                                                 {mi._count?.accounts ?? mi.linkedAccountsCount ?? 0}
+                                            </a>
+                                        </td>
+                                        <td style={{ textAlign: 'right' }}>
+                                            <a
+                                                href={`/accounts?miId=${mi.id}&status=ACTIVE`}
+                                                className="link"
+                                                onClick={(e) => {
+                                                    e.preventDefault();
+                                                    e.stopPropagation();
+                                                    const url = `/accounts?miId=${mi.id}&status=ACTIVE`;
+                                                    if (e.metaKey || e.ctrlKey) {
+                                                        window.open(url, '_blank');
+                                                    } else {
+                                                        navigate(url);
+                                                    }
+                                                }}
+                                                style={{ color: '#10b981', cursor: 'pointer', fontWeight: 500, textDecoration: 'none' }}
+                                            >
+                                                {mi.activeAccountsCount}
                                             </a>
                                         </td>
                                         <td style={{ textAlign: 'right' }}>
