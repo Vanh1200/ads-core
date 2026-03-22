@@ -6,7 +6,7 @@ import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContai
 import { customersApi, activityLogsApi, spendingApi } from '../api/client';
 import CustomChartTooltip from '../components/ChartTooltip';
 
-type DateRange = '7' | '14' | '30' | 'custom';
+type DateRange = '0' | '1' | '7' | '14' | '30' | 'custom';
 
 export default function CustomerDetail() {
     const { id } = useParams<{ id: string }>();
@@ -29,7 +29,13 @@ export default function CustomerDetail() {
         }
         const end = new Date();
         const start = new Date();
-        start.setDate(end.getDate() - parseInt(dateRange));
+        const days = parseInt(dateRange);
+        if (!isNaN(days)) {
+            start.setDate(end.getDate() - days);
+        } else {
+            // Default or fallback for 'custom' when no dates set
+            start.setDate(end.getDate() - 7);
+        }
         return {
             startDate: start.toISOString().split('T')[0],
             endDate: end.toISOString().split('T')[0],
@@ -319,20 +325,20 @@ export default function CustomerDetail() {
                             {/* Date Range Selector */}
                             <div style={{ marginBottom: '24px' }}>
                                 <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap', alignItems: 'center' }}>
-                                    {(['7', '14', '30'] as DateRange[]).map((range) => (
+                                    {(['0', '1', '7', '14', '30'] as DateRange[]).map((range) => (
                                         <button
                                             key={range}
                                             className={`btn btn-sm ${dateRange === range ? 'btn-primary' : 'btn-secondary'}`}
                                             onClick={() => setDateRange(range)}
                                         >
-                                            {range} ngày
+                                            {range === '0' ? 'Hôm nay' : range === '1' ? 'Hôm qua' : `${range} ngày`}
                                         </button>
                                     ))}
                                     <button
                                         className={`btn btn-sm ${dateRange === 'custom' ? 'btn-primary' : 'btn-secondary'}`}
                                         onClick={() => setDateRange('custom')}
                                     >
-                                        Tùy chỉnh
+                                        Tuỳ chỉnh
                                     </button>
 
                                     {dateRange === 'custom' && (

@@ -140,6 +140,34 @@ export class SpendingService {
         return this.snapshotRepo.list(params);
     }
 
+    async getDetailedSummary(params: any) {
+        const summary = await this.getSummary(params);
+        
+        // Get daily spending for the chart/table
+        const dailySpending = await prisma.spendingRecord.groupBy({
+            by: ['spendingDate'],
+            _sum: { amount: true },
+            where: {
+                spendingDate: params.startDate && params.endDate ? {
+                    gte: new Date(params.startDate),
+                    lte: new Date(params.endDate)
+                } : undefined,
+                accountId: params.accountId,
+                customerId: params.mcId || (params.type === 'customer' ? params.id : undefined),
+                invoiceMccId: params.miId || (params.type === 'invoice-mcc' ? params.id : undefined),
+                account: params.type === 'batch' ? { batchId: params.id } : undefined
+            },
+            orderBy: { spendingDate: 'asc' }
+        });
+
+        return {
+            ...summary,
+            dailySpending,
+            totalSpending: Number(summary._sum.amount || 0),
+            recordCount: summary._count
+        };
+    }
+
     async getRangeSpendingMap(type: 'batch' | 'customer' | 'invoice-mcc', ids: string[], days: number = 7) {
         const startDate = new Date();
         startDate.setDate(startDate.getDate() - days);

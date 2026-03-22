@@ -39,7 +39,7 @@ export class SpendingController {
 
     getCustomerSummary = asyncHandler(async (req: any, res: any) => {
         const { startDate, endDate } = req.query;
-        const result = await spendingService.getSummary({
+        const result = await spendingService.getDetailedSummary({
             type: 'customer',
             id: req.params.id,
             startDate,
@@ -50,7 +50,7 @@ export class SpendingController {
 
     getInvoiceMCCSummary = asyncHandler(async (req: any, res: any) => {
         const { startDate, endDate } = req.query;
-        const result = await spendingService.getSummary({
+        const result = await spendingService.getDetailedSummary({
             type: 'invoice-mcc',
             id: req.params.id,
             startDate,
@@ -61,7 +61,7 @@ export class SpendingController {
 
     getBatchSummary = asyncHandler(async (req: any, res: any) => {
         const { startDate, endDate } = req.query;
-        const result = await spendingService.getSummary({
+        const result = await spendingService.getDetailedSummary({
             type: 'batch',
             id: req.params.id,
             startDate,

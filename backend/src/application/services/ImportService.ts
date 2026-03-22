@@ -195,9 +195,15 @@ export class ImportService {
             const finalNewStatus = (existing?.status === 'INACTIVE') ? 'INACTIVE' : acc.status;
             totalAmount += acc.spending;
 
+            const notes = [];
+            if (existing && acc.accountName && acc.accountName !== existing.accountName) {
+                notes.push(`Cập nhật tên: ${existing.accountName} -> ${acc.accountName}`);
+            }
+
             previewItems.push({
                 googleAccountId: acc.googleAccountId,
                 accountName: finalAccountName,
+                targetName: acc.accountName, // Send target name to frontend for confirm
                 status: existing?.status || acc.status,
                 newStatus: finalNewStatus,
                 newAmount: acc.spending,
@@ -208,6 +214,7 @@ export class ImportService {
                 accountId: existing?.id || null,
                 miName: existing?.currentMi?.name || null,
                 mcName: existing?.currentMc?.name || null,
+                notes: notes.join('; '),
             });
         }
 
@@ -478,6 +485,16 @@ export class ImportService {
                     skipDuplicates: true // In case some were not deleted or we have duplicates in file
                 });
                 results.snapshotsCreated = created.count;
+            }
+
+            // 3. Handle Account Name Updates
+            for (const record of records) {
+                if (record.accountId && record.targetName && record.targetName !== record.accountName) {
+                    await tx.account.update({
+                        where: { id: record.accountId },
+                        data: { accountName: record.targetName }
+                    });
+                }
             }
         });
 
