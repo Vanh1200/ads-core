@@ -738,7 +738,7 @@ export default function Batches() {
                                     </div>
                                 </th>
                                 <th style={{ width: '8%' }}>Tài khoản</th>
-                                <th style={{ width: '8%' }}>Sóng</th>
+                                <th style={{ width: '8%' }}>Sống</th>
                                 <th style={{ width: '8%' }}>Chưa liên kết</th>
                                 <th
                                     style={{ width: '10%', cursor: 'pointer', userSelect: 'none' }}
