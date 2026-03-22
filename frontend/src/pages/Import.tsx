@@ -28,6 +28,8 @@ interface PreviewResult {
     miId: string | null;
     miName: string | null;
     mccInvoiceId: string | null;
+    mcId: string | null;
+    mcName: string | null;
     dateRange: string;
     totalItems: number;
     totalAmount: number;
@@ -45,7 +47,9 @@ let savedState: {
     file: File | null;
     spendingDate: string;
     previewData: PreviewResult | null;
-    importMode: 'MA' | 'MI';
+    importMode: 'MA' | 'MI' | 'MC';
+    selectedMcId: string | null;
+    selectedMcName: string | null;
 } | null = null;
 
 export default function Import() {
@@ -65,8 +69,13 @@ export default function Import() {
         const date = new Date(Date.now() - 86400000); // Default to Yesterday
         return date.toISOString().split('T')[0];
     });
-    const [importMode, setImportMode] = useState<'MA' | 'MI'>(savedState?.importMode || 'MA');
+    const [importMode, setImportMode] = useState<'MA' | 'MI' | 'MC'>(savedState?.importMode || 'MA');
+    const [selectedMcId, setSelectedMcId] = useState<string | null>(savedState?.selectedMcId || null);
+    const [selectedMcName, setSelectedMcName] = useState<string | null>(savedState?.selectedMcName || null);
     const [previewData, setPreviewData] = useState<PreviewResult | null>(savedState?.previewData || null);
+    const [customers, setCustomers] = useState<any[]>([]);
+    const [showMcSelector, setShowMcSelector] = useState(false);
+    const [mcSearch, setMcSearch] = useState('');
     const [showConfirmModal, setShowConfirmModal] = useState(false);
 
     // Access control: Only ADMIN, BUYER, UPDATER
@@ -83,12 +92,23 @@ export default function Import() {
     // Save state when unmounting
     useEffect(() => {
         return () => {
-            savedState = { file, spendingDate, previewData, importMode };
+            savedState = { file, spendingDate, previewData, importMode, selectedMcId, selectedMcName };
         };
-    }, [file, spendingDate, previewData, importMode]);
+    }, [file, spendingDate, previewData, importMode, selectedMcId, selectedMcName]);
+
+    // Fetch customers for MC mode
+    useEffect(() => {
+        if (importMode === 'MC' && customers.length === 0) {
+            import('../api/client').then(({ customersApi }) => {
+                customersApi.list({ pageSize: 1000 }).then(res => {
+                    setCustomers(res.data.data);
+                });
+            });
+        }
+    }, [importMode, customers.length]);
 
     const previewSpendingMutation = useMutation({
-        mutationFn: (file: File) => importApi.previewSpending(file, spendingDate),
+        mutationFn: (file: File) => importApi.previewSpending(file, spendingDate, undefined, selectedMcId || undefined),
         onSuccess: (response) => {
             setPreviewData(response.data);
         },
@@ -109,7 +129,8 @@ export default function Import() {
                 previewData!.batchId,
                 previewData!.data,
                 overwrite,
-                previewData!.miId || undefined
+                previewData!.miId || undefined,
+                selectedMcId || undefined
             ),
         onSuccess: (response) => {
             setResult({
@@ -240,8 +261,97 @@ export default function Import() {
                                 >
                                     Theo Invoice (MI)
                                 </button>
+                                <button
+                                    type="button"
+                                    className={`btn btn-sm ${importMode === 'MC' ? 'btn-primary' : 'btn-secondary'}`}
+                                    onClick={() => { setImportMode('MC'); setPreviewData(null); }}
+                                >
+                                    Theo Khách hàng (MC)
+                                </button>
                             </div>
                         </div>
+
+                        {importMode === 'MC' && (
+                            <div className="form-group" style={{ position: 'relative' }}>
+                                <label className="form-label">Chọn Khách hàng (MC) *</label>
+                                <div 
+                                    className="form-input" 
+                                    style={{ 
+                                        cursor: 'pointer', 
+                                        display: 'flex', 
+                                        justifyContent: 'space-between', 
+                                        alignItems: 'center',
+                                        background: 'var(--bg-secondary)'
+                                    }}
+                                    onClick={() => setShowMcSelector(!showMcSelector)}
+                                >
+                                    <span>{selectedMcName || 'Chọn khách hàng...'}</span>
+                                    <X 
+                                        size={14} 
+                                        style={{ visibility: selectedMcId ? 'visible' : 'hidden' }} 
+                                        onClick={(e) => { e.stopPropagation(); setSelectedMcId(null); setSelectedMcName(null); setPreviewData(null); }} 
+                                    />
+                                </div>
+                                
+                                {showMcSelector && (
+                                    <div className="card shadow-lg" style={{ 
+                                        position: 'absolute', 
+                                        top: '100%', 
+                                        left: 0, 
+                                        right: 0, 
+                                        zIndex: 100, 
+                                        marginTop: '4px',
+                                        maxHeight: '300px',
+                                        overflow: 'hidden',
+                                        display: 'flex',
+                                        flexDirection: 'column'
+                                    }}>
+                                        <div style={{ padding: '8px', borderBottom: '1px solid var(--border-color)' }}>
+                                            <input 
+                                                type="text" 
+                                                className="form-input sm" 
+                                                placeholder="Tìm tên khách hàng..." 
+                                                autoFocus
+                                                value={mcSearch}
+                                                onChange={(e) => setMcSearch(e.target.value)}
+                                            />
+                                        </div>
+                                        <div style={{ overflowY: 'auto', flex: 1 }}>
+                                            {customers
+                                                .filter(c => c.name.toLowerCase().includes(mcSearch.toLowerCase()))
+                                                .slice(0, 50)
+                                                .map(c => (
+                                                    <div 
+                                                        key={c.id} 
+                                                        className="dropdown-item"
+                                                        style={{ 
+                                                            padding: '10px 12px', 
+                                                            cursor: 'pointer',
+                                                            background: selectedMcId === c.id ? 'var(--bg-secondary)' : 'transparent'
+                                                        }}
+                                                        onClick={() => {
+                                                            setSelectedMcId(c.id);
+                                                            setSelectedMcName(c.name);
+                                                            setShowMcSelector(false);
+                                                            setPreviewData(null);
+                                                            setMcSearch('');
+                                                        }}
+                                                    >
+                                                        <div style={{ fontWeight: 500 }}>{c.name}</div>
+                                                        <div style={{ fontSize: '11px', color: 'var(--text-muted)' }}>{c.id}</div>
+                                                    </div>
+                                                ))
+                                            }
+                                            {customers.length === 0 && (
+                                                <div style={{ padding: '20px', textAlign: 'center', color: 'var(--text-muted)' }}>
+                                                    Đang tải danh sách khách hàng...
+                                                </div>
+                                            )}
+                                        </div>
+                                    </div>
+                                )}
+                            </div>
+                        )}
 
 
                         {/* Date Selection */}
@@ -431,20 +541,38 @@ export default function Import() {
                         }}>
                             <div>
                                 <div style={{ fontSize: '12px', color: 'var(--text-muted)' }}>
-                                    {importMode === 'MI' ? 'Invoice MI' : 'Lô tài khoản (MA)'}
+                                    {importMode === 'MC' ? 'Khách hàng (MC)' : (importMode === 'MI' ? 'Invoice MI' : 'Lô tài khoản (MA)')}
                                 </div>
                                 <div style={{ fontWeight: 600 }}>
-                                    {importMode === 'MI'
-                                        ? (previewData.miName || previewData.batchName || 'N/A')
-                                        : (previewData.batchName || 'N/A')
+                                    {importMode === 'MC' 
+                                        ? (selectedMcName || 'N/A')
+                                        : (importMode === 'MI'
+                                            ? (previewData.miName || previewData.batchName || 'N/A')
+                                            : (previewData.batchName || 'N/A'))
                                     }
                                 </div>
-                                {(importMode === 'MI' ? previewData.mccInvoiceId : previewData.mccAccountId) && (
+                                {importMode === 'MC' && (
+                                    <div style={{ fontSize: '12px', color: 'var(--text-muted)', marginTop: '2px' }}>
+                                        {selectedMcId}
+                                    </div>
+                                )}
+                                {importMode !== 'MC' && (importMode === 'MI' ? previewData.mccInvoiceId : previewData.mccAccountId) && (
                                     <div style={{ fontSize: '12px', color: 'var(--text-muted)', marginTop: '2px' }}>
                                         {importMode === 'MI' ? previewData.mccInvoiceId : previewData.mccAccountId}
                                     </div>
                                 )}
                             </div>
+                            {importMode === 'MC' && (
+                                <div>
+                                    <div style={{ fontSize: '12px', color: 'var(--text-muted)' }}>MCC trong file</div>
+                                    <div style={{ fontWeight: 600 }}>{previewData.batchName || 'N/A'}</div>
+                                    {previewData.mccAccountId && (
+                                        <div style={{ fontSize: '12px', color: 'var(--text-muted)', marginTop: '2px' }}>
+                                            {previewData.mccAccountId}
+                                        </div>
+                                    )}
+                                </div>
+                            )}
                             <div>
                                 <div style={{ fontSize: '12px', color: 'var(--text-muted)' }}>Ngày chi phí</div>
                                 <div style={{ fontWeight: 600 }}>{formatDate(previewData.spendingDate)}</div>

@@ -116,7 +116,7 @@ export class ImportService {
         return { results };
     }
 
-    async previewSpending(buffer: Buffer, spendingDate: string, miId?: string) {
+    async previewSpending(buffer: Buffer, spendingDate: string, miId?: string, mcId?: string) {
         const parsed = parseBatchExcel(buffer);
         const googleAccountIds = parsed.accounts.map(a => a.googleAccountId);
 
@@ -153,6 +153,12 @@ export class ImportService {
                     ]
                 }
             });
+        }
+
+        // Look up Customer if mcId is provided
+        let customer: any = null;
+        if (mcId) {
+            customer = await prisma.customer.findUnique({ where: { id: mcId } });
         }
 
         const targetDate = new Date(spendingDate + 'T00:00:00.000Z');
@@ -229,6 +235,8 @@ export class ImportService {
             miId: mi?.id || null,
             miName: mi?.name || null,
             mccInvoiceId: mi?.mccInvoiceId || null,
+            mcId: customer?.id || null,
+            mcName: customer?.name || null,
             dateRange: parsed.dateRange,
             totalItems: previewItems.length,
             totalAmount,
@@ -438,12 +446,14 @@ export class ImportService {
     }
 
     async confirmSpending(data: any, userId: string, ipAddress?: string) {
-        const { spendingDate, records, overwrite, miId } = {
+        const { spendingDate, records, overwrite, miId, mcId } = {
             spendingDate: data.spendingDate,
             records: data.data || [], // Frontend sends it as 'data'
             overwrite: data.overwrite || false,
-            miId: data.miId
+            miId: data.miId,
+            mcId: data.mcId
         };
+        const finalMcId = mcId || null;
 
         if (records.length === 0) return { message: 'No records to import', results: { snapshotsCreated: 0 } };
 
@@ -476,7 +486,7 @@ export class ImportService {
                     snapshotType: 'DAILY_FINAL',
                     createdById: userId,
                     invoiceMccId: miId || item.currentMiId || null,
-                    customerId: item.currentMcId || null
+                    customerId: finalMcId || item.currentMcId || null
                 }));
 
             if (snapshotData.length > 0) {

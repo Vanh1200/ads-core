@@ -194,17 +194,18 @@ export const importApi = {
             currency: string;
         }>;
     }) => api.post('/import/create-mi-with-accounts', data),
-    previewSpending: (file: File, spendingDate: string, miId?: string) => {
+    previewSpending: (file: File, spendingDate: string, miId?: string, mcId?: string) => {
         const formData = new FormData();
         formData.append('file', file);
         formData.append('spendingDate', spendingDate);
         if (miId) formData.append('miId', miId);
+        if (mcId) formData.append('mcId', mcId);
         return api.post('/import/spending/preview', formData, {
             headers: { 'Content-Type': 'multipart/form-data' },
         });
     },
-    confirmSpending: (spendingDate: string, batchId: string | null, data: object[], overwrite: boolean, miId?: string) =>
-        api.post('/import/spending/confirm', { spendingDate, batchId, miId, data, overwrite }),
+    confirmSpending: (spendingDate: string, batchId: string | null, data: object[], overwrite: boolean, miId?: string, mcId?: string) =>
+        api.post('/import/spending/confirm', { spendingDate, batchId, miId, data, overwrite, mcId }),
 };
 
 // Activity Logs API
