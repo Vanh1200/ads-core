@@ -73,10 +73,10 @@ export class PrismaSpendingRepository implements ISpendingRepository {
             if (endDate) where.spendingDate.lte = new Date(endDate);
         }
         if (accountId) where.accountId = accountId;
-        if (miId) where.invoiceMccId = miId;
-        if (mcId) where.customerId = mcId;
-        if (type === 'customer' && id) where.customerId = id;
-        if (type === 'invoice-mcc' && id) where.invoiceMccId = id;
+        if (miId) where.account = { currentMiId: miId };
+        if (mcId) where.account = { currentMcId: mcId };
+        if (type === 'customer' && id) where.account = { currentMcId: id };
+        if (type === 'invoice-mcc' && id) where.account = { currentMiId: id };
         if (type === 'batch' && id) where.account = { batchId: id };
 
         return prisma.spendingRecord.aggregate({

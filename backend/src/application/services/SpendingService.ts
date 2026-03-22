@@ -157,9 +157,11 @@ export class SpendingService {
                     lte: end
                 } : undefined,
                 accountId: params.accountId,
-                customerId: params.mcId || (params.type === 'customer' ? params.id : undefined),
-                invoiceMccId: params.miId || (params.type === 'invoice-mcc' ? params.id : undefined),
-                account: params.type === 'batch' ? { batchId: params.id } : undefined
+                account: {
+                    currentMcId: params.mcId || (params.type === 'customer' ? params.id : undefined),
+                    currentMiId: params.miId || (params.type === 'invoice-mcc' ? params.id : undefined),
+                    batchId: params.type === 'batch' ? params.id : undefined
+                }
             },
             orderBy: { spendingDate: 'asc' }
         });
@@ -180,8 +182,8 @@ export class SpendingService {
             spendingDate: start && end ? { gte: start, lte: end } : undefined
         };
 
-        if (params.type === 'customer') where.customerId = params.id;
-        else if (params.type === 'invoice-mcc') where.invoiceMccId = params.id;
+        if (params.type === 'customer') where.account = { currentMcId: params.id };
+        else if (params.type === 'invoice-mcc') where.account = { currentMiId: params.id };
         else if (params.type === 'batch') where.account = { batchId: params.id };
 
         const records = await prisma.spendingRecord.groupBy({
@@ -223,9 +225,9 @@ export class SpendingService {
         if (type === 'batch') {
             where.account = { batchId: { in: ids } };
         } else if (type === 'customer') {
-            where.customerId = { in: ids };
+            where.account = { currentMcId: { in: ids } };
         } else if (type === 'invoice-mcc') {
-            where.invoiceMccId = { in: ids };
+            where.account = { currentMiId: { in: ids } };
         }
 
         if (type === 'batch') {
@@ -247,19 +249,28 @@ export class SpendingService {
             return map;
         }
 
-        // For customer and invoice-mcc, we can use groupBy
-        const field = type === 'customer' ? 'customerId' : 'invoiceMccId';
-        const records = await prisma.spendingRecord.groupBy({
-            by: [field as any],
+        // For customer and invoice-mcc, we fetch all records with account info and group in memory 
+        // because we can't deep-group through relations directly in groupBy easily without including the field in `by`
+        const records = await prisma.spendingRecord.findMany({
             where,
-            _sum: { amount: true }
+            select: {
+                amount: true,
+                account: {
+                    select: {
+                        currentMcId: true,
+                        currentMiId: true
+                    }
+                }
+            }
         });
 
         const map: Record<string, number> = {};
+        const field = type === 'customer' ? 'currentMcId' : 'currentMiId';
+
         records.forEach((r: any) => {
-            const id = r[field];
+            const id = r.account?.[field];
             if (id) {
-                map[id] = Number(r._sum.amount || 0);
+                map[id] = (map[id] || 0) + Number(r.amount);
             }
         });
         return map;
