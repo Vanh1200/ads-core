@@ -1,9 +1,10 @@
 import { useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { useQuery } from '@tanstack/react-query';
-import { ArrowLeft, User, DollarSign, FileText, List, Activity, Clock, CheckCircle, AlertCircle, Copy } from 'lucide-react';
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { ArrowLeft, User, DollarSign, FileText, List, Activity, Clock, CheckCircle, AlertCircle, Copy, ExternalLink, RefreshCw, ChevronDown } from 'lucide-react';
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
 import { customersApi, activityLogsApi, spendingApi } from '../api/client';
+import Dropdown from '../components/Dropdown';
 import CustomChartTooltip from '../components/ChartTooltip';
 
 type DateRange = '0' | '1' | '7' | '14' | '30' | 'custom';
@@ -18,9 +19,34 @@ export default function CustomerDetail() {
     const [accountIdList, setAccountIdList] = useState('');
     const [toast, setToast] = useState<{ message: string; type: 'success' | 'error' } | null>(null);
 
+    const queryClient = useQueryClient();
+
     const showToast = (message: string, type: 'success' | 'error') => {
         setToast({ message, type });
         setTimeout(() => setToast(null), 3000);
+    };
+
+    const syncMutation = useMutation({
+        mutationFn: (data: { startDate: string; endDate: string }) => 
+            customersApi.syncSheets(id!, data.startDate, data.endDate),
+        onSuccess: () => {
+            showToast('Đồng bộ Google Sheet thành công', 'success');
+            queryClient.invalidateQueries({ queryKey: ['customer', id] });
+        },
+        onError: (error: any) => {
+            showToast(error.response?.data?.error || 'Có lỗi xảy ra khi đồng bộ', 'error');
+        }
+    });
+
+    const handleSync = (days: number) => {
+        const end = new Date();
+        const start = new Date();
+        start.setDate(end.getDate() - days);
+        
+        syncMutation.mutate({
+            startDate: start.toISOString().split('T')[0],
+            endDate: end.toISOString().split('T')[0]
+        });
     };
 
     const { data: customerData, isLoading: isLoadingCustomer, error: customerError } = useQuery({
@@ -328,6 +354,62 @@ export default function CustomerDetail() {
                                             {customer.updatedAt ? formatDateTime(customer.updatedAt) : formatDateTime(customer.createdAt)}
                                         </div>
                                     </div>
+                                </div>
+
+                                <div className="info-card" style={{ gridColumn: '1 / -1' }}>
+                                    <div className="info-card-icon">
+                                        <FileText size={20} />
+                                    </div>
+                                    <div style={{ flex: 1 }}>
+                                        <div className="info-card-label">Google Sheet ID</div>
+                                        <div style={{ display: 'flex', alignItems: 'center', gap: '12px', marginTop: '4px' }}>
+                                            <div className="info-card-value" style={{ fontFamily: 'monospace', fontSize: '13px' }}>
+                                                {customer.googleSheetId || 'Chưa thiết lập'}
+                                            </div>
+                                            {customer.googleSheetId && (
+                                                <div style={{ display: 'flex', gap: '8px' }}>
+                                                    <button 
+                                                        className="btn-icon btn-sm" 
+                                                        onClick={() => copyToClipboard(customer.googleSheetId)}
+                                                        title="Copy ID"
+                                                    >
+                                                        <Copy size={14} />
+                                                    </button>
+                                                    <a 
+                                                        href={`https://docs.google.com/spreadsheets/d/${customer.googleSheetId}`} 
+                                                        target="_blank" 
+                                                        rel="noopener noreferrer"
+                                                        className="btn-icon btn-sm"
+                                                        title="Mở Spreadsheet"
+                                                    >
+                                                        <ExternalLink size={14} />
+                                                    </a>
+                                                </div>
+                                            )}
+                                        </div>
+                                    </div>
+                                    {customer.googleSheetId && (
+                                        <div style={{ marginLeft: 'auto' }}>
+                                            <Dropdown
+                                                trigger={
+                                                    <button 
+                                                        className="btn btn-secondary" 
+                                                        disabled={syncMutation.isPending}
+                                                        style={{ gap: 8 }}
+                                                    >
+                                                        <RefreshCw size={16} className={syncMutation.isPending ? 'spin' : ''} />
+                                                        {syncMutation.isPending ? 'Đang đồng bộ...' : 'Đồng bộ Sheets'}
+                                                        <ChevronDown size={14} />
+                                                    </button>
+                                                }
+                                                items={[
+                                                    { key: 'today', label: 'Đồng bộ hôm nay', onClick: () => handleSync(0) },
+                                                    { key: 'yesterday', label: 'Đồng bộ hôm qua (Mặc định)', onClick: () => handleSync(1) },
+                                                    { key: '7days', label: 'Đồng bộ 7 ngày qua', onClick: () => handleSync(7) },
+                                                ]}
+                                            />
+                                        </div>
+                                    )}
                                 </div>
                             </div>
 

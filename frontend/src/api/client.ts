@@ -98,6 +98,10 @@ export const customersApi = {
     delete: (id: string) => api.delete(`/customers/${id}`),
     assignAccounts: (id: string, accountIds: string[]) =>
         api.post(`/customers/${id}/assign-accounts`, { accountIds }),
+    syncSheets: (id: string, startDate: string, endDate: string) =>
+        api.post(`/customers/${id}/sync-sheets`, { startDate, endDate }),
+    bulkSyncSheets: (data: { customerIds?: string[]; quickSync?: boolean; startDate: string; endDate: string }) =>
+        api.post('/customers/bulk-sync-sheets', data),
 };
 
 // Accounts API

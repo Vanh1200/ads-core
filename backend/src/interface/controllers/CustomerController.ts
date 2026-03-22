@@ -5,6 +5,9 @@ import { spendingService } from '../../application/services/SpendingService';
 import { paginationSchema } from '../../interface/validators';
 import { asyncHandler } from '../../infrastructure/middleware/errorHandler';
 import { formatPaginationResponse } from '../../utils/pagination';
+import { googleSheetsService } from '../../application/services/GoogleSheetsService';
+import { format } from 'date-fns';
+import prisma from '../../infrastructure/database/prisma';
 
 export class CustomerController {
     list = asyncHandler(async (req: any, res: any) => {
@@ -61,6 +64,79 @@ export class CustomerController {
         const { accountIds } = req.body;
         const result = await customerService.assignAccounts(req.params.id, accountIds, req.user!.id, req.ip);
         res.json(result);
+    });
+
+    syncSheets = asyncHandler(async (req: any, res: any) => {
+        const { id } = req.params;
+        const { startDate, endDate } = req.body;
+        
+        const start = new Date(startDate);
+        const end = new Date(endDate);
+        
+        const results = [];
+        // Loop through dates
+        let current = new Date(start);
+        while (current <= end) {
+            await googleSheetsService.updateCustomerSheet(id, new Date(current));
+            results.push(format(current, 'yyyy-MM-dd'));
+            current.setDate(current.getDate() + 1);
+        }
+        
+        res.json({ message: 'Sync completed', dates: results });
+    });
+
+    bulkSyncSheets = asyncHandler(async (req: any, res: any) => {
+        const { customerIds, quickSync, startDate, endDate } = req.body;
+        
+        // Setup SSE
+        res.setHeader('Content-Type', 'text/event-stream');
+        res.setHeader('Cache-Control', 'no-cache');
+        res.setHeader('Connection', 'keep-alive');
+        
+        const sendLog = (message: string) => {
+            res.write(`data: ${JSON.stringify({ message })}\n\n`);
+        };
+
+        let ids = customerIds || [];
+        if (quickSync) {
+            sendLog('🔍 Đang tìm kiếm khách hàng có phát sinh chi tiêu...');
+            const customersWithSpending = await prisma.customer.findMany({
+                where: {
+                    accounts: {
+                        some: {
+                            spendingRecords: {
+                                some: {
+                                    spendingDate: {
+                                        gte: new Date(startDate),
+                                        lte: new Date(endDate)
+                                    }
+                                }
+                            }
+                        }
+                    }
+                },
+                select: { id: true }
+            });
+            ids = customersWithSpending.map(c => c.id);
+            sendLog(`✅ Tìm thấy ${ids.length} khách hàng.`);
+        }
+
+        const start = new Date(startDate);
+        const end = new Date(endDate);
+
+        for (const id of ids) {
+            let current = new Date(start);
+            while (current <= end) {
+                await googleSheetsService.updateCustomerSheet(id, new Date(current), (msg) => {
+                    sendLog(msg);
+                });
+                current.setDate(current.getDate() + 1);
+            }
+        }
+
+        sendLog('🎉 Tất cả đã hoàn thành!');
+        res.write('event: end\ndata: {}\n\n');
+        res.end();
     });
 }
 

@@ -18,6 +18,7 @@ interface Customer {
     assignedStaff: { id: string; fullName: string } | null;
     assignedStaffId?: string | null;
     notes?: string | null;
+    googleSheetId?: string | null;
     rangeSpending?: number;
     _count?: { accounts: number };
 }
@@ -241,6 +242,7 @@ export default function Customers() {
             name: formData.get('name'),
             contactInfo: formData.get('contactInfo') || null,
             assignedStaffId: formData.get('assignedStaffId') || null,
+            googleSheetId: formData.get('googleSheetId') || null,
             notes: formData.get('notes') || null,
         };
 
@@ -759,6 +761,19 @@ export default function Customers() {
                                             </select>
                                         </div>
                                     )}
+                                    <div className="form-group">
+                                        <label className="form-label">Google Sheet ID</label>
+                                        <input
+                                            name="googleSheetId"
+                                            type="text"
+                                            className="form-input"
+                                            placeholder=" Spreadsheet ID from URL"
+                                            defaultValue={selectedCustomer?.googleSheetId || ''}
+                                        />
+                                        <p style={{ fontSize: '11px', color: 'var(--text-muted)', marginTop: '4px' }}>
+                                            Ví dụ: 1BxiMVs0XRA5nFMdKvBdBZjgmUUqptlbs74OgvE2upms
+                                        </p>
+                                    </div>
                                     <div className="form-group">
                                         <label className="form-label">Ghi chú</label>
                                         <textarea
