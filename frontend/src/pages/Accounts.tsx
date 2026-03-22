@@ -1308,7 +1308,7 @@ export default function Accounts() {
                                     />
                                 </div>
 
-                                <div style={{ maxHeight: 300, overflow: 'auto', marginBottom: 16 }}>
+                                <div style={{ height: 300, overflow: 'auto', marginBottom: 16 }}>
                                     {filteredMiList.length > 0 ? (
                                         filteredMiList.map((mi) => (
                                             <div
@@ -1340,7 +1340,7 @@ export default function Accounts() {
                                             </div>
                                         ))
                                     ) : (
-                                        <div style={{ textAlign: 'center', padding: 20, color: 'var(--text-muted)' }}>
+                                        <div style={{ height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--text-muted)' }}>
                                             {miSearch ? 'Không tìm thấy MI nào' : 'Chưa có Invoice MCC nào'}
                                         </div>
                                     )}
@@ -1458,7 +1458,7 @@ export default function Accounts() {
                                     />
                                 </div>
 
-                                <div style={{ maxHeight: 300, overflow: 'auto', marginBottom: 16 }}>
+                                <div style={{ height: 300, overflow: 'auto', marginBottom: 16 }}>
                                     {filteredCustomerList.length > 0 ? (
                                         filteredCustomerList.map((mc: any) => (
                                             <div
@@ -1497,7 +1497,7 @@ export default function Accounts() {
                                             </div>
                                         ))
                                     ) : (
-                                        <div style={{ textAlign: 'center', padding: 20, color: 'var(--text-muted)' }}>
+                                        <div style={{ height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--text-muted)' }}>
                                             {mcSearch ? 'Không tìm thấy khách hàng nào' : 'Chưa có khách hàng nào'}
                                         </div>
                                     )}
