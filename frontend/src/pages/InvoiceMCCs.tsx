@@ -656,7 +656,7 @@ export default function InvoiceMCCs() {
                                                 ${new Intl.NumberFormat('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 }).format(mi.rangeSpending || 0)}
                                             </span>
                                         </td>
-                                        <td>
+                                        <td style={{ paddingLeft: '24px' }}>
                                             {mi.partner ? (
                                                 <a
                                                     href={`/partners/${mi.partner?.id}`}
