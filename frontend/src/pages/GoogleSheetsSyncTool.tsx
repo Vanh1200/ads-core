@@ -2,7 +2,6 @@ import { useState, useEffect, useRef } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { Play, Search, Terminal, Trash2, Layout, Calendar } from 'lucide-react';
 import { customersApi } from '../api/client';
-import { useAuthStore } from '../store/authStore';
 
 interface Customer {
     id: string;
