@@ -204,6 +204,7 @@ export class ImportService {
             spendingDate,
             batchName: batch?.mccAccountName || parsed.batchName || 'N/A',
             batchId: batch?.id || null,
+            mccAccountId: batch?.mccAccountId || parsed.mccAccountId || null,
             miId: mi?.id || null,
             miName: mi?.name || null,
             dateRange: parsed.dateRange,
@@ -270,9 +271,12 @@ export class ImportService {
                 const existing = await accountRepository.findByGoogleId(googleAccountId);
 
                 if (existing) {
+                    // Logic: If currently INACTIVE, stay INACTIVE. Only allow changing from ACTIVE to INACTIVE.
+                    const finalStatus = (existing.status === 'INACTIVE') ? 'INACTIVE' : (status || existing.status);
+                    
                     await accountRepository.update(existing.id, {
                         accountName,
-                        status,
+                        status: finalStatus,
                         batchId: batch.id,
                         mccAccountName: batch.mccAccountName || null,
                         mccAccountId: batch.mccAccountId || null,
@@ -353,9 +357,12 @@ export class ImportService {
                 if (existingAcc) {
                     if (existingAcc.batchId) affectedBatchIds.add(existingAcc.batchId);
 
+                    // Logic: If currently INACTIVE, stay INACTIVE. Only allow changing from ACTIVE to INACTIVE.
+                    const finalStatus = (existingAcc.status === 'INACTIVE') ? 'INACTIVE' : (status || existingAcc.status);
+
                     await accountRepository.update(existingAcc.id, {
                         accountName,
-                        status,
+                        status: finalStatus,
                         currentMiId: mi.id,
                         // Retain existing batchId if any, but don't force one.
                     });

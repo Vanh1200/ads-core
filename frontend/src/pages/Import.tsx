@@ -24,6 +24,7 @@ interface PreviewResult {
     spendingDate: string;
     batchName: string;
     batchId: string | null;
+    mccAccountId: string | null;
     miId: string | null;
     miName: string | null;
     dateRange: string;
@@ -102,7 +103,7 @@ export default function Import() {
     const confirmSpendingMutation = useMutation({
         mutationFn: ({ overwrite }: { overwrite: boolean }) =>
             importApi.confirmSpending(
-                previewData!.spendingDate,
+                spendingDate, // Use the UI state date
                 previewData!.batchId,
                 previewData!.data,
                 overwrite,
@@ -170,7 +171,7 @@ export default function Import() {
         date.setDate(date.getDate() - days);
         const dateStr = date.toISOString().split('T')[0];
         setSpendingDate(dateStr);
-        if (file) setPreviewData(null);
+        // Removed: if (file) setPreviewData(null); 
     };
 
     const formatDate = (dateStr: string) => {
@@ -250,17 +251,17 @@ export default function Import() {
                             <div style={{ display: 'flex', gap: '8px', marginBottom: '12px' }}>
                                 <button
                                     type="button"
-                                    className={`btn btn-sm ${spendingDate === todayStr ? 'btn-primary' : 'btn-secondary'}`}
-                                    onClick={() => setQuickDate(0)}
-                                >
-                                    Hôm nay
-                                </button>
-                                <button
-                                    type="button"
                                     className={`btn btn-sm ${spendingDate === yesterdayStr ? 'btn-primary' : 'btn-secondary'}`}
                                     onClick={() => setQuickDate(1)}
                                 >
                                     Hôm qua
+                                </button>
+                                <button
+                                    type="button"
+                                    className={`btn btn-sm ${spendingDate === todayStr ? 'btn-primary' : 'btn-secondary'}`}
+                                    onClick={() => setQuickDate(0)}
+                                >
+                                    Hôm nay
                                 </button>
                             </div>
                             <input
@@ -269,7 +270,7 @@ export default function Import() {
                                 value={spendingDate}
                                 onChange={(e) => {
                                     setSpendingDate(e.target.value);
-                                    if (file) setPreviewData(null);
+                                    // Removed: if (file) setPreviewData(null);
                                 }}
                             />
                             <div style={{ marginTop: '8px', fontSize: '13px', color: 'var(--text-muted)' }}>
@@ -436,6 +437,11 @@ export default function Import() {
                                         : (previewData.batchName || 'N/A')
                                     }
                                 </div>
+                                {previewData.mccAccountId && (
+                                    <div style={{ fontSize: '12px', color: 'var(--text-muted)', marginTop: '2px' }}>
+                                        {previewData.mccAccountId}
+                                    </div>
+                                )}
                             </div>
                             <div>
                                 <div style={{ fontSize: '12px', color: 'var(--text-muted)' }}>Ngày chi phí</div>

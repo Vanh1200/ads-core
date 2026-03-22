@@ -30,6 +30,7 @@ interface Account {
     timezone: string;
     currency: string;
     batchName: string;
+    mccAccountId?: string;
     readiness: number;
     year?: number;
 }
@@ -746,7 +747,12 @@ export default function QuickLinkTool() {
                                                                 <td>{acc.timezone}</td>
                                                                 <td>{acc.currency}</td>
                                                                 <td>{acc.year || 'Mix'}</td>
-                                                                <td>{acc.batchName}</td>
+                                                                 <td>
+                                                                    <div>{acc.batchName}</div>
+                                                                    {acc.mccAccountId && (
+                                                                        <div style={{ fontSize: 12, color: 'var(--text-muted)', marginTop: 2 }}>{acc.mccAccountId}</div>
+                                                                    )}
+                                                                </td>
                                                                 <td>
                                                                     <div style={{
                                                                         width: 24, height: 24,
