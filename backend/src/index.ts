@@ -137,10 +137,42 @@ import prisma from './infrastructure/database/prisma';
 
 async function applyDatabasePatches() {
     try {
-        console.log('\n[DB] Đang chạy Database Patches tự động (xóa bỏ NOT NULL constraint cho batch_id)...');
-        // Execute raw SQL directly through Prisma Client without resorting to Prisma CLI
+        console.log('\n[DB] Đang chạy database patches...');
         await prisma.$executeRawUnsafe('ALTER TABLE "accounts" ALTER COLUMN "batch_id" DROP NOT NULL;');
-        console.log('[DB] Đã cập nhật database schema thành công.\n');
+        // Production predates Prisma migration history, so `prisma migrate deploy`
+        // cannot be used until the old schema is formally baselined. Keep this
+        // patch idempotent and limited to the new XOY licensing tables.
+        await prisma.$executeRawUnsafe(`DO $$ BEGIN
+            CREATE TYPE "XoyLicenseStatus" AS ENUM ('ACTIVE', 'SUSPENDED', 'EXPIRED', 'REVOKED');
+        EXCEPTION WHEN duplicate_object THEN NULL; END $$;`);
+        await prisma.$executeRawUnsafe(`DO $$ BEGIN
+            CREATE TYPE "XoyDeviceStatus" AS ENUM ('ACTIVE', 'INACTIVE', 'REVOKED');
+        EXCEPTION WHEN duplicate_object THEN NULL; END $$;`);
+        await prisma.$executeRawUnsafe(`CREATE TABLE IF NOT EXISTS "xoy_licenses" (
+            "id" TEXT NOT NULL PRIMARY KEY, "name" TEXT NOT NULL,
+            "key_prefix" TEXT NOT NULL, "key_hash" TEXT NOT NULL,
+            "manager_email" TEXT NOT NULL, "manager_password_hash" TEXT NOT NULL,
+            "max_devices" INTEGER NOT NULL DEFAULT 3,
+            "status" "XoyLicenseStatus" NOT NULL DEFAULT 'ACTIVE',
+            "expires_at" TIMESTAMP(3), "created_at" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+            "updated_at" TIMESTAMP(3) NOT NULL
+        )`);
+        await prisma.$executeRawUnsafe(`CREATE TABLE IF NOT EXISTS "xoy_devices" (
+            "id" TEXT NOT NULL PRIMARY KEY, "license_id" TEXT NOT NULL,
+            "installation_id" TEXT NOT NULL, "display_name" TEXT NOT NULL DEFAULT 'Chrome profile',
+            "extension_version" TEXT, "status" "XoyDeviceStatus" NOT NULL DEFAULT 'ACTIVE',
+            "refresh_token_hash" TEXT, "refresh_expires_at" TIMESTAMP(3),
+            "first_seen_at" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+            "last_seen_at" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+            "revoked_at" TIMESTAMP(3),
+            CONSTRAINT "xoy_devices_license_id_fkey" FOREIGN KEY ("license_id") REFERENCES "xoy_licenses"("id") ON DELETE CASCADE ON UPDATE CASCADE
+        )`);
+        await prisma.$executeRawUnsafe('CREATE UNIQUE INDEX IF NOT EXISTS "xoy_licenses_key_prefix_key" ON "xoy_licenses"("key_prefix")');
+        await prisma.$executeRawUnsafe('CREATE UNIQUE INDEX IF NOT EXISTS "xoy_licenses_key_hash_key" ON "xoy_licenses"("key_hash")');
+        await prisma.$executeRawUnsafe('CREATE UNIQUE INDEX IF NOT EXISTS "xoy_licenses_manager_email_key" ON "xoy_licenses"("manager_email")');
+        await prisma.$executeRawUnsafe('CREATE UNIQUE INDEX IF NOT EXISTS "xoy_devices_license_id_installation_id_key" ON "xoy_devices"("license_id", "installation_id")');
+        await prisma.$executeRawUnsafe('CREATE INDEX IF NOT EXISTS "xoy_devices_license_id_status_last_seen_at_idx" ON "xoy_devices"("license_id", "status", "last_seen_at")');
+        console.log('[DB] Database patches applied.\n');
     } catch (err: any) {
         // Only log if it's a real error, if it's already dropped it might or might not error
         console.error('[DB] Lỗi khi chạy database patches:', err.message);
