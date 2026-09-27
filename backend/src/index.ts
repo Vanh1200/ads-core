@@ -48,6 +48,7 @@ import activityLogRoutes from './web/routes/activityLog.routes';
 import creditLinkingRoutes from './web/routes/creditLinking.routes';
 import statsRoutes from './web/routes/stats.routes';
 import googleAdsRoutes from './web/routes/googleAds.routes';
+import xoyRoutes from './web/routes/xoy.routes';
 
 // Import infrastructure
 import { requestLogger } from './infrastructure/logging/Logger';
@@ -67,13 +68,21 @@ app.use(helmet({
 app.use(requestLogger);
 
 app.use(cors({
-    origin: [
-        'http://localhost:5173',
-        'http://127.0.0.1:5173',
-        'http://localhost:5174',
-        'http://localhost:5175',
-        process.env.FRONTEND_URL || 'http://localhost:5173'
-    ],
+    origin: (origin, callback) => {
+        const allowed = [
+            'http://localhost:5173',
+            'http://127.0.0.1:5173',
+            'http://localhost:5174',
+            'http://localhost:5175',
+            process.env.FRONTEND_URL || 'http://localhost:5173',
+        ];
+        // The extension ID is stable because XOY has a manifest key. Authentication
+        // still happens with the license/session token; this only permits browser CORS.
+        if (!origin || allowed.includes(origin) || origin === `chrome-extension://${process.env.XOY_EXTENSION_ID || ''}`) {
+            return callback(null, true);
+        }
+        return callback(new Error('CORS origin is not allowed'));
+    },
     credentials: true,
 }));
 app.use(morgan('dev'));
@@ -105,6 +114,7 @@ app.use('/api/activity-logs', activityLogRoutes);
 app.use('/api/credit-linking', creditLinkingRoutes);
 app.use('/api/stats', statsRoutes);
 app.use('/api/google-ads', googleAdsRoutes);
+app.use('/api/xoy', xoyRoutes);
 
 // Global Error Handler
 app.use(errorHandler);

@@ -84,6 +84,21 @@ enum ActivityAction {
   SYNC
 }
 
+// Commercial licensing for the XOY Chrome extension.  This is intentionally
+// separate from the internal Ads Core User roles and operational data.
+enum XoyLicenseStatus {
+  ACTIVE
+  SUSPENDED
+  EXPIRED
+  REVOKED
+}
+
+enum XoyDeviceStatus {
+  ACTIVE
+  INACTIVE
+  REVOKED
+}
+
 // ==================== MODELS ====================
 
 model User {
@@ -348,4 +363,42 @@ model ActivityLog {
   user User @relation(fields: [userId], references: [id])
 
   @@map("activity_logs")
+}
+
+model XoyLicense {
+  id                  String           @id @default(uuid())
+  name                String
+  keyPrefix           String           @unique @map("key_prefix")
+  keyHash             String           @unique @map("key_hash")
+  managerEmail        String           @unique @map("manager_email")
+  managerPasswordHash String           @map("manager_password_hash")
+  maxDevices          Int              @default(3) @map("max_devices")
+  status              XoyLicenseStatus @default(ACTIVE)
+  expiresAt           DateTime?        @map("expires_at")
+  createdAt           DateTime         @default(now()) @map("created_at")
+  updatedAt           DateTime         @updatedAt @map("updated_at")
+
+  devices XoyDevice[]
+
+  @@map("xoy_licenses")
+}
+
+model XoyDevice {
+  id               String          @id @default(uuid())
+  licenseId        String          @map("license_id")
+  installationId   String          @map("installation_id")
+  displayName      String          @default("Chrome profile") @map("display_name")
+  extensionVersion String?         @map("extension_version")
+  status           XoyDeviceStatus @default(ACTIVE)
+  refreshTokenHash String?         @map("refresh_token_hash")
+  refreshExpiresAt DateTime?       @map("refresh_expires_at")
+  firstSeenAt      DateTime        @default(now()) @map("first_seen_at")
+  lastSeenAt       DateTime        @default(now()) @map("last_seen_at")
+  revokedAt        DateTime?       @map("revoked_at")
+
+  license XoyLicense @relation(fields: [licenseId], references: [id], onDelete: Cascade)
+
+  @@unique([licenseId, installationId])
+  @@index([licenseId, status, lastSeenAt])
+  @@map("xoy_devices")
 }

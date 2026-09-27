@@ -45,6 +45,7 @@ const activityLog_routes_1 = __importDefault(require("./web/routes/activityLog.r
 const creditLinking_routes_1 = __importDefault(require("./web/routes/creditLinking.routes"));
 const stats_routes_1 = __importDefault(require("./web/routes/stats.routes"));
 const googleAds_routes_1 = __importDefault(require("./web/routes/googleAds.routes"));
+const xoy_routes_1 = __importDefault(require("./web/routes/xoy.routes"));
 // Import infrastructure
 const Logger_1 = require("./infrastructure/logging/Logger");
 const errorHandler_1 = require("./infrastructure/middleware/errorHandler");
@@ -58,13 +59,21 @@ app.use((0, helmet_1.default)({
 // Use structured request logger
 app.use(Logger_1.requestLogger);
 app.use((0, cors_1.default)({
-    origin: [
-        'http://localhost:5173',
-        'http://127.0.0.1:5173',
-        'http://localhost:5174',
-        'http://localhost:5175',
-        process.env.FRONTEND_URL || 'http://localhost:5173'
-    ],
+    origin: (origin, callback) => {
+        const allowed = [
+            'http://localhost:5173',
+            'http://127.0.0.1:5173',
+            'http://localhost:5174',
+            'http://localhost:5175',
+            process.env.FRONTEND_URL || 'http://localhost:5173',
+        ];
+        // The extension ID is stable because XOY has a manifest key. Authentication
+        // still happens with the license/session token; this only permits browser CORS.
+        if (!origin || allowed.includes(origin) || origin === `chrome-extension://${process.env.XOY_EXTENSION_ID || ''}`) {
+            return callback(null, true);
+        }
+        return callback(new Error('CORS origin is not allowed'));
+    },
     credentials: true,
 }));
 app.use((0, morgan_1.default)('dev'));
@@ -94,6 +103,7 @@ app.use('/api/activity-logs', activityLog_routes_1.default);
 app.use('/api/credit-linking', creditLinking_routes_1.default);
 app.use('/api/stats', stats_routes_1.default);
 app.use('/api/google-ads', googleAds_routes_1.default);
+app.use('/api/xoy', xoy_routes_1.default);
 // Global Error Handler
 app.use(errorHandler_1.errorHandler);
 // 404 handler for API routes

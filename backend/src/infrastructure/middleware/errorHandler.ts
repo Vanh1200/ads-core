@@ -98,6 +98,16 @@ export const errorHandler = (
         return;
     }
 
+    if (['LICENSE_INVALID', 'LICENSE_UNAVAILABLE', 'SESSION_INVALID', 'MANAGER_LOGIN_INVALID'].includes(err.message)) {
+        res.status(401).json({ error: 'License or session is invalid', code: err.message });
+        return;
+    }
+
+    if (err.message === 'DEVICE_LIMIT_REACHED') {
+        res.status(409).json({ error: 'Device limit reached', code: 'DEVICE_LIMIT_REACHED' });
+        return;
+    }
+
     if (err.message?.startsWith('NOT_FOUND:')) {
         res.status(404).json({
             error: err.message.replace('NOT_FOUND:', '').trim(),

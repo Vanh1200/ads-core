@@ -57,6 +57,11 @@ export const authApi = {
         api.post('/auth/change-password', { currentPassword, newPassword }),
 };
 
+export const xoyLicensesApi = {
+    list: () => api.get('/xoy/admin/licenses'),
+    create: (data: { name: string; managerEmail: string; managerPassword: string; maxDevices: number; expiresAt?: string }) => api.post('/xoy/admin/licenses', data),
+};
+
 // Partners API
 export const partnersApi = {
     list: (params?: object) => api.get('/partners', { params }),
