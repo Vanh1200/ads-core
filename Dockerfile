@@ -47,5 +47,6 @@ RUN npx prisma generate
 # Expose port
 EXPOSE 3001
 
-# Start the server
-CMD ["node", "dist/index.js"]
+# Apply committed, idempotent Prisma migrations before accepting traffic.
+# The Prisma CLI is installed as a production dependency for this command.
+CMD ["sh", "-c", "npx prisma migrate deploy && node dist/index.js"]
