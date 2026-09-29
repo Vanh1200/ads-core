@@ -38,4 +38,21 @@ describe('XoyLicenseService', () => {
         expect(prismaMock.xoyDeviceSession.create).toHaveBeenCalledWith({ data: { deviceId: 'device-1', installationId: 'profile-2' } });
         expect(prismaMock.xoyDevice.update).toHaveBeenCalledWith(expect.objectContaining({ data: expect.objectContaining({ fingerprintSignals: expect.objectContaining({ os: 'mac', deviceMemory: 16 }), userAgent: 'Chrome test' }) }));
     });
+
+    it('creates a new device after a revoked device frees the only slot', async () => {
+        const replacement = { id: 'device-b', licenseId: 'license-1', fingerprint: 'xoy_soft_machine_b', status: 'ACTIVE' };
+        prismaMock.xoyLicense.findUnique.mockResolvedValue(activeLicense as any);
+        prismaMock.xoyDevice.findUnique.mockResolvedValue(null);
+        prismaMock.xoyDevice.count.mockResolvedValue(0 as any);
+        prismaMock.xoyDevice.create.mockResolvedValue(replacement as any);
+        prismaMock.xoyDeviceSession.findUnique.mockResolvedValue(null);
+        prismaMock.xoyDeviceSession.create.mockResolvedValue({ id: 'session-b', deviceId: 'device-b', installationId: 'profile-b' } as any);
+        prismaMock.xoyDeviceSession.update.mockResolvedValue({ id: 'session-b' } as any);
+
+        await new XoyLicenseService().activate({ licenseKey: 'XOY-TEST', installationId: 'profile-b', fingerprint: 'xoy_soft_machine_b' });
+
+        expect(prismaMock.xoyDevice.create).toHaveBeenCalledWith(expect.objectContaining({
+            data: expect.objectContaining({ licenseId: 'license-1', fingerprint: 'xoy_soft_machine_b' }),
+        }));
+    });
 });

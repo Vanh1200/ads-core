@@ -44,10 +44,27 @@ function ensureUsableLicense(license: any) {
 function normalizeSignals(input: any) {
     const signals = input && typeof input === 'object' ? input : {};
     const number = (value: unknown) => Number.isFinite(Number(value)) ? Number(value) : null;
+    const textArray = (value: unknown, maxItems = 4) => Array.isArray(value)
+        ? value.slice(0, maxItems).map((item) => number(item)).filter((item) => item !== null)
+        : [];
+    const webglCapabilities = signals.webglCapabilities && typeof signals.webglCapabilities === 'object' ? signals.webglCapabilities : {};
     return {
         os: optionalText(signals.os, 32), arch: optionalText(signals.arch, 32), naclArch: optionalText(signals.naclArch, 32),
         hardwareConcurrency: number(signals.hardwareConcurrency), deviceMemory: number(signals.deviceMemory),
         webglVendor: optionalText(signals.webglVendor, 255), webglRenderer: optionalText(signals.webglRenderer, 1_000),
+        canvasFingerprint: optionalText(signals.canvasFingerprint, 64),
+        webglCapabilities: {
+            version: optionalText(webglCapabilities.version, 255),
+            shadingLanguageVersion: optionalText(webglCapabilities.shadingLanguageVersion, 255),
+            maxTextureSize: number(webglCapabilities.maxTextureSize),
+            maxCubeMapTextureSize: number(webglCapabilities.maxCubeMapTextureSize),
+            maxRenderbufferSize: number(webglCapabilities.maxRenderbufferSize),
+            maxViewportDimensions: textArray(webglCapabilities.maxViewportDimensions, 2),
+            extensionCount: number(webglCapabilities.extensionCount),
+        },
+        userAgentArchitecture: optionalText(signals.userAgentArchitecture, 64),
+        userAgentBitness: optionalText(signals.userAgentBitness, 16),
+        userAgentPlatform: optionalText(signals.userAgentPlatform, 64),
     };
 }
 function normalizeExtension(input: any) {

@@ -23,6 +23,19 @@ function signalSummary(device: any) {
     return `${signal.os || '—'} · ${signal.arch || '—'} / ${signal.naclArch || '—'} · ${signal.hardwareConcurrency || '—'} CPU · ${signal.deviceMemory || '—'} GB RAM`;
 }
 
+function fingerprintV2Details(device: any) {
+    const signal = device.fingerprintSignals || {};
+    const capabilities = signal.webglCapabilities || {};
+    const dimensions = Array.isArray(capabilities.maxViewportDimensions) && capabilities.maxViewportDimensions.length
+        ? capabilities.maxViewportDimensions.join(' × ')
+        : '—';
+    return {
+        canvas: signal.canvasFingerprint || '—',
+        webglCapabilities: `${capabilities.version || '—'} · GLSL ${capabilities.shadingLanguageVersion || '—'} · texture ${capabilities.maxTextureSize || '—'} · viewport ${dimensions} · ${capabilities.extensionCount ?? '—'} extensions`,
+        uaClientHints: `${signal.userAgentPlatform || '—'} · ${signal.userAgentArchitecture || '—'} · ${signal.userAgentBitness || '—'}-bit`,
+    };
+}
+
 export default function XoyLicenses() {
     const queryClient = useQueryClient();
     const [issuedKey, setIssuedKey] = useState('');
@@ -108,13 +121,19 @@ export default function XoyLicenses() {
                         <td><button className="btn btn-secondary" onClick={() => setOpenLicenseId(isOpen ? null : license.id)}>{isOpen ? <ChevronUp size={16} /> : <ChevronDown size={16} />}{isOpen ? 'Ẩn' : 'Thiết bị'}</button></td>
                     </tr>
                     {isOpen && <tr key={`${license.id}-devices`}><td colSpan={7} style={{ padding: 16, background: 'var(--background)' }}>
-                        {devices.isLoading ? 'Đang tải fingerprint...' : devices.isError ? 'Không thể tải fingerprint.' : (devices.data || []).length === 0 ? 'Chưa có fingerprint nào kích hoạt license này.' : <div style={{ display: 'grid', gap: 12 }}>{devices.data.map((device: any) => <div key={device.id} style={{ padding: 12, border: '1px solid var(--border)', borderRadius: 8, background: 'var(--surface)' }}>
+                        {devices.isLoading ? 'Đang tải fingerprint...' : devices.isError ? 'Không thể tải fingerprint.' : (devices.data || []).length === 0 ? 'Chưa có fingerprint nào kích hoạt license này.' : <div style={{ display: 'grid', gap: 12 }}>{devices.data.map((device: any) => {
+                            const details = fingerprintV2Details(device);
+                            return <div key={device.id} style={{ padding: 12, border: '1px solid var(--border)', borderRadius: 8, background: 'var(--surface)' }}>
                             <div style={{ display: 'flex', justifyContent: 'space-between', gap: 12, alignItems: 'center' }}><div><strong>{device.fingerprint}</strong><small style={{ display: 'block' }}>{signalSummary(device)}</small></div><div style={{ display: 'flex', alignItems: 'center', gap: 8 }}><small>{device.status} · dùng lần cuối {new Date(device.lastSeenAt).toLocaleString('vi-VN')}</small>{device.status !== 'REVOKED' && <button className="btn btn-danger" disabled={revoke.isPending} onClick={() => window.confirm(`Thu hồi ${device.fingerprint}? Toàn bộ Chrome profile thuộc fingerprint này sẽ bị dừng.`) && revoke.mutate({ licenseId: license.id, deviceId: device.id })}><MonitorX size={15} />Thu hồi</button>}</div></div>
                             <div style={{ marginTop: 8, fontSize: 12 }}>Extension: {device.extensionMetadata?.name || '—'} {device.extensionMetadata?.version || ''} · MV{device.extensionMetadata?.manifestVersion || '—'} · {device.extensionMetadata?.id || '—'}</div>
                             <div style={{ marginTop: 4, fontSize: 12, overflowWrap: 'anywhere' }}>WebGL: {device.fingerprintSignals?.webglVendor || '—'} · {device.fingerprintSignals?.webglRenderer || '—'}</div>
+                            <div style={{ marginTop: 4, fontSize: 12, overflowWrap: 'anywhere' }}>Canvas hash: {details.canvas}</div>
+                            <div style={{ marginTop: 4, fontSize: 12, overflowWrap: 'anywhere' }}>WebGL capabilities: {details.webglCapabilities}</div>
+                            <div style={{ marginTop: 4, fontSize: 12 }}>UA architecture: {details.uaClientHints}</div>
                             <div style={{ marginTop: 4, fontSize: 12, overflowWrap: 'anywhere' }}>User agent: {device.userAgent || '—'}</div>
                             <div style={{ marginTop: 8, display: 'grid', gap: 4 }}>{device.sessions.map((session: any) => <small key={session.id}>{profileName(session.installationId)} · hoạt động {new Date(session.lastSeenAt).toLocaleString('vi-VN')}</small>)}</div>
-                        </div>)}</div>}
+                        </div>;
+                        })}</div>}
                     </td></tr>}</Fragment>;
             })}
         </tbody></table></div></div>
