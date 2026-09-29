@@ -123,16 +123,26 @@ export class XoyLicenseService {
         return { fingerprintSignals: normalizeSignals(input.fingerprintSignals), extensionMetadata: normalizeExtension(input.extension), userAgent: optionalText(input.userAgent, MAX_USER_AGENT_LENGTH) };
     }
 
-    async activate(input: { licenseKey: string; installationId: string; fingerprint: string; fingerprintSignals?: unknown; extension?: unknown; userAgent?: unknown }) {
+    async activate(input: { licenseKey: string; installationId: string; fingerprint: string; fingerprintV2?: string; fingerprintSignals?: unknown; extension?: unknown; userAgent?: unknown }) {
         const licenseKey = requiredText(input.licenseKey, 'License key', 500);
         const installationId = requiredText(input.installationId, 'Installation ID', 255);
-        const fingerprint = requiredText(input.fingerprint, 'Fingerprint', MAX_FINGERPRINT_LENGTH);
+        const legacyFingerprint = requiredText(input.fingerprint, 'Fingerprint', MAX_FINGERPRINT_LENGTH);
+        const fingerprint = optionalText(input.fingerprintV2, MAX_FINGERPRINT_LENGTH) || legacyFingerprint;
         const license = await prisma.xoyLicense.findUnique({ where: { keyHash: hash(licenseKey) } });
         if (!license) throw new Error('LICENSE_INVALID');
         ensureUsableLicense(license);
         await this.expireInactiveDevices(license.id);
         const metadata = this.metadataData(input);
         let device = await prisma.xoyDevice.findUnique({ where: { licenseId_fingerprint: { licenseId: license.id, fingerprint } } });
+        // Fingerprint v2 adds stable rendering characteristics. A client that
+        // proves its v1 fingerprint is allowed to upgrade the same physical
+        // device record rather than consuming another licensed device slot.
+        if (!device && legacyFingerprint !== fingerprint) {
+            device = await prisma.xoyDevice.findUnique({ where: { licenseId_fingerprint: { licenseId: license.id, fingerprint: legacyFingerprint } } });
+            if (device && device.status !== 'REVOKED') {
+                device = await prisma.xoyDevice.update({ where: { id: device.id }, data: { fingerprint } });
+            }
+        }
         if (device?.status === 'REVOKED') throw new Error('DEVICE_REVOKED');
         if (!device) {
             const activeCount = await prisma.xoyDevice.count({ where: { licenseId: license.id, status: 'ACTIVE' } });
@@ -149,15 +159,19 @@ export class XoyLicenseService {
         return this.issueDeviceSession(device, await this.upsertProfileSession(device.id, installationId));
     }
 
-    async refresh(input: { installationId: string; refreshToken: string; fingerprint: string; fingerprintSignals?: unknown; extension?: unknown; userAgent?: unknown }) {
+    async refresh(input: { installationId: string; refreshToken: string; fingerprint: string; fingerprintV2?: string; fingerprintSignals?: unknown; extension?: unknown; userAgent?: unknown }) {
         const installationId = requiredText(input.installationId, 'Installation ID', 255);
-        const fingerprint = requiredText(input.fingerprint, 'Fingerprint', MAX_FINGERPRINT_LENGTH);
+        const legacyFingerprint = requiredText(input.fingerprint, 'Fingerprint', MAX_FINGERPRINT_LENGTH);
+        const fingerprint = optionalText(input.fingerprintV2, MAX_FINGERPRINT_LENGTH) || legacyFingerprint;
         const session = await prisma.xoyDeviceSession.findFirst({ where: { installationId, refreshTokenHash: hash(requiredText(input.refreshToken, 'Refresh token', 1_000)), revokedAt: null }, include: { device: { include: { license: true } } } });
         if (!session || !session.refreshExpiresAt || session.refreshExpiresAt.getTime() <= Date.now()) throw new Error('SESSION_INVALID');
         ensureUsableLicense(session.device.license);
         if (session.device.status !== 'ACTIVE') throw new Error('SESSION_INVALID');
         let device: any = session.device;
         if (device.fingerprint !== fingerprint) {
+            if (device.fingerprint === legacyFingerprint) {
+                device = await prisma.xoyDevice.update({ where: { id: device.id }, data: { fingerprint } });
+            } else {
             // Existing installs from the installationId-era are migrated on
             // their first refresh, without asking the customer to paste a key.
             if (!device.fingerprint.startsWith('legacy:')) throw new Error('FINGERPRINT_CHANGED');
@@ -168,6 +182,7 @@ export class XoyLicenseService {
                 await prisma.xoyDevice.update({ where: { id: session.deviceId }, data: { status: 'INACTIVE' } });
             } else {
                 device = await prisma.xoyDevice.update({ where: { id: device.id }, data: { fingerprint } });
+            }
             }
         }
         device = await prisma.xoyDevice.update({ where: { id: device.id }, data: { ...this.metadataData(input), lastSeenAt: new Date() } });

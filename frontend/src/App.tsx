@@ -23,6 +23,7 @@ import GoogleSheetsSyncTool from './pages/GoogleSheetsSyncTool';
 import GoogleAdsExplorer from './pages/GoogleAdsExplorer';
 import XoyLicenses from './pages/XoyLicenses';
 import XoySupportLogs from './pages/XoySupportLogs';
+import XoySupportLogDetail from './pages/XoySupportLogDetail';
 import './App.css';
 
 const queryClient = new QueryClient({
@@ -93,6 +94,7 @@ function AppRoutes() {
         <Route path="users" element={<Users />} />
         <Route path="xoy-licenses" element={<XoyLicenses />} />
         <Route path="xoy-support-logs" element={<XoySupportLogs />} />
+        <Route path="xoy-support-logs/:licenseId" element={<XoySupportLogDetail />} />
       </Route>
       <Route path="*" element={<Navigate to="/" />} />
     </Routes>

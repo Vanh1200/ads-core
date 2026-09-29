@@ -80,13 +80,15 @@ export default function XoyLicenses() {
         <div className="page-header"><div><h1 className="page-title">XOY Licenses</h1><p className="page-subtitle">Cấp key theo gói và quản lý fingerprint đã kích hoạt từ Ads Core.</p></div></div>
         <div className="card" style={{ marginBottom: 20 }}>
             <div className="card-header"><Key size={18} /> Cấp license mới</div>
-            <form onSubmit={submit} style={{ display: 'grid', gap: 12, gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))', padding: 16 }}>
-                <input name="name" required placeholder="Tên khách hàng" />
-                <input name="telegramId" placeholder="Telegram ID (không bắt buộc)" />
-                <select name="plan" defaultValue="BASIC"><option value="BASIC">Gói Cơ bản</option><option value="FULL">Gói Full</option></select>
-                <input name="maxFingerprints" required type="number" min="1" max="100" defaultValue="3" placeholder="Số fingerprint" />
-                <select name="durationMonths" defaultValue="6"><option value="1">1 tháng</option><option value="6">6 tháng</option><option value="12">1 năm</option></select>
-                <button className="btn btn-primary" disabled={create.isPending}><Plus size={16} />{create.isPending ? 'Đang cấp...' : 'Cấp key'}</button>
+            <form onSubmit={submit} style={{ padding: 16 }}>
+                <div style={{ display: 'grid', gap: 14, gridTemplateColumns: 'repeat(auto-fit, minmax(190px, 1fr))' }}>
+                    <div><label className="form-label">Tên khách hàng / gói *</label><input className="form-input" name="name" required placeholder="Ví dụ: Nguyễn Văn A" /></div>
+                    <div><label className="form-label">Telegram ID</label><input className="form-input" name="telegramId" placeholder="Không bắt buộc" /></div>
+                    <div><label className="form-label">Gói license *</label><select className="form-select" name="plan" defaultValue="BASIC"><option value="BASIC">Gói Cơ bản</option><option value="FULL">Gói Full</option></select></div>
+                    <div><label className="form-label">Số thiết bị tối đa *</label><input className="form-input" name="maxFingerprints" required type="number" min="1" max="100" defaultValue="3" /></div>
+                    <div><label className="form-label">Thời hạn *</label><select className="form-select" name="durationMonths" defaultValue="6"><option value="1">1 tháng</option><option value="6">6 tháng</option><option value="12">1 năm</option></select></div>
+                </div>
+                <div style={{ marginTop: 16 }}><button className="btn btn-primary" disabled={create.isPending}><Plus size={16} />{create.isPending ? 'Đang cấp...' : 'Cấp key'}</button></div>
             </form>
             {issuedKeyBlock}
             {create.isError && <div style={{ margin: '0 16px 16px', color: 'var(--danger)' }}>Không thể cấp license. Kiểm tra lại thông tin.</div>}
@@ -105,8 +107,8 @@ export default function XoyLicenses() {
                         <td>{license.status === 'ISSUED' ? 'CHƯA ACTIVE' : license.status}</td>
                         <td><button className="btn btn-secondary" onClick={() => setOpenLicenseId(isOpen ? null : license.id)}>{isOpen ? <ChevronUp size={16} /> : <ChevronDown size={16} />}{isOpen ? 'Ẩn' : 'Thiết bị'}</button></td>
                     </tr>
-                    {isOpen && <tr key={`${license.id}-devices`}><td colSpan={7} style={{ padding: 16, background: 'var(--bg-secondary)' }}>
-                        {devices.isLoading ? 'Đang tải fingerprint...' : devices.isError ? 'Không thể tải fingerprint.' : (devices.data || []).length === 0 ? 'Chưa có fingerprint nào kích hoạt license này.' : <div style={{ display: 'grid', gap: 12 }}>{devices.data.map((device: any) => <div key={device.id} style={{ padding: 12, border: '1px solid var(--border-color)', borderRadius: 8, background: 'var(--bg-primary)' }}>
+                    {isOpen && <tr key={`${license.id}-devices`}><td colSpan={7} style={{ padding: 16, background: 'var(--background)' }}>
+                        {devices.isLoading ? 'Đang tải fingerprint...' : devices.isError ? 'Không thể tải fingerprint.' : (devices.data || []).length === 0 ? 'Chưa có fingerprint nào kích hoạt license này.' : <div style={{ display: 'grid', gap: 12 }}>{devices.data.map((device: any) => <div key={device.id} style={{ padding: 12, border: '1px solid var(--border)', borderRadius: 8, background: 'var(--surface)' }}>
                             <div style={{ display: 'flex', justifyContent: 'space-between', gap: 12, alignItems: 'center' }}><div><strong>{device.fingerprint}</strong><small style={{ display: 'block' }}>{signalSummary(device)}</small></div><div style={{ display: 'flex', alignItems: 'center', gap: 8 }}><small>{device.status} · dùng lần cuối {new Date(device.lastSeenAt).toLocaleString('vi-VN')}</small>{device.status !== 'REVOKED' && <button className="btn btn-danger" disabled={revoke.isPending} onClick={() => window.confirm(`Thu hồi ${device.fingerprint}? Toàn bộ Chrome profile thuộc fingerprint này sẽ bị dừng.`) && revoke.mutate({ licenseId: license.id, deviceId: device.id })}><MonitorX size={15} />Thu hồi</button>}</div></div>
                             <div style={{ marginTop: 8, fontSize: 12 }}>Extension: {device.extensionMetadata?.name || '—'} {device.extensionMetadata?.version || ''} · MV{device.extensionMetadata?.manifestVersion || '—'} · {device.extensionMetadata?.id || '—'}</div>
                             <div style={{ marginTop: 4, fontSize: 12, overflowWrap: 'anywhere' }}>WebGL: {device.fingerprintSignals?.webglVendor || '—'} · {device.fingerprintSignals?.webglRenderer || '—'}</div>
