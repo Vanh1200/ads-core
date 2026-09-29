@@ -62,6 +62,11 @@ export const xoyLicensesApi = {
     create: (data: { name: string; managerEmail: string; managerPassword: string; maxDevices: number; expiresAt?: string }) => api.post('/xoy/admin/licenses', data),
 };
 
+export const xoySupportLogsApi = {
+    list: (params?: { page?: number; limit?: number; supportId?: string; traceId?: string }) => api.get('/xoy/admin/support-logs', { params }),
+    get: (supportId: string) => api.get(`/xoy/admin/support-logs/${encodeURIComponent(supportId)}`),
+};
+
 // Partners API
 export const partnersApi = {
     list: (params?: object) => api.get('/partners', { params }),

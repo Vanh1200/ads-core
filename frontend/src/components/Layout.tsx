@@ -15,6 +15,7 @@ import {
     Link,
     Globe,
     Key,
+    ShieldAlert,
 } from 'lucide-react';
 
 const navItems = [
@@ -31,6 +32,7 @@ const navItems = [
     { path: '/activity-logs', icon: Activity, label: 'Lịch sử hoạt động', section: 'Hệ thống' },
     { path: '/users', icon: Users, label: 'Nhân viên', section: 'Hệ thống' },
     { path: '/xoy-licenses', icon: Key, label: 'XOY Licenses', section: 'Hệ thống' },
+    { path: '/xoy-support-logs', icon: ShieldAlert, label: 'XOY Support Logs', section: 'Hệ thống' },
 ];
 
 export default function Layout() {
@@ -72,6 +74,7 @@ export default function Layout() {
             case '/google-ads': // Google Ads API
                 return ['ADMIN', 'MANAGER', 'BUYER', 'LINKER', 'UPDATER'].includes(user.role);
             case '/xoy-licenses':
+            case '/xoy-support-logs':
                 return false; // ADMIN already returned above; all other roles are denied.
             default:
                 return false;

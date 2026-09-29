@@ -2,6 +2,7 @@ import { Router } from 'express';
 import jwt from 'jsonwebtoken';
 import { asyncHandler } from '../../infrastructure/middleware/errorHandler';
 import { xoyLicenseService } from '../../application/services/XoyLicenseService';
+import { xoySupportLogService } from '../../application/services/XoySupportLogService';
 import { authenticateToken, isAdmin } from '../../infrastructure/middleware/auth';
 
 const router = Router();
@@ -37,6 +38,12 @@ router.post('/heartbeat', requireScope('xoy-device'), asyncHandler(async (req: a
 router.get('/entitlement', requireScope('xoy-device'), asyncHandler(async (req: any, res) => {
     res.json(await xoyLicenseService.getEntitlement(req.xoyAuth.deviceId));
 }));
+router.post('/support/logs/batches', requireScope('xoy-device'), asyncHandler(async (req: any, res) => {
+    // A signed token may still exist briefly after a device is revoked. Check
+    // current device/license state before accepting diagnostic data.
+    await xoyLicenseService.getEntitlement(req.xoyAuth.deviceId);
+    res.json(await xoySupportLogService.ingest(req.xoyAuth.deviceId, req.body));
+}));
 router.post('/manager/login', asyncHandler(async (req, res) => {
     res.json(await xoyLicenseService.managerLogin(req.body.email || '', req.body.password || ''));
 }));
@@ -46,6 +53,12 @@ router.get('/manager/devices', requireScope('xoy-manager'), asyncHandler(async (
 router.delete('/manager/devices/:deviceId', requireScope('xoy-manager'), asyncHandler(async (req: any, res) => {
     await xoyLicenseService.revokeDevice(req.xoyAuth.licenseId, req.params.deviceId);
     res.status(204).end();
+}));
+router.get('/admin/support-logs', authenticateToken, isAdmin, asyncHandler(async (req, res) => {
+    res.json(await xoySupportLogService.list(req.query));
+}));
+router.get('/admin/support-logs/:supportId', authenticateToken, isAdmin, asyncHandler(async (req, res) => {
+    res.json(await xoySupportLogService.getBySupportId(req.params.supportId));
 }));
 
 export default router;
