@@ -120,10 +120,109 @@ app.get('*', (req, res) => {
 const prisma_1 = __importDefault(require("./infrastructure/database/prisma"));
 async function applyDatabasePatches() {
     try {
-        console.log('\n[DB] Đang chạy Database Patches tự động (xóa bỏ NOT NULL constraint cho batch_id)...');
-        // Execute raw SQL directly through Prisma Client without resorting to Prisma CLI
+        console.log('\n[DB] Đang chạy database patches...');
         await prisma_1.default.$executeRawUnsafe('ALTER TABLE "accounts" ALTER COLUMN "batch_id" DROP NOT NULL;');
-        console.log('[DB] Đã cập nhật database schema thành công.\n');
+        // Production predates Prisma migration history, so `prisma migrate deploy`
+        // cannot be used until the old schema is formally baselined. Keep this
+        // patch idempotent and limited to the new XOY licensing tables.
+        await prisma_1.default.$executeRawUnsafe(`DO $$ BEGIN
+            CREATE TYPE "XoyLicenseStatus" AS ENUM ('ACTIVE', 'SUSPENDED', 'EXPIRED', 'REVOKED');
+        EXCEPTION WHEN duplicate_object THEN NULL; END $$;`);
+        await prisma_1.default.$executeRawUnsafe(`DO $$ BEGIN
+            CREATE TYPE "XoyDeviceStatus" AS ENUM ('ACTIVE', 'INACTIVE', 'REVOKED');
+        EXCEPTION WHEN duplicate_object THEN NULL; END $$;`);
+        await prisma_1.default.$executeRawUnsafe(`DO $$ BEGIN
+            CREATE TYPE "XoyLicensePlan" AS ENUM ('BASIC', 'FULL');
+        EXCEPTION WHEN duplicate_object THEN NULL; END $$;`);
+        await prisma_1.default.$executeRawUnsafe(`DO $$ BEGIN
+            ALTER TYPE "XoyLicenseStatus" ADD VALUE 'ISSUED';
+        EXCEPTION WHEN duplicate_object THEN NULL; END $$;`);
+        await prisma_1.default.$executeRawUnsafe(`CREATE TABLE IF NOT EXISTS "xoy_licenses" (
+            "id" TEXT NOT NULL PRIMARY KEY, "name" TEXT NOT NULL,
+            "telegram_id" TEXT, "key_prefix" TEXT NOT NULL, "key_hash" TEXT NOT NULL, "key_encrypted" TEXT,
+            "plan" "XoyLicensePlan" NOT NULL DEFAULT 'FULL', "max_fingerprints" INTEGER NOT NULL DEFAULT 3,
+            "status" "XoyLicenseStatus" NOT NULL DEFAULT 'ISSUED',
+            "expires_at" TIMESTAMP(3), "created_at" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+            "updated_at" TIMESTAMP(3) NOT NULL
+        )`);
+        await prisma_1.default.$executeRawUnsafe(`CREATE TABLE IF NOT EXISTS "xoy_devices" (
+            "id" TEXT NOT NULL PRIMARY KEY, "license_id" TEXT NOT NULL,
+            "fingerprint" TEXT NOT NULL, "fingerprint_signals" JSONB, "extension_metadata" JSONB, "user_agent" TEXT,
+            "status" "XoyDeviceStatus" NOT NULL DEFAULT 'ACTIVE',
+            "first_seen_at" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+            "last_seen_at" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+            "revoked_at" TIMESTAMP(3),
+            CONSTRAINT "xoy_devices_license_id_fkey" FOREIGN KEY ("license_id") REFERENCES "xoy_licenses"("id") ON DELETE CASCADE ON UPDATE CASCADE
+        )`);
+        await prisma_1.default.$executeRawUnsafe('CREATE UNIQUE INDEX IF NOT EXISTS "xoy_licenses_key_prefix_key" ON "xoy_licenses"("key_prefix")');
+        await prisma_1.default.$executeRawUnsafe('CREATE UNIQUE INDEX IF NOT EXISTS "xoy_licenses_key_hash_key" ON "xoy_licenses"("key_hash")');
+        await prisma_1.default.$executeRawUnsafe('CREATE INDEX IF NOT EXISTS "xoy_devices_license_id_status_last_seen_at_idx" ON "xoy_devices"("license_id", "status", "last_seen_at")');
+        // Version 2: a device slot belongs to a physical fingerprint; Chrome
+        // profiles only own sessions beneath that fingerprint. The blocks are
+        // idempotent because Railway production is patched at app startup.
+        await prisma_1.default.$executeRawUnsafe('ALTER TABLE "xoy_licenses" ADD COLUMN IF NOT EXISTS "telegram_id" TEXT');
+        await prisma_1.default.$executeRawUnsafe('ALTER TABLE "xoy_licenses" ADD COLUMN IF NOT EXISTS "key_encrypted" TEXT');
+        await prisma_1.default.$executeRawUnsafe('ALTER TABLE "xoy_licenses" ADD COLUMN IF NOT EXISTS "plan" "XoyLicensePlan" NOT NULL DEFAULT \'FULL\'');
+        await prisma_1.default.$executeRawUnsafe(`DO $$ BEGIN
+            IF EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = 'xoy_licenses' AND column_name = 'max_devices')
+               AND NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = 'xoy_licenses' AND column_name = 'max_fingerprints') THEN
+                ALTER TABLE "xoy_licenses" RENAME COLUMN "max_devices" TO "max_fingerprints";
+            END IF;
+        END $$;`);
+        await prisma_1.default.$executeRawUnsafe('ALTER TABLE "xoy_licenses" ALTER COLUMN "status" SET DEFAULT \'ISSUED\'');
+        await prisma_1.default.$executeRawUnsafe('ALTER TABLE "xoy_licenses" DROP CONSTRAINT IF EXISTS "xoy_licenses_manager_email_key"');
+        await prisma_1.default.$executeRawUnsafe('DROP INDEX IF EXISTS "xoy_licenses_manager_email_key"');
+        await prisma_1.default.$executeRawUnsafe('ALTER TABLE "xoy_licenses" DROP COLUMN IF EXISTS "manager_email"');
+        await prisma_1.default.$executeRawUnsafe('ALTER TABLE "xoy_licenses" DROP COLUMN IF EXISTS "manager_password_hash"');
+        await prisma_1.default.$executeRawUnsafe('ALTER TABLE "xoy_devices" ADD COLUMN IF NOT EXISTS "fingerprint" TEXT');
+        await prisma_1.default.$executeRawUnsafe('ALTER TABLE "xoy_devices" ADD COLUMN IF NOT EXISTS "fingerprint_signals" JSONB');
+        await prisma_1.default.$executeRawUnsafe('ALTER TABLE "xoy_devices" ADD COLUMN IF NOT EXISTS "extension_metadata" JSONB');
+        await prisma_1.default.$executeRawUnsafe('ALTER TABLE "xoy_devices" ADD COLUMN IF NOT EXISTS "user_agent" TEXT');
+        await prisma_1.default.$executeRawUnsafe(`CREATE TABLE IF NOT EXISTS "xoy_device_sessions" (
+            "id" TEXT NOT NULL PRIMARY KEY, "device_id" TEXT NOT NULL, "installation_id" TEXT NOT NULL,
+            "refresh_token_hash" TEXT, "refresh_expires_at" TIMESTAMP(3),
+            "first_seen_at" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP, "last_seen_at" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+            "revoked_at" TIMESTAMP(3), CONSTRAINT "xoy_device_sessions_device_id_fkey" FOREIGN KEY ("device_id") REFERENCES "xoy_devices"("id") ON DELETE CASCADE ON UPDATE CASCADE
+        )`);
+        await prisma_1.default.$executeRawUnsafe('CREATE UNIQUE INDEX IF NOT EXISTS "xoy_device_sessions_installation_id_key" ON "xoy_device_sessions"("installation_id")');
+        await prisma_1.default.$executeRawUnsafe(`DO $$ BEGIN
+            IF EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = 'xoy_devices' AND column_name = 'installation_id') THEN
+                INSERT INTO "xoy_device_sessions" ("id", "device_id", "installation_id", "refresh_token_hash", "refresh_expires_at", "first_seen_at", "last_seen_at", "revoked_at")
+                SELECT md5('xoy-session:' || "id"), "id", "installation_id", "refresh_token_hash", "refresh_expires_at", "first_seen_at", "last_seen_at", "revoked_at"
+                FROM "xoy_devices" ON CONFLICT ("installation_id") DO NOTHING;
+            END IF;
+        END $$;`);
+        await prisma_1.default.$executeRawUnsafe('UPDATE "xoy_devices" SET "fingerprint" = \'legacy:\' || "id" WHERE "fingerprint" IS NULL');
+        await prisma_1.default.$executeRawUnsafe('ALTER TABLE "xoy_devices" ALTER COLUMN "fingerprint" SET NOT NULL');
+        await prisma_1.default.$executeRawUnsafe('ALTER TABLE "xoy_devices" DROP CONSTRAINT IF EXISTS "xoy_devices_license_id_installation_id_key"');
+        await prisma_1.default.$executeRawUnsafe('DROP INDEX IF EXISTS "xoy_devices_license_id_installation_id_key"');
+        await prisma_1.default.$executeRawUnsafe('ALTER TABLE "xoy_devices" DROP COLUMN IF EXISTS "installation_id"');
+        await prisma_1.default.$executeRawUnsafe('ALTER TABLE "xoy_devices" DROP COLUMN IF EXISTS "display_name"');
+        await prisma_1.default.$executeRawUnsafe('ALTER TABLE "xoy_devices" DROP COLUMN IF EXISTS "extension_version"');
+        await prisma_1.default.$executeRawUnsafe('ALTER TABLE "xoy_devices" DROP COLUMN IF EXISTS "refresh_token_hash"');
+        await prisma_1.default.$executeRawUnsafe('ALTER TABLE "xoy_devices" DROP COLUMN IF EXISTS "refresh_expires_at"');
+        await prisma_1.default.$executeRawUnsafe('CREATE UNIQUE INDEX IF NOT EXISTS "xoy_devices_license_id_fingerprint_key" ON "xoy_devices"("license_id", "fingerprint")');
+        await prisma_1.default.$executeRawUnsafe('CREATE INDEX IF NOT EXISTS "xoy_device_sessions_device_id_last_seen_at_idx" ON "xoy_device_sessions"("device_id", "last_seen_at")');
+        await prisma_1.default.$executeRawUnsafe(`CREATE TABLE IF NOT EXISTS "xoy_support_log_runs" (
+            "id" TEXT NOT NULL PRIMARY KEY, "device_id" TEXT NOT NULL, "run_id" TEXT NOT NULL,
+            "support_id" TEXT NOT NULL, "created_at" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+            "updated_at" TIMESTAMP(3) NOT NULL,
+            CONSTRAINT "xoy_support_log_runs_device_id_fkey" FOREIGN KEY ("device_id") REFERENCES "xoy_devices"("id") ON DELETE CASCADE ON UPDATE CASCADE
+        )`);
+        await prisma_1.default.$executeRawUnsafe(`CREATE TABLE IF NOT EXISTS "xoy_support_log_events" (
+            "id" TEXT NOT NULL PRIMARY KEY, "run_db_id" TEXT NOT NULL, "event_id" TEXT NOT NULL,
+            "occurred_at" TIMESTAMP(3) NOT NULL, "trace_id" TEXT, "job_id" TEXT, "job_type" TEXT,
+            "success" BOOLEAN, "text" TEXT NOT NULL, "file_line" TEXT, "display_time" TEXT,
+            "created_at" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+            CONSTRAINT "xoy_support_log_events_run_db_id_fkey" FOREIGN KEY ("run_db_id") REFERENCES "xoy_support_log_runs"("id") ON DELETE CASCADE ON UPDATE CASCADE
+        )`);
+        await prisma_1.default.$executeRawUnsafe('CREATE UNIQUE INDEX IF NOT EXISTS "xoy_support_log_runs_support_id_key" ON "xoy_support_log_runs"("support_id")');
+        await prisma_1.default.$executeRawUnsafe('CREATE UNIQUE INDEX IF NOT EXISTS "xoy_support_log_runs_device_id_run_id_key" ON "xoy_support_log_runs"("device_id", "run_id")');
+        await prisma_1.default.$executeRawUnsafe('CREATE INDEX IF NOT EXISTS "xoy_support_log_runs_device_id_created_at_idx" ON "xoy_support_log_runs"("device_id", "created_at")');
+        await prisma_1.default.$executeRawUnsafe('CREATE UNIQUE INDEX IF NOT EXISTS "xoy_support_log_events_run_db_id_event_id_key" ON "xoy_support_log_events"("run_db_id", "event_id")');
+        await prisma_1.default.$executeRawUnsafe('CREATE INDEX IF NOT EXISTS "xoy_support_log_events_run_db_id_occurred_at_idx" ON "xoy_support_log_events"("run_db_id", "occurred_at")');
+        await prisma_1.default.$executeRawUnsafe('CREATE INDEX IF NOT EXISTS "xoy_support_log_events_trace_id_idx" ON "xoy_support_log_events"("trace_id")');
+        console.log('[DB] Database patches applied.\n');
     }
     catch (err) {
         // Only log if it's a real error, if it's already dropped it might or might not error

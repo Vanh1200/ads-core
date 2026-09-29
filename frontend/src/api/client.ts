@@ -59,11 +59,15 @@ export const authApi = {
 
 export const xoyLicensesApi = {
     list: () => api.get('/xoy/admin/licenses'),
-    create: (data: { name: string; managerEmail: string; managerPassword: string; maxDevices: number; expiresAt?: string }) => api.post('/xoy/admin/licenses', data),
+    create: (data: { name: string; telegramId?: string; plan: 'BASIC' | 'FULL'; maxFingerprints: number; expiresAt?: string }) => api.post('/xoy/admin/licenses', data),
+    getKey: (licenseId: string) => api.get(`/xoy/admin/licenses/${encodeURIComponent(licenseId)}/key`),
+    listDevices: (licenseId: string) => api.get(`/xoy/admin/licenses/${encodeURIComponent(licenseId)}/devices`),
+    revokeDevice: (licenseId: string, deviceId: string) => api.delete(`/xoy/admin/licenses/${encodeURIComponent(licenseId)}/devices/${encodeURIComponent(deviceId)}`),
 };
 
 export const xoySupportLogsApi = {
-    list: (params?: { page?: number; limit?: number; supportId?: string; traceId?: string }) => api.get('/xoy/admin/support-logs', { params }),
+    list: (params?: { supportId?: string; traceId?: string; jobType?: string; sentFrom?: string; sentTo?: string }) => api.get('/xoy/admin/support-logs', { params }),
+    listByLicense: (licenseId: string, params?: { supportId?: string; traceId?: string; jobType?: string; sentFrom?: string; sentTo?: string }) => api.get(`/xoy/admin/licenses/${encodeURIComponent(licenseId)}/support-logs`, { params }),
     get: (supportId: string) => api.get(`/xoy/admin/support-logs/${encodeURIComponent(supportId)}`),
 };
 

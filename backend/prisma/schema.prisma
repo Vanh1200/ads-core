@@ -87,10 +87,16 @@ enum ActivityAction {
 // Commercial licensing for the XOY Chrome extension.  This is intentionally
 // separate from the internal Ads Core User roles and operational data.
 enum XoyLicenseStatus {
+  ISSUED
   ACTIVE
   SUSPENDED
   EXPIRED
   REVOKED
+}
+
+enum XoyLicensePlan {
+  BASIC
+  FULL
 }
 
 enum XoyDeviceStatus {
@@ -368,12 +374,13 @@ model ActivityLog {
 model XoyLicense {
   id                  String           @id @default(uuid())
   name                String
+  telegramId          String?          @map("telegram_id")
   keyPrefix           String           @unique @map("key_prefix")
   keyHash             String           @unique @map("key_hash")
-  managerEmail        String           @unique @map("manager_email")
-  managerPasswordHash String           @map("manager_password_hash")
-  maxDevices          Int              @default(3) @map("max_devices")
-  status              XoyLicenseStatus @default(ACTIVE)
+  keyEncrypted        String?          @map("key_encrypted") @db.Text
+  plan                XoyLicensePlan   @default(FULL)
+  maxFingerprints     Int              @default(3) @map("max_fingerprints")
+  status              XoyLicenseStatus @default(ISSUED)
   expiresAt           DateTime?        @map("expires_at")
   createdAt           DateTime         @default(now()) @map("created_at")
   updatedAt           DateTime         @updatedAt @map("updated_at")
@@ -384,24 +391,40 @@ model XoyLicense {
 }
 
 model XoyDevice {
-  id               String          @id @default(uuid())
-  licenseId        String          @map("license_id")
-  installationId   String          @map("installation_id")
-  displayName      String          @default("Chrome profile") @map("display_name")
-  extensionVersion String?         @map("extension_version")
-  status           XoyDeviceStatus @default(ACTIVE)
-  refreshTokenHash String?         @map("refresh_token_hash")
-  refreshExpiresAt DateTime?       @map("refresh_expires_at")
-  firstSeenAt      DateTime        @default(now()) @map("first_seen_at")
-  lastSeenAt       DateTime        @default(now()) @map("last_seen_at")
-  revokedAt        DateTime?       @map("revoked_at")
+  id                 String          @id @default(uuid())
+  licenseId          String          @map("license_id")
+  fingerprint        String
+  fingerprintSignals Json?           @map("fingerprint_signals")
+  extensionMetadata  Json?           @map("extension_metadata")
+  userAgent          String?         @map("user_agent") @db.Text
+  status             XoyDeviceStatus @default(ACTIVE)
+  firstSeenAt        DateTime        @default(now()) @map("first_seen_at")
+  lastSeenAt         DateTime        @default(now()) @map("last_seen_at")
+  revokedAt          DateTime?       @map("revoked_at")
 
-  license XoyLicense @relation(fields: [licenseId], references: [id], onDelete: Cascade)
+  license     XoyLicense        @relation(fields: [licenseId], references: [id], onDelete: Cascade)
+  sessions    XoyDeviceSession[]
   supportRuns XoySupportLogRun[]
 
-  @@unique([licenseId, installationId])
+  @@unique([licenseId, fingerprint])
   @@index([licenseId, status, lastSeenAt])
   @@map("xoy_devices")
+}
+
+model XoyDeviceSession {
+  id               String    @id @default(uuid())
+  deviceId         String    @map("device_id")
+  installationId   String    @unique @map("installation_id")
+  refreshTokenHash String?   @map("refresh_token_hash")
+  refreshExpiresAt DateTime? @map("refresh_expires_at")
+  firstSeenAt      DateTime  @default(now()) @map("first_seen_at")
+  lastSeenAt       DateTime  @default(now()) @map("last_seen_at")
+  revokedAt        DateTime? @map("revoked_at")
+
+  device XoyDevice @relation(fields: [deviceId], references: [id], onDelete: Cascade)
+
+  @@index([deviceId, lastSeenAt])
+  @@map("xoy_device_sessions")
 }
 
 // Server-side, append-only diagnostic record for XOY extension executions.

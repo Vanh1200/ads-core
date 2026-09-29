@@ -98,7 +98,7 @@ export const errorHandler = (
         return;
     }
 
-    if (['LICENSE_INVALID', 'LICENSE_UNAVAILABLE', 'SESSION_INVALID', 'MANAGER_LOGIN_INVALID'].includes(err.message)) {
+    if (['LICENSE_INVALID', 'LICENSE_UNAVAILABLE', 'SESSION_INVALID', 'FINGERPRINT_CHANGED', 'DEVICE_REVOKED'].includes(err.message)) {
         res.status(401).json({ error: 'License or session is invalid', code: err.message });
         return;
     }

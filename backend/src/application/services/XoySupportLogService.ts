@@ -13,6 +13,16 @@ type IncomingEvent = {
     displayTime?: string | null;
 };
 
+type SupportLogFilters = {
+    page?: unknown;
+    limit?: unknown;
+    supportId?: unknown;
+    traceId?: unknown;
+    jobType?: unknown;
+    sentFrom?: unknown;
+    sentTo?: unknown;
+};
+
 const MAX_EVENTS_PER_BATCH = 100;
 const MAX_TEXT_LENGTH = 12_000;
 const MAX_FIELD_LENGTH = 255;
@@ -33,11 +43,42 @@ function safeOccurredAt(value: unknown) {
     return Number.isNaN(date.getTime()) ? new Date() : date;
 }
 
+function optionalDate(value: unknown, endOfDay = false) {
+    const text = optionalText(value, 32);
+    if (!text) return null;
+    const date = new Date(text);
+    if (Number.isNaN(date.getTime())) throw new Error('BAD_REQUEST: Thời gian gửi log không hợp lệ');
+    if (endOfDay && /^\d{4}-\d{2}-\d{2}$/.test(text)) date.setHours(23, 59, 59, 999);
+    return date;
+}
+
 function newSupportId() {
     return `SUP-${new Date().toISOString().slice(0, 10).replaceAll('-', '')}-${crypto.randomBytes(4).toString('hex').toUpperCase()}`;
 }
 
 export class XoySupportLogService {
+    private eventFilter(input: SupportLogFilters) {
+        const traceId = optionalText(input.traceId);
+        const jobType = optionalText(input.jobType);
+        return {
+            ...(traceId ? { traceId: { contains: traceId, mode: 'insensitive' as const } } : {}),
+            ...(jobType ? { jobType } : {}),
+        };
+    }
+
+    private filters(input: SupportLogFilters, licenseId?: string) {
+        const supportId = optionalText(input.supportId);
+        const sentFrom = optionalDate(input.sentFrom);
+        const sentTo = optionalDate(input.sentTo, true);
+        const eventFilter = this.eventFilter(input);
+        return {
+            ...(licenseId ? { device: { licenseId } } : {}),
+            ...(supportId ? { supportId: { contains: supportId, mode: 'insensitive' as const } } : {}),
+            ...(Object.keys(eventFilter).length ? { events: { some: eventFilter } } : {}),
+            ...((sentFrom || sentTo) ? { updatedAt: { ...(sentFrom ? { gte: sentFrom } : {}), ...(sentTo ? { lte: sentTo } : {}) } } : {}),
+        };
+    }
+
     async ingest(deviceId: string, input: { runId: unknown; events: unknown }) {
         const runId = requiredText(input.runId, 'runId');
         if (!Array.isArray(input.events) || input.events.length === 0 || input.events.length > MAX_EVENTS_PER_BATCH) {
@@ -67,31 +108,53 @@ export class XoySupportLogService {
         return { supportId: run.supportId, acceptedEventIds: events.map((event) => event.eventId) };
     }
 
-    async list(input: { page?: unknown; limit?: unknown; supportId?: unknown; traceId?: unknown }) {
-        const page = Math.max(1, Number(input.page) || 1);
-        const limit = Math.min(100, Math.max(1, Number(input.limit) || 20));
-        const supportId = optionalText(input.supportId);
-        const traceId = optionalText(input.traceId);
-        const where: any = {
-            ...(supportId ? { supportId: { contains: supportId, mode: 'insensitive' } } : {}),
-            ...(traceId ? { events: { some: { traceId: { contains: traceId, mode: 'insensitive' } } } } : {}),
-        };
-        const [data, total] = await Promise.all([
-            prisma.xoySupportLogRun.findMany({
-                where,
-                include: { device: { select: { displayName: true, extensionVersion: true, license: { select: { name: true } } } }, _count: { select: { events: true } } },
-                orderBy: { updatedAt: 'desc' }, skip: (page - 1) * limit, take: limit,
-            }),
-            prisma.xoySupportLogRun.count({ where }),
-        ]);
-        return { data, total, page, limit };
+    async list(input: SupportLogFilters) {
+        const where = this.filters(input);
+        const eventFilter = this.eventFilter(input);
+        const hasEventFilter = Object.keys(eventFilter).length > 0;
+        // The overview is intentionally grouped by paid license/customer, not
+        // Chrome profile. A practical upper bound prevents an unfiltered admin
+        // view from loading an unlimited operational log history at once.
+        const runs = await prisma.xoySupportLogRun.findMany({
+            where, orderBy: { updatedAt: 'desc' }, take: 500,
+            include: {
+                device: { select: { license: { select: { id: true, name: true, telegramId: true, plan: true } } } },
+                events: { where: hasEventFilter ? eventFilter : undefined, select: { jobType: true } },
+            },
+        });
+        const groups = new Map<string, any>();
+        for (const run of runs) {
+            const license = run.device.license;
+            const group = groups.get(license.id) || { license, runs: 0, events: 0, jobTypes: new Set<string>(), lastSentAt: run.updatedAt };
+            group.runs += 1;
+            group.events += run.events.length;
+            if (run.updatedAt > group.lastSentAt) group.lastSentAt = run.updatedAt;
+            for (const event of run.events) if (event.jobType) group.jobTypes.add(event.jobType);
+            groups.set(license.id, group);
+        }
+        const data = [...groups.values()].map((group) => ({ ...group, jobTypes: [...group.jobTypes].sort() }))
+            .sort((left, right) => right.lastSentAt.getTime() - left.lastSentAt.getTime());
+        return { data, total: data.length, capped: runs.length === 500 };
+    }
+
+    async listByLicense(licenseId: string, input: SupportLogFilters) {
+        const where = this.filters(input, licenseId);
+        const eventFilter = this.eventFilter(input);
+        const hasEventFilter = Object.keys(eventFilter).length > 0;
+        return prisma.xoySupportLogRun.findMany({
+            where, orderBy: { updatedAt: 'desc' }, take: 500,
+            include: {
+                device: { select: { fingerprint: true, license: { select: { id: true, name: true, telegramId: true, plan: true } } } },
+                events: { where: hasEventFilter ? eventFilter : undefined, orderBy: [{ occurredAt: 'asc' }, { createdAt: 'asc' }] },
+            },
+        });
     }
 
     async getBySupportId(supportId: string) {
         const run = await prisma.xoySupportLogRun.findUnique({
             where: { supportId },
             include: {
-                device: { select: { displayName: true, extensionVersion: true, license: { select: { name: true, managerEmail: true } } } },
+                device: { select: { fingerprint: true, license: { select: { name: true } } } },
                 events: { orderBy: [{ occurredAt: 'asc' }, { createdAt: 'asc' }] },
             },
         });

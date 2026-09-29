@@ -1,52 +1,120 @@
-import { useState } from 'react';
+import { Fragment, useMemo, useState } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { Key, Plus } from 'lucide-react';
+import { Check, ChevronDown, ChevronUp, Copy, Eye, EyeOff, Key, MonitorX, Plus } from 'lucide-react';
 import { xoyLicensesApi } from '../api/client';
+
+const PLAN_LABELS = {
+    BASIC: 'Cơ bản · Kháng nghị, Xác minh, Kích hoạt lại',
+    FULL: 'Full · Toàn bộ tính năng XOY',
+} as const;
+
+function expiresAfterMonths(months: number) {
+    const date = new Date();
+    date.setMonth(date.getMonth() + months);
+    return date.toISOString().slice(0, 10);
+}
+
+function profileName(installationId: string) {
+    return `Chrome profile · ...${installationId.slice(-4)}`;
+}
+
+function signalSummary(device: any) {
+    const signal = device.fingerprintSignals || {};
+    return `${signal.os || '—'} · ${signal.arch || '—'} / ${signal.naclArch || '—'} · ${signal.hardwareConcurrency || '—'} CPU · ${signal.deviceMemory || '—'} GB RAM`;
+}
 
 export default function XoyLicenses() {
     const queryClient = useQueryClient();
     const [issuedKey, setIssuedKey] = useState('');
+    const [copied, setCopied] = useState(false);
+    const [openLicenseId, setOpenLicenseId] = useState<string | null>(null);
+    const [revealedKeys, setRevealedKeys] = useState<Record<string, string>>({});
     const { data, isLoading } = useQuery({ queryKey: ['xoy-licenses'], queryFn: xoyLicensesApi.list });
+    const devices = useQuery({ queryKey: ['xoy-license-devices', openLicenseId], queryFn: () => xoyLicensesApi.listDevices(openLicenseId!).then((result) => result.data), enabled: Boolean(openLicenseId) });
     const create = useMutation({
         mutationFn: xoyLicensesApi.create,
         onSuccess: (result) => {
             setIssuedKey(result.data.licenseKey);
+            setCopied(false);
             queryClient.invalidateQueries({ queryKey: ['xoy-licenses'] });
+        },
+    });
+    const revealKey = useMutation({
+        mutationFn: (licenseId: string) => xoyLicensesApi.getKey(licenseId).then((result) => ({ licenseId, licenseKey: result.data.licenseKey })),
+        onSuccess: ({ licenseId, licenseKey }) => setRevealedKeys((current) => ({ ...current, [licenseId]: licenseKey })),
+    });
+    const revoke = useMutation({
+        mutationFn: ({ licenseId, deviceId }: { licenseId: string; deviceId: string }) => xoyLicensesApi.revokeDevice(licenseId, deviceId),
+        onSuccess: () => {
+            queryClient.invalidateQueries({ queryKey: ['xoy-licenses'] });
+            queryClient.invalidateQueries({ queryKey: ['xoy-license-devices', openLicenseId] });
         },
     });
     const licenses = data?.data || [];
 
+    const issuedKeyBlock = useMemo(() => issuedKey && <div style={{ margin: '0 16px 16px', padding: 14, background: '#ecfdf5', border: '1px solid #6ee7b7', borderRadius: 8, color: '#064e3b' }}>
+        <div style={{ fontWeight: 600, marginBottom: 8 }}>Đã cấp key — gửi key này cho khách</div>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap' }}>
+            <code style={{ color: '#111827', background: '#ffffff', border: '1px solid #a7f3d0', borderRadius: 6, padding: '8px 10px', fontSize: 16, fontWeight: 700, letterSpacing: '.04em' }}>{issuedKey}</code>
+            <button type="button" className="btn btn-secondary" onClick={async () => { await navigator.clipboard.writeText(issuedKey); setCopied(true); }}>
+                {copied ? <Check size={16} /> : <Copy size={16} />}{copied ? 'Đã sao chép' : 'Sao chép'}
+            </button>
+        </div>
+        <small style={{ display: 'block', marginTop: 8 }}>License đang ở trạng thái chưa active. Khi khách kích hoạt trong extension, fingerprint và Chrome profile sẽ hiện bên dưới.</small>
+    </div>, [issuedKey, copied]);
+
     const submit = (event: React.FormEvent<HTMLFormElement>) => {
         event.preventDefault();
         const values = new FormData(event.currentTarget);
+        const months = Number(values.get('durationMonths') || 6);
         create.mutate({
             name: String(values.get('name') || ''),
-            managerEmail: String(values.get('managerEmail') || ''),
-            managerPassword: String(values.get('managerPassword') || ''),
-            maxDevices: Number(values.get('maxDevices') || 3),
-            expiresAt: String(values.get('expiresAt') || '') || undefined,
+            telegramId: String(values.get('telegramId') || '') || undefined,
+            plan: String(values.get('plan') || 'BASIC') === 'FULL' ? 'FULL' : 'BASIC',
+            maxFingerprints: Number(values.get('maxFingerprints') || 3),
+            expiresAt: expiresAfterMonths(months),
         });
     };
 
     return <div>
-        <div className="page-header"><div><h1 className="page-title">XOY Licenses</h1><p className="page-subtitle">Tạo key kích hoạt và theo dõi profile Chrome đang dùng.</p></div></div>
+        <div className="page-header"><div><h1 className="page-title">XOY Licenses</h1><p className="page-subtitle">Cấp key theo gói và quản lý fingerprint đã kích hoạt từ Ads Core.</p></div></div>
         <div className="card" style={{ marginBottom: 20 }}>
-            <div className="card-header"><Key size={18} /> Tạo license mới</div>
+            <div className="card-header"><Key size={18} /> Cấp license mới</div>
             <form onSubmit={submit} style={{ display: 'grid', gap: 12, gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))', padding: 16 }}>
-                <input name="name" required placeholder="Tên khách hàng / gói" />
-                <input name="managerEmail" required type="email" placeholder="Email quản lý" />
-                <input name="managerPassword" required type="password" placeholder="Mật khẩu quản lý" />
-                <input name="maxDevices" required type="number" min="1" defaultValue="3" placeholder="Số profile" />
-                <input name="expiresAt" type="date" title="Ngày hết hạn (không bắt buộc)" />
-                <button className="btn btn-primary" disabled={create.isPending}><Plus size={16} />{create.isPending ? 'Đang tạo...' : 'Tạo license'}</button>
+                <input name="name" required placeholder="Tên khách hàng" />
+                <input name="telegramId" placeholder="Telegram ID (không bắt buộc)" />
+                <select name="plan" defaultValue="BASIC"><option value="BASIC">Gói Cơ bản</option><option value="FULL">Gói Full</option></select>
+                <input name="maxFingerprints" required type="number" min="1" max="100" defaultValue="3" placeholder="Số fingerprint" />
+                <select name="durationMonths" defaultValue="6"><option value="1">1 tháng</option><option value="6">6 tháng</option><option value="12">1 năm</option></select>
+                <button className="btn btn-primary" disabled={create.isPending}><Plus size={16} />{create.isPending ? 'Đang cấp...' : 'Cấp key'}</button>
             </form>
-            {issuedKey && <div style={{ margin: '0 16px 16px', padding: 12, background: '#ecfdf5', borderRadius: 8 }}>
-                Gửi key này cho khách (chỉ hiển thị một lần): <strong>{issuedKey}</strong>
-            </div>}
-            {create.isError && <div style={{ margin: '0 16px 16px', color: 'var(--danger)' }}>Không thể tạo license. Kiểm tra email quản lý có bị trùng không.</div>}
+            {issuedKeyBlock}
+            {create.isError && <div style={{ margin: '0 16px 16px', color: 'var(--danger)' }}>Không thể cấp license. Kiểm tra lại thông tin.</div>}
         </div>
-        <div className="card"><div className="table-container"><table className="data-table"><thead><tr><th>Khách hàng</th><th>Key</th><th>Email quản lý</th><th>Profile active</th><th>Hết hạn</th><th>Trạng thái</th></tr></thead><tbody>
-            {isLoading ? <tr><td colSpan={6} style={{ textAlign: 'center', padding: 28 }}>Đang tải...</td></tr> : licenses.map((license: any) => <tr key={license.id}><td>{license.name}</td><td>{license.keyPrefix}...</td><td>{license.managerEmail}</td><td>{license._count.devices}/{license.maxDevices}</td><td>{license.expiresAt ? new Date(license.expiresAt).toLocaleDateString('vi-VN') : 'Không giới hạn'}</td><td>{license.status}</td></tr>)}
+        <div className="card"><div className="table-container"><table className="data-table"><thead><tr><th>Khách hàng</th><th>Gói</th><th>License key</th><th>Fingerprint active</th><th>Hết hạn</th><th>Trạng thái</th><th></th></tr></thead><tbody>
+            {isLoading ? <tr><td colSpan={7} style={{ textAlign: 'center', padding: 28 }}>Đang tải...</td></tr> : licenses.map((license: any) => {
+                const visibleKey = revealedKeys[license.id];
+                const isOpen = openLicenseId === license.id;
+                return <Fragment key={license.id}>
+                    <tr key={license.id}>
+                        <td><strong>{license.name}</strong>{license.telegramId && <small style={{ display: 'block' }}>Telegram: {license.telegramId}</small>}</td>
+                        <td>{PLAN_LABELS[license.plan as keyof typeof PLAN_LABELS] || license.plan}</td>
+                        <td><div style={{ display: 'flex', alignItems: 'center', gap: 6 }}><code>{visibleKey || `${license.keyPrefix}...`}</code>{visibleKey ? <button className="icon-btn" title="Ẩn key" onClick={() => setRevealedKeys((current) => { const next = { ...current }; delete next[license.id]; return next; })}><EyeOff size={15} /></button> : <button className="icon-btn" title="Hiện key" disabled={!license.keyAvailable || revealKey.isPending} onClick={() => revealKey.mutate(license.id)}><Eye size={15} /></button>}{visibleKey && <button className="icon-btn" title="Sao chép key" onClick={() => navigator.clipboard.writeText(visibleKey)}><Copy size={15} /></button>}</div></td>
+                        <td>{license.activeFingerprints}/{license.maxFingerprints}</td>
+                        <td>{license.expiresAt ? new Date(license.expiresAt).toLocaleDateString('vi-VN') : '—'}</td>
+                        <td>{license.status === 'ISSUED' ? 'CHƯA ACTIVE' : license.status}</td>
+                        <td><button className="btn btn-secondary" onClick={() => setOpenLicenseId(isOpen ? null : license.id)}>{isOpen ? <ChevronUp size={16} /> : <ChevronDown size={16} />}{isOpen ? 'Ẩn' : 'Thiết bị'}</button></td>
+                    </tr>
+                    {isOpen && <tr key={`${license.id}-devices`}><td colSpan={7} style={{ padding: 16, background: 'var(--bg-secondary)' }}>
+                        {devices.isLoading ? 'Đang tải fingerprint...' : devices.isError ? 'Không thể tải fingerprint.' : (devices.data || []).length === 0 ? 'Chưa có fingerprint nào kích hoạt license này.' : <div style={{ display: 'grid', gap: 12 }}>{devices.data.map((device: any) => <div key={device.id} style={{ padding: 12, border: '1px solid var(--border-color)', borderRadius: 8, background: 'var(--bg-primary)' }}>
+                            <div style={{ display: 'flex', justifyContent: 'space-between', gap: 12, alignItems: 'center' }}><div><strong>{device.fingerprint}</strong><small style={{ display: 'block' }}>{signalSummary(device)}</small></div><div style={{ display: 'flex', alignItems: 'center', gap: 8 }}><small>{device.status} · dùng lần cuối {new Date(device.lastSeenAt).toLocaleString('vi-VN')}</small>{device.status !== 'REVOKED' && <button className="btn btn-danger" disabled={revoke.isPending} onClick={() => window.confirm(`Thu hồi ${device.fingerprint}? Toàn bộ Chrome profile thuộc fingerprint này sẽ bị dừng.`) && revoke.mutate({ licenseId: license.id, deviceId: device.id })}><MonitorX size={15} />Thu hồi</button>}</div></div>
+                            <div style={{ marginTop: 8, fontSize: 12 }}>Extension: {device.extensionMetadata?.name || '—'} {device.extensionMetadata?.version || ''} · MV{device.extensionMetadata?.manifestVersion || '—'} · {device.extensionMetadata?.id || '—'}</div>
+                            <div style={{ marginTop: 4, fontSize: 12, overflowWrap: 'anywhere' }}>WebGL: {device.fingerprintSignals?.webglVendor || '—'} · {device.fingerprintSignals?.webglRenderer || '—'}</div>
+                            <div style={{ marginTop: 4, fontSize: 12, overflowWrap: 'anywhere' }}>User agent: {device.userAgent || '—'}</div>
+                            <div style={{ marginTop: 8, display: 'grid', gap: 4 }}>{device.sessions.map((session: any) => <small key={session.id}>{profileName(session.installationId)} · hoạt động {new Date(session.lastSeenAt).toLocaleString('vi-VN')}</small>)}</div>
+                        </div>)}</div>}
+                    </td></tr>}</Fragment>;
+            })}
         </tbody></table></div></div>
     </div>;
 }

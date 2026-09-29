@@ -8,7 +8,7 @@ import { authenticateToken, isAdmin } from '../../infrastructure/middleware/auth
 const router = Router();
 const secret = () => process.env.XOY_JWT_SECRET || process.env.JWT_SECRET || 'change-me-in-production';
 
-function requireScope(scope: 'xoy-device' | 'xoy-manager') {
+function requireScope(scope: 'xoy-device') {
     return (req: any, _res: any, next: any) => {
         try {
             const token = req.headers.authorization?.replace(/^Bearer\s+/i, '');
@@ -33,29 +33,32 @@ router.post('/session/refresh', asyncHandler(async (req, res) => {
     res.json(await xoyLicenseService.refresh(req.body));
 }));
 router.post('/heartbeat', requireScope('xoy-device'), asyncHandler(async (req: any, res) => {
-    res.json(await xoyLicenseService.heartbeat(req.xoyAuth.deviceId));
+    res.json(await xoyLicenseService.heartbeat(req.xoyAuth.deviceId, req.xoyAuth.sessionId));
 }));
 router.get('/entitlement', requireScope('xoy-device'), asyncHandler(async (req: any, res) => {
-    res.json(await xoyLicenseService.getEntitlement(req.xoyAuth.deviceId));
+    res.json(await xoyLicenseService.getEntitlement(req.xoyAuth.deviceId, req.xoyAuth.sessionId));
 }));
 router.post('/support/logs/batches', requireScope('xoy-device'), asyncHandler(async (req: any, res) => {
     // A signed token may still exist briefly after a device is revoked. Check
     // current device/license state before accepting diagnostic data.
-    await xoyLicenseService.getEntitlement(req.xoyAuth.deviceId);
+    await xoyLicenseService.getEntitlement(req.xoyAuth.deviceId, req.xoyAuth.sessionId);
     res.json(await xoySupportLogService.ingest(req.xoyAuth.deviceId, req.body));
 }));
-router.post('/manager/login', asyncHandler(async (req, res) => {
-    res.json(await xoyLicenseService.managerLogin(req.body.email || '', req.body.password || ''));
+router.get('/admin/licenses/:licenseId/key', authenticateToken, isAdmin, asyncHandler(async (req, res) => {
+    res.json(await xoyLicenseService.getLicenseKey(req.params.licenseId));
 }));
-router.get('/manager/devices', requireScope('xoy-manager'), asyncHandler(async (req: any, res) => {
-    res.json(await xoyLicenseService.listDevices(req.xoyAuth.licenseId));
+router.get('/admin/licenses/:licenseId/devices', authenticateToken, isAdmin, asyncHandler(async (req, res) => {
+    res.json(await xoyLicenseService.listDevices(req.params.licenseId));
 }));
-router.delete('/manager/devices/:deviceId', requireScope('xoy-manager'), asyncHandler(async (req: any, res) => {
-    await xoyLicenseService.revokeDevice(req.xoyAuth.licenseId, req.params.deviceId);
+router.delete('/admin/licenses/:licenseId/devices/:deviceId', authenticateToken, isAdmin, asyncHandler(async (req, res) => {
+    await xoyLicenseService.revokeDevice(req.params.licenseId, req.params.deviceId);
     res.status(204).end();
 }));
 router.get('/admin/support-logs', authenticateToken, isAdmin, asyncHandler(async (req, res) => {
     res.json(await xoySupportLogService.list(req.query));
+}));
+router.get('/admin/licenses/:licenseId/support-logs', authenticateToken, isAdmin, asyncHandler(async (req, res) => {
+    res.json(await xoySupportLogService.listByLicense(req.params.licenseId, req.query));
 }));
 router.get('/admin/support-logs/:supportId', authenticateToken, isAdmin, asyncHandler(async (req, res) => {
     res.json(await xoySupportLogService.getBySupportId(req.params.supportId));
