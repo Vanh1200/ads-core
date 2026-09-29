@@ -34,7 +34,7 @@ describe('XoyLicenseService', () => {
         });
 
         expect(prismaMock.xoyDevice.count).not.toHaveBeenCalled();
-        expect(result.entitlement.features).toEqual(expect.objectContaining({ appeal: true, verify: true, reactivate: true, backupCampaign: false, backupPerformance: false, rename: false }));
+        expect(result.entitlement.features).toEqual(expect.objectContaining({ appeal: true, verify: true, reactivate: true, rename: true, backupCampaign: false, backupPerformance: false }));
         expect(prismaMock.xoyDeviceSession.create).toHaveBeenCalledWith({ data: { deviceId: 'device-1', installationId: 'profile-2' } });
         expect(prismaMock.xoyDevice.update).toHaveBeenCalledWith(expect.objectContaining({ data: expect.objectContaining({ fingerprintSignals: expect.objectContaining({ os: 'mac', deviceMemory: 16 }), userAgent: 'Chrome test' }) }));
     });

@@ -57,7 +57,7 @@ function normalizeExtension(input: any) {
 }
 function featuresFor(plan: 'BASIC' | 'FULL') {
     const basic = plan === 'BASIC';
-    return { appeal: true, verify: true, reactivate: true, backupCampaign: !basic, backupPerformance: !basic, rename: !basic };
+    return { appeal: true, verify: true, reactivate: true, rename: true, backupCampaign: !basic, backupPerformance: !basic };
 }
 
 export class XoyLicenseService {

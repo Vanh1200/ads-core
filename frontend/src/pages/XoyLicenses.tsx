@@ -4,7 +4,7 @@ import { Check, ChevronDown, ChevronUp, Copy, Eye, EyeOff, Key, MonitorX, Plus }
 import { xoyLicensesApi } from '../api/client';
 
 const PLAN_LABELS = {
-    BASIC: 'Cơ bản · Kháng nghị, Xác minh, Kích hoạt lại',
+    BASIC: 'Cơ bản · Kháng nghị, Xác minh, Kích hoạt lại, Đổi tên',
     FULL: 'Full · Toàn bộ tính năng XOY',
 } as const;
 
