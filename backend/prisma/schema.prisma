@@ -397,8 +397,6 @@ model XoyDevice {
   licenseId          String          @map("license_id")
   deviceHash         String          @map("device_hash")
   deviceContext      Json?           @map("device_context")
-  publicKey          Json?           @map("public_key")
-  publicKeyHash      String?         @map("public_key_hash")
   extensionMetadata  Json?           @map("extension_metadata")
   userAgent          String?         @map("user_agent") @db.Text
   status             XoyDeviceStatus @default(ACTIVE)
@@ -461,6 +459,8 @@ model XoyDeviceSession {
   installationId   String    @unique @map("installation_id")
   refreshTokenHash String?   @map("refresh_token_hash")
   refreshExpiresAt DateTime? @map("refresh_expires_at")
+  publicKey        Json?     @map("public_key")
+  publicKeyHash    String?   @map("public_key_hash")
   firstSeenAt      DateTime  @default(now()) @map("first_seen_at")
   lastSeenAt       DateTime  @default(now()) @map("last_seen_at")
   revokedAt        DateTime? @map("revoked_at")

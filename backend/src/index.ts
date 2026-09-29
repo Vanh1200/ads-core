@@ -203,9 +203,6 @@ async function applyDatabasePatches() {
         END $$;`);
         await prisma.$executeRawUnsafe('ALTER TABLE "xoy_devices" ADD COLUMN IF NOT EXISTS "device_hash" TEXT');
         await prisma.$executeRawUnsafe('ALTER TABLE "xoy_devices" ADD COLUMN IF NOT EXISTS "device_context" JSONB');
-        await prisma.$executeRawUnsafe('ALTER TABLE "xoy_devices" ADD COLUMN IF NOT EXISTS "public_key" JSONB');
-        await prisma.$executeRawUnsafe('ALTER TABLE "xoy_devices" ADD COLUMN IF NOT EXISTS "public_key_hash" TEXT');
-        await prisma.$executeRawUnsafe('UPDATE "xoy_devices" SET "status" = \'INACTIVE\' WHERE "public_key" IS NULL');
         await prisma.$executeRawUnsafe('ALTER TABLE "xoy_devices" ADD COLUMN IF NOT EXISTS "extension_metadata" JSONB');
         await prisma.$executeRawUnsafe('ALTER TABLE "xoy_devices" ADD COLUMN IF NOT EXISTS "user_agent" TEXT');
         await prisma.$executeRawUnsafe(`CREATE TABLE IF NOT EXISTS "xoy_device_sessions" (
@@ -215,6 +212,8 @@ async function applyDatabasePatches() {
             "revoked_at" TIMESTAMP(3), CONSTRAINT "xoy_device_sessions_device_id_fkey" FOREIGN KEY ("device_id") REFERENCES "xoy_devices"("id") ON DELETE CASCADE ON UPDATE CASCADE
         )`);
         await prisma.$executeRawUnsafe('CREATE UNIQUE INDEX IF NOT EXISTS "xoy_device_sessions_installation_id_key" ON "xoy_device_sessions"("installation_id")');
+        await prisma.$executeRawUnsafe('ALTER TABLE "xoy_device_sessions" ADD COLUMN IF NOT EXISTS "public_key" JSONB');
+        await prisma.$executeRawUnsafe('ALTER TABLE "xoy_device_sessions" ADD COLUMN IF NOT EXISTS "public_key_hash" TEXT');
         await prisma.$executeRawUnsafe(`DO $$ BEGIN
             IF EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = 'xoy_devices' AND column_name = 'installation_id') THEN
                 INSERT INTO "xoy_device_sessions" ("id", "device_id", "installation_id", "refresh_token_hash", "refresh_expires_at", "first_seen_at", "last_seen_at", "revoked_at")
@@ -234,6 +233,7 @@ async function applyDatabasePatches() {
         await prisma.$executeRawUnsafe('DROP INDEX IF EXISTS "xoy_devices_license_id_fingerprint_key"');
         await prisma.$executeRawUnsafe('CREATE UNIQUE INDEX IF NOT EXISTS "xoy_devices_license_id_device_hash_key" ON "xoy_devices"("license_id", "device_hash")');
         await prisma.$executeRawUnsafe('CREATE INDEX IF NOT EXISTS "xoy_device_sessions_device_id_last_seen_at_idx" ON "xoy_device_sessions"("device_id", "last_seen_at")');
+        await prisma.$executeRawUnsafe('UPDATE "xoy_devices" SET "status" = \'INACTIVE\' WHERE NOT EXISTS (SELECT 1 FROM "xoy_device_sessions" WHERE "xoy_device_sessions"."device_id" = "xoy_devices"."id" AND "public_key" IS NOT NULL)');
         await prisma.$executeRawUnsafe(`CREATE TABLE IF NOT EXISTS "xoy_support_log_runs" (
             "id" TEXT NOT NULL PRIMARY KEY, "device_id" TEXT NOT NULL, "run_id" TEXT NOT NULL,
             "support_id" TEXT NOT NULL, "created_at" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,

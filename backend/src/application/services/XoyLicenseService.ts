@@ -118,10 +118,14 @@ export class XoyLicenseService {
         ensureUsableLicense(license);
         return { licenseName: license.name, plan: license.plan, maxFingerprints: license.maxFingerprints, expiresAt: license.expiresAt?.toISOString() || null, features: featuresFor(license.plan) };
     }
-    private async upsertProfileSession(deviceId: string, installationId: string) {
+    private async upsertProfileSession(deviceId: string, installationId: string, publicKey: any, keyHash: string) {
         const existing = await prisma.xoyDeviceSession.findUnique({ where: { installationId } });
-        if (existing) return prisma.xoyDeviceSession.update({ where: { id: existing.id }, data: { deviceId, revokedAt: null, lastSeenAt: new Date() } });
-        return prisma.xoyDeviceSession.create({ data: { deviceId, installationId } });
+        if (existing) {
+            const keyChanged = Boolean(existing.publicKeyHash && existing.publicKeyHash !== keyHash);
+            const session = await prisma.xoyDeviceSession.update({ where: { id: existing.id }, data: { deviceId, publicKey, publicKeyHash: keyHash, revokedAt: null, lastSeenAt: new Date() } });
+            return { session, keyChanged };
+        }
+        return { session: await prisma.xoyDeviceSession.create({ data: { deviceId, installationId, publicKey, publicKeyHash: keyHash } }), keyChanged: false };
     }
     private async issueDeviceSession(device: any, session: any) {
         const refreshToken = newRefreshToken();
@@ -161,8 +165,8 @@ export class XoyLicenseService {
             await this.audit(session.device.licenseId, 'DEVICE_CONTEXT_CHANGED', { received: data.deviceContext }, session.deviceId);
             throw new Error('DEVICE_CONTEXT_CHANGED');
         }
-        if (!session.device.publicKey) throw new Error('SESSION_INVALID');
-        return this.createChallenge({ licenseId: session.device.licenseId, sessionId: session.id, purpose: 'REFRESH', installationId, ...data, publicKey: session.device.publicKey });
+        if (!session.publicKey) throw new Error('SESSION_INVALID');
+        return this.createChallenge({ licenseId: session.device.licenseId, sessionId: session.id, purpose: 'REFRESH', installationId, ...data, publicKey: session.publicKey });
     }
     private async consumeChallenge(input: { installationId: string; deviceProof: DeviceProof }, purpose: 'ACTIVATE' | 'REFRESH') {
         const installationId = requiredText(input.installationId, 'Installation ID', 255);
@@ -193,7 +197,7 @@ export class XoyLicenseService {
         const challenge = await this.consumeChallenge(input, 'ACTIVATE');
         await this.expireInactiveDevices(challenge.licenseId);
         let device = await prisma.xoyDevice.findUnique({ where: { licenseId_deviceHash: { licenseId: challenge.licenseId, deviceHash: challenge.deviceHash } } });
-        const metadata: any = { deviceContext: challenge.deviceContext, extensionMetadata: challenge.extensionMetadata, userAgent: challenge.userAgent, publicKey: challenge.publicKey, publicKeyHash: challenge.publicKeyHash };
+        const metadata: any = { deviceContext: challenge.deviceContext, extensionMetadata: challenge.extensionMetadata, userAgent: challenge.userAgent };
         if (!device) {
             const activeCount = await prisma.xoyDevice.count({ where: { licenseId: challenge.licenseId, status: 'ACTIVE' } });
             if (activeCount >= challenge.license.maxFingerprints) throw new Error('DEVICE_LIMIT_REACHED');
@@ -205,11 +209,12 @@ export class XoyLicenseService {
                 if (device.status === 'REVOKED') await this.audit(challenge.licenseId, 'DEVICE_REACTIVATED', { previousStatus: 'REVOKED' }, device.id);
             }
             if (canonicalJson(device.deviceContext) !== canonicalJson(challenge.deviceContext)) await this.audit(challenge.licenseId, 'DEVICE_CONTEXT_UPDATED', { deviceContext: challenge.deviceContext }, device.id);
-            if (device.publicKeyHash && device.publicKeyHash !== challenge.publicKeyHash) await this.audit(challenge.licenseId, 'DEVICE_PUBLIC_KEY_UPDATED', { publicKeyHash: challenge.publicKeyHash }, device.id);
             device = await prisma.xoyDevice.update({ where: { id: device.id }, data: { ...metadata, status: 'ACTIVE', lastSeenAt: new Date(), revokedAt: null } });
         }
         if (challenge.license.status === 'ISSUED') await prisma.xoyLicense.update({ where: { id: challenge.license.id }, data: { status: 'ACTIVE' } });
-        return this.issueDeviceSession(device, await this.upsertProfileSession(device.id, challenge.installationId));
+        const profile = await this.upsertProfileSession(device.id, challenge.installationId, challenge.publicKey, challenge.publicKeyHash);
+        if (profile.keyChanged) await this.audit(challenge.licenseId, 'PROFILE_PUBLIC_KEY_UPDATED', { publicKeyHash: challenge.publicKeyHash }, device.id);
+        return this.issueDeviceSession(device, profile.session);
     }
     async refresh(input: { installationId: string; deviceProof: DeviceProof }) {
         const challenge = await this.consumeChallenge(input, 'REFRESH');
