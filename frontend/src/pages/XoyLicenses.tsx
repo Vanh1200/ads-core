@@ -19,20 +19,20 @@ function profileName(installationId: string) {
 }
 
 function signalSummary(device: any) {
-    const signal = device.fingerprintSignals || {};
-    return `${signal.os || '—'} · ${signal.arch || '—'} / ${signal.naclArch || '—'} · ${signal.hardwareConcurrency || '—'} CPU · ${signal.deviceMemory || '—'} GB RAM`;
+    const context = device.deviceContext || {};
+    return `${context.os || '—'} · ${context.architecture || '—'} / ${context.naclArchitecture || '—'} · ${context.logicalCpuCount || '—'} CPU · ${context.memoryGiB || '—'} GB RAM`;
 }
 
-function fingerprintV2Details(device: any) {
-    const signal = device.fingerprintSignals || {};
-    const capabilities = signal.webglCapabilities || {};
+function deviceContextDetails(device: any) {
+    const context = device.deviceContext || {};
+    const capabilities = context.webglProfile || {};
     const dimensions = Array.isArray(capabilities.maxViewportDimensions) && capabilities.maxViewportDimensions.length
         ? capabilities.maxViewportDimensions.join(' × ')
         : '—';
     return {
-        canvas: signal.canvasFingerprint || '—',
+        canvas: context.canvasToken || '—',
         webglCapabilities: `${capabilities.version || '—'} · GLSL ${capabilities.shadingLanguageVersion || '—'} · texture ${capabilities.maxTextureSize || '—'} · viewport ${dimensions} · ${capabilities.extensionCount ?? '—'} extensions`,
-        uaClientHints: `${signal.userAgentPlatform || '—'} · ${signal.userAgentArchitecture || '—'} · ${signal.userAgentBitness || '—'}-bit`,
+        uaClientHints: `${context.browserPlatform || '—'} · ${context.browserArchitecture || '—'} · ${context.browserBitness || '—'}-bit`,
     };
 }
 
@@ -44,6 +44,7 @@ export default function XoyLicenses() {
     const [revealedKeys, setRevealedKeys] = useState<Record<string, string>>({});
     const { data, isLoading } = useQuery({ queryKey: ['xoy-licenses'], queryFn: xoyLicensesApi.list });
     const devices = useQuery({ queryKey: ['xoy-license-devices', openLicenseId], queryFn: () => xoyLicensesApi.listDevices(openLicenseId!).then((result) => result.data), enabled: Boolean(openLicenseId) });
+    const audits = useQuery({ queryKey: ['xoy-license-device-audits', openLicenseId], queryFn: () => xoyLicensesApi.listDeviceAudits(openLicenseId!).then((result) => result.data), enabled: Boolean(openLicenseId) });
     const create = useMutation({
         mutationFn: xoyLicensesApi.create,
         onSuccess: (result) => {
@@ -73,7 +74,7 @@ export default function XoyLicenses() {
                 {copied ? <Check size={16} /> : <Copy size={16} />}{copied ? 'Đã sao chép' : 'Sao chép'}
             </button>
         </div>
-        <small style={{ display: 'block', marginTop: 8 }}>License đang ở trạng thái chưa active. Khi khách kích hoạt trong extension, fingerprint và Chrome profile sẽ hiện bên dưới.</small>
+        <small style={{ display: 'block', marginTop: 8 }}>License đang ở trạng thái chưa active. Khi khách kích hoạt trong extension, thông tin thiết bị và Chrome profile sẽ hiện bên dưới.</small>
     </div>, [issuedKey, copied]);
 
     const submit = (event: React.FormEvent<HTMLFormElement>) => {
@@ -90,7 +91,7 @@ export default function XoyLicenses() {
     };
 
     return <div>
-        <div className="page-header"><div><h1 className="page-title">XOY Licenses</h1><p className="page-subtitle">Cấp key theo gói và quản lý fingerprint đã kích hoạt từ Ads Core.</p></div></div>
+        <div className="page-header"><div><h1 className="page-title">XOY Licenses</h1><p className="page-subtitle">Cấp key theo gói và quản lý thiết bị đã kích hoạt từ Ads Core.</p></div></div>
         <div className="card" style={{ marginBottom: 20 }}>
             <div className="card-header"><Key size={18} /> Cấp license mới</div>
             <form onSubmit={submit} style={{ padding: 16 }}>
@@ -106,7 +107,7 @@ export default function XoyLicenses() {
             {issuedKeyBlock}
             {create.isError && <div style={{ margin: '0 16px 16px', color: 'var(--danger)' }}>Không thể cấp license. Kiểm tra lại thông tin.</div>}
         </div>
-        <div className="card"><div className="table-container"><table className="data-table"><thead><tr><th>Khách hàng</th><th>Gói</th><th>License key</th><th>Fingerprint active</th><th>Hết hạn</th><th>Trạng thái</th><th></th></tr></thead><tbody>
+        <div className="card"><div className="table-container"><table className="data-table"><thead><tr><th>Khách hàng</th><th>Gói</th><th>License key</th><th>Thiết bị active</th><th>Hết hạn</th><th>Trạng thái</th><th></th></tr></thead><tbody>
             {isLoading ? <tr><td colSpan={7} style={{ textAlign: 'center', padding: 28 }}>Đang tải...</td></tr> : licenses.map((license: any) => {
                 const visibleKey = revealedKeys[license.id];
                 const isOpen = openLicenseId === license.id;
@@ -121,19 +122,20 @@ export default function XoyLicenses() {
                         <td><button className="btn btn-secondary" onClick={() => setOpenLicenseId(isOpen ? null : license.id)}>{isOpen ? <ChevronUp size={16} /> : <ChevronDown size={16} />}{isOpen ? 'Ẩn' : 'Thiết bị'}</button></td>
                     </tr>
                     {isOpen && <tr key={`${license.id}-devices`}><td colSpan={7} style={{ padding: 16, background: 'var(--background)' }}>
-                        {devices.isLoading ? 'Đang tải fingerprint...' : devices.isError ? 'Không thể tải fingerprint.' : (devices.data || []).length === 0 ? 'Chưa có fingerprint nào kích hoạt license này.' : <div style={{ display: 'grid', gap: 12 }}>{devices.data.map((device: any) => {
-                            const details = fingerprintV2Details(device);
+                        {devices.isLoading ? 'Đang tải thiết bị...' : devices.isError ? 'Không thể tải thiết bị.' : (devices.data || []).length === 0 ? 'Chưa có thiết bị nào kích hoạt license này.' : <div style={{ display: 'grid', gap: 12 }}>{devices.data.map((device: any) => {
+                            const details = deviceContextDetails(device);
                             return <div key={device.id} style={{ padding: 12, border: '1px solid var(--border)', borderRadius: 8, background: 'var(--surface)' }}>
-                            <div style={{ display: 'flex', justifyContent: 'space-between', gap: 12, alignItems: 'center' }}><div><strong>{device.fingerprint}</strong><small style={{ display: 'block' }}>{signalSummary(device)}</small></div><div style={{ display: 'flex', alignItems: 'center', gap: 8 }}><small>{device.status} · dùng lần cuối {new Date(device.lastSeenAt).toLocaleString('vi-VN')}</small>{device.status !== 'REVOKED' && <button className="btn btn-danger" disabled={revoke.isPending} onClick={() => window.confirm(`Thu hồi ${device.fingerprint}? Toàn bộ Chrome profile thuộc fingerprint này sẽ bị dừng.`) && revoke.mutate({ licenseId: license.id, deviceId: device.id })}><MonitorX size={15} />Thu hồi</button>}</div></div>
+                            <div style={{ display: 'flex', justifyContent: 'space-between', gap: 12, alignItems: 'center' }}><div><strong>Thiết bị · từ {new Date(device.firstSeenAt).toLocaleDateString('vi-VN')}</strong><small style={{ display: 'block' }}>{signalSummary(device)}</small></div><div style={{ display: 'flex', alignItems: 'center', gap: 8 }}><small>{device.status} · dùng lần cuối {new Date(device.lastSeenAt).toLocaleString('vi-VN')}</small>{device.status !== 'REVOKED' && <button className="btn btn-danger" disabled={revoke.isPending} onClick={() => window.confirm('Thu hồi thiết bị này? Toàn bộ Chrome profile thuộc thiết bị sẽ bị dừng.') && revoke.mutate({ licenseId: license.id, deviceId: device.id })}><MonitorX size={15} />Thu hồi</button>}</div></div>
                             <div style={{ marginTop: 8, fontSize: 12 }}>Extension: {device.extensionMetadata?.name || '—'} {device.extensionMetadata?.version || ''} · MV{device.extensionMetadata?.manifestVersion || '—'} · {device.extensionMetadata?.id || '—'}</div>
-                            <div style={{ marginTop: 4, fontSize: 12, overflowWrap: 'anywhere' }}>WebGL: {device.fingerprintSignals?.webglVendor || '—'} · {device.fingerprintSignals?.webglRenderer || '—'}</div>
-                            <div style={{ marginTop: 4, fontSize: 12, overflowWrap: 'anywhere' }}>Canvas hash: {details.canvas}</div>
+                            <div style={{ marginTop: 4, fontSize: 12, overflowWrap: 'anywhere' }}>WebGL: {device.deviceContext?.webglVendor || '—'} · {device.deviceContext?.webglRenderer || '—'}</div>
+                            <div style={{ marginTop: 4, fontSize: 12, overflowWrap: 'anywhere' }}>Canvas token: {details.canvas}</div>
                             <div style={{ marginTop: 4, fontSize: 12, overflowWrap: 'anywhere' }}>WebGL capabilities: {details.webglCapabilities}</div>
                             <div style={{ marginTop: 4, fontSize: 12 }}>UA architecture: {details.uaClientHints}</div>
                             <div style={{ marginTop: 4, fontSize: 12, overflowWrap: 'anywhere' }}>User agent: {device.userAgent || '—'}</div>
                             <div style={{ marginTop: 8, display: 'grid', gap: 4 }}>{device.sessions.map((session: any) => <small key={session.id}>{profileName(session.installationId)} · hoạt động {new Date(session.lastSeenAt).toLocaleString('vi-VN')}</small>)}</div>
                         </div>;
                         })}</div>}
+                        <div style={{ marginTop: 16, borderTop: '1px solid var(--border)', paddingTop: 12 }}><strong>Nhật ký bảo mật thiết bị</strong>{audits.isLoading ? <small style={{ display: 'block', marginTop: 8 }}>Đang tải...</small> : (audits.data || []).length === 0 ? <small style={{ display: 'block', marginTop: 8 }}>Chưa có thay đổi hoặc proof lỗi.</small> : <div style={{ display: 'grid', gap: 6, marginTop: 8 }}>{audits.data.map((audit: any) => <small key={audit.id}><strong>{audit.eventType}</strong> · {new Date(audit.createdAt).toLocaleString('vi-VN')}</small>)}</div>}</div>
                     </td></tr>}</Fragment>;
             })}
         </tbody></table></div></div>

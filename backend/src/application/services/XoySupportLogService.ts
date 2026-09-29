@@ -144,7 +144,7 @@ export class XoySupportLogService {
         return prisma.xoySupportLogRun.findMany({
             where, orderBy: { updatedAt: 'desc' }, take: 500,
             include: {
-                device: { select: { fingerprint: true, license: { select: { id: true, name: true, telegramId: true, plan: true } } } },
+                device: { select: { license: { select: { id: true, name: true, telegramId: true, plan: true } } } },
                 events: { where: hasEventFilter ? eventFilter : undefined, orderBy: [{ occurredAt: 'asc' }, { createdAt: 'asc' }] },
             },
         });
@@ -154,7 +154,7 @@ export class XoySupportLogService {
         const run = await prisma.xoySupportLogRun.findUnique({
             where: { supportId },
             include: {
-                device: { select: { fingerprint: true, license: { select: { name: true } } } },
+                device: { select: { license: { select: { name: true } } } },
                 events: { orderBy: [{ occurredAt: 'asc' }, { createdAt: 'asc' }] },
             },
         });

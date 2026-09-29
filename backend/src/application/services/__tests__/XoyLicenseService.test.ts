@@ -1,58 +1,73 @@
-import { describe, expect, it } from 'vitest';
+import crypto from 'crypto';
+import { beforeEach, describe, expect, it } from 'vitest';
 import { prismaMock } from '../../../__tests__/setup';
 import { XoyLicenseService } from '../XoyLicenseService';
 
-const activeLicense = {
-    id: 'license-1', name: 'Khách A', telegramId: '@khacha', keyPrefix: 'XOY-TEST', keyHash: 'hash', keyEncrypted: 'key',
-    plan: 'BASIC', maxFingerprints: 3, status: 'ACTIVE', expiresAt: null, createdAt: new Date(), updatedAt: new Date(),
-};
+const license = { id: 'license-1', name: 'Khách A', telegramId: null, keyPrefix: 'XOY-TEST', keyHash: 'hash', keyEncrypted: 'key', plan: 'BASIC', maxFingerprints: 1, status: 'ACTIVE', expiresAt: null, createdAt: new Date(), updatedAt: new Date() };
+const context = { os: 'mac', architecture: 'arm64', naclArchitecture: 'arm', logicalCpuCount: 10, memoryGiB: 16, webglVendor: 'Apple', webglRenderer: 'M5', canvasToken: 'canvas-a', webglProfile: {}, browserArchitecture: 'arm', browserBitness: '64', browserPlatform: 'macOS' };
 
-describe('XoyLicenseService', () => {
-    it('creates an issued Basic license without any customer password or email', async () => {
-        prismaMock.xoyLicense.create.mockImplementation((({ data }: any) => ({ id: 'license-1', createdAt: new Date(), updatedAt: new Date(), ...data }) as any) as any);
-        const result = await new XoyLicenseService().createLicense({ name: 'Khách A', telegramId: '@khacha', plan: 'BASIC', maxFingerprints: 3, expiresAt: null });
+function deviceKey() {
+    return crypto.generateKeyPairSync('ec', { namedCurve: 'prime256v1' });
+}
+function proofFor(privateKey: crypto.KeyObject, challengeId = 'challenge-1', nonce = 'nonce-1', installationId = 'profile-1', timestamp = Date.now()) {
+    const payload = ['XOY-DEVICE-PROOF-V1', challengeId, nonce, installationId, String(timestamp)].join('\n');
+    return { challengeId, nonce, timestamp, signature: crypto.sign('sha256', Buffer.from(payload), { key: privateKey, dsaEncoding: 'ieee-p1363' }).toString('base64url') };
+}
+function nonceHash(nonce: string) { return crypto.createHmac('sha256', process.env.XOY_LICENSE_PEPPER || process.env.XOY_JWT_SECRET || process.env.JWT_SECRET || 'change-me-in-production').update(nonce).digest('hex'); }
+function challenge(privateKey: crypto.KeyObject, overrides: any = {}) {
+    const publicKey = privateKey.asymmetricKeyType ? crypto.createPublicKey(privateKey).export({ format: 'jwk' }) : {};
+    return { id: 'challenge-1', licenseId: license.id, sessionId: null, purpose: 'ACTIVATE', installationId: 'profile-1', nonceHash: nonceHash('nonce-1'), deviceHash: 'internal-server-hash', deviceContext: context, publicKey, publicKeyHash: 'key-hash', extensionMetadata: {}, userAgent: 'Chrome', expiresAt: new Date(Date.now() + 60_000), usedAt: null, createdAt: new Date(), license, ...overrides };
+}
 
-        expect(result.licenseKey).toMatch(/^XOY-/);
-        expect(result.license.status).toBe('ISSUED');
-        expect(result.license.plan).toBe('BASIC');
-        expect(prismaMock.xoyLicense.create).toHaveBeenCalledWith(expect.objectContaining({ data: expect.not.objectContaining({ managerEmail: expect.anything(), managerPasswordHash: expect.anything() }) }));
+beforeEach(() => { process.env.XOY_LICENSE_PEPPER = 'xoy-test-pepper'; });
+
+describe('XoyLicenseService device proof protocol', () => {
+    it('rejects a replayed nonce', async () => {
+        const keys = deviceKey();
+        prismaMock.xoyDeviceChallenge.findUnique.mockResolvedValue(challenge(keys.privateKey, { usedAt: new Date() }) as any);
+        await expect(new XoyLicenseService().activate({ installationId: 'profile-1', deviceProof: proofFor(keys.privateKey) })).rejects.toThrow('CHALLENGE_REPLAYED');
     });
 
-    it('reuses the same fingerprint without consuming another slot and creates a profile session', async () => {
-        const device = { ...activeLicense, id: 'device-1', licenseId: 'license-1', fingerprint: 'xoy_soft_same', status: 'ACTIVE' };
-        prismaMock.xoyLicense.findUnique.mockResolvedValue(activeLicense as any);
-        prismaMock.xoyDevice.findUnique.mockResolvedValue(device as any);
-        prismaMock.xoyDevice.update.mockResolvedValue(device as any);
-        prismaMock.xoyDeviceSession.findUnique.mockResolvedValue(null);
-        prismaMock.xoyDeviceSession.create.mockResolvedValue({ id: 'session-2', deviceId: 'device-1', installationId: 'profile-2' } as any);
-        prismaMock.xoyDeviceSession.update.mockResolvedValue({ id: 'session-2' } as any);
-
-        const result = await new XoyLicenseService().activate({
-            licenseKey: 'XOY-TEST', installationId: 'profile-2', fingerprint: 'xoy_soft_same',
-            fingerprintSignals: { os: 'mac', arch: 'arm64', naclArch: 'arm', hardwareConcurrency: 10, deviceMemory: 16, webglVendor: 'Apple', webglRenderer: 'Apple M5' },
-            extension: { id: 'extension-id', name: 'XOY ADS', version: '1.7.4', manifestVersion: 3 }, userAgent: 'Chrome test',
-        });
-
-        expect(prismaMock.xoyDevice.count).not.toHaveBeenCalled();
-        expect(result.entitlement.features).toEqual(expect.objectContaining({ appeal: true, verify: true, reactivate: true, rename: true, backupCampaign: false, backupPerformance: false }));
-        expect(prismaMock.xoyDeviceSession.create).toHaveBeenCalledWith({ data: { deviceId: 'device-1', installationId: 'profile-2' } });
-        expect(prismaMock.xoyDevice.update).toHaveBeenCalledWith(expect.objectContaining({ data: expect.objectContaining({ fingerprintSignals: expect.objectContaining({ os: 'mac', deviceMemory: 16 }), userAgent: 'Chrome test' }) }));
+    it('logs and rejects an invalid device signature', async () => {
+        const keys = deviceKey();
+        prismaMock.xoyDeviceChallenge.findUnique.mockResolvedValue(challenge(keys.privateKey) as any);
+        const badProof = proofFor(deviceKey().privateKey);
+        await expect(new XoyLicenseService().activate({ installationId: 'profile-1', deviceProof: badProof })).rejects.toThrow('INVALID_DEVICE_PROOF');
+        expect(prismaMock.xoyDeviceAudit.create).toHaveBeenCalledWith(expect.objectContaining({ data: expect.objectContaining({ eventType: 'DEVICE_PROOF_FAILED' }) }));
     });
 
-    it('creates a new device after a revoked device frees the only slot', async () => {
-        const replacement = { id: 'device-b', licenseId: 'license-1', fingerprint: 'xoy_soft_machine_b', status: 'ACTIVE' };
-        prismaMock.xoyLicense.findUnique.mockResolvedValue(activeLicense as any);
-        prismaMock.xoyDevice.findUnique.mockResolvedValue(null);
+    it('reactivates a revoked device when the slot is free', async () => {
+        const keys = deviceKey();
+        prismaMock.xoyDeviceChallenge.findUnique.mockResolvedValue(challenge(keys.privateKey) as any);
+        prismaMock.xoyDeviceChallenge.updateMany.mockResolvedValue({ count: 1 } as any);
+        prismaMock.xoyDevice.updateMany.mockResolvedValue({ count: 0 } as any);
+        prismaMock.xoyDevice.findUnique.mockResolvedValue({ id: 'device-a', licenseId: license.id, deviceHash: 'internal-server-hash', deviceContext: context, publicKeyHash: 'old-key', status: 'REVOKED' } as any);
         prismaMock.xoyDevice.count.mockResolvedValue(0 as any);
-        prismaMock.xoyDevice.create.mockResolvedValue(replacement as any);
+        prismaMock.xoyDevice.update.mockResolvedValue({ id: 'device-a', licenseId: license.id, status: 'ACTIVE' } as any);
         prismaMock.xoyDeviceSession.findUnique.mockResolvedValue(null);
-        prismaMock.xoyDeviceSession.create.mockResolvedValue({ id: 'session-b', deviceId: 'device-b', installationId: 'profile-b' } as any);
-        prismaMock.xoyDeviceSession.update.mockResolvedValue({ id: 'session-b' } as any);
+        prismaMock.xoyDeviceSession.create.mockResolvedValue({ id: 'session-a', deviceId: 'device-a' } as any);
+        prismaMock.xoyDeviceSession.update.mockResolvedValue({ id: 'session-a' } as any);
+        prismaMock.xoyLicense.findUnique.mockResolvedValue(license as any);
 
-        await new XoyLicenseService().activate({ licenseKey: 'XOY-TEST', installationId: 'profile-b', fingerprint: 'xoy_soft_machine_b' });
+        await new XoyLicenseService().activate({ installationId: 'profile-1', deviceProof: proofFor(keys.privateKey) });
+        expect(prismaMock.xoyDevice.update).toHaveBeenCalledWith(expect.objectContaining({ data: expect.objectContaining({ status: 'ACTIVE', revokedAt: null }) }));
+        expect(prismaMock.xoyDeviceAudit.create).toHaveBeenCalledWith(expect.objectContaining({ data: expect.objectContaining({ eventType: 'DEVICE_REACTIVATED' }) }));
+    });
 
-        expect(prismaMock.xoyDevice.create).toHaveBeenCalledWith(expect.objectContaining({
-            data: expect.objectContaining({ licenseId: 'license-1', fingerprint: 'xoy_soft_machine_b' }),
-        }));
+    it('does not create a new device when another machine has consumed the final slot', async () => {
+        const keys = deviceKey();
+        prismaMock.xoyDeviceChallenge.findUnique.mockResolvedValue(challenge(keys.privateKey) as any);
+        prismaMock.xoyDeviceChallenge.updateMany.mockResolvedValue({ count: 1 } as any);
+        prismaMock.xoyDevice.updateMany.mockResolvedValue({ count: 0 } as any);
+        prismaMock.xoyDevice.findUnique.mockResolvedValue(null);
+        prismaMock.xoyDevice.count.mockResolvedValue(1 as any);
+        await expect(new XoyLicenseService().activate({ installationId: 'profile-1', deviceProof: proofFor(keys.privateKey) })).rejects.toThrow('DEVICE_LIMIT_REACHED');
+        expect(prismaMock.xoyDevice.create).not.toHaveBeenCalled();
+    });
+
+    it('rejects a refresh when the device context belongs to another machine', async () => {
+        prismaMock.xoyDeviceSession.findFirst.mockResolvedValue({ id: 'session-a', deviceId: 'device-a', refreshExpiresAt: new Date(Date.now() + 60_000), device: { licenseId: license.id, deviceHash: 'stored-hash', publicKey: { kty: 'EC' }, status: 'ACTIVE', license } } as any);
+        await expect(new XoyLicenseService().createRefreshChallenge({ installationId: 'profile-1', refreshToken: 'token', deviceContext: context })).rejects.toThrow('DEVICE_CONTEXT_CHANGED');
+        expect(prismaMock.xoyDeviceAudit.create).toHaveBeenCalledWith(expect.objectContaining({ data: expect.objectContaining({ eventType: 'DEVICE_CONTEXT_CHANGED' }) }));
     });
 });

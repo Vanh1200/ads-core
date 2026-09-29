@@ -386,6 +386,8 @@ model XoyLicense {
   updatedAt           DateTime         @updatedAt @map("updated_at")
 
   devices XoyDevice[]
+  challenges XoyDeviceChallenge[]
+  deviceAudits XoyDeviceAudit[]
 
   @@map("xoy_licenses")
 }
@@ -393,8 +395,10 @@ model XoyLicense {
 model XoyDevice {
   id                 String          @id @default(uuid())
   licenseId          String          @map("license_id")
-  fingerprint        String
-  fingerprintSignals Json?           @map("fingerprint_signals")
+  deviceHash         String          @map("device_hash")
+  deviceContext      Json?           @map("device_context")
+  publicKey          Json?           @map("public_key")
+  publicKeyHash      String?         @map("public_key_hash")
   extensionMetadata  Json?           @map("extension_metadata")
   userAgent          String?         @map("user_agent") @db.Text
   status             XoyDeviceStatus @default(ACTIVE)
@@ -405,10 +409,50 @@ model XoyDevice {
   license     XoyLicense        @relation(fields: [licenseId], references: [id], onDelete: Cascade)
   sessions    XoyDeviceSession[]
   supportRuns XoySupportLogRun[]
+  audits      XoyDeviceAudit[]
 
-  @@unique([licenseId, fingerprint])
+  @@unique([licenseId, deviceHash])
   @@index([licenseId, status, lastSeenAt])
   @@map("xoy_devices")
+}
+
+model XoyDeviceChallenge {
+  id            String   @id @default(uuid())
+  licenseId     String   @map("license_id")
+  sessionId     String?  @map("session_id")
+  purpose       String
+  installationId String  @map("installation_id")
+  nonceHash     String   @unique @map("nonce_hash")
+  deviceHash    String   @map("device_hash")
+  deviceContext Json     @map("device_context")
+  publicKey     Json     @map("public_key")
+  publicKeyHash String   @map("public_key_hash")
+  extensionMetadata Json? @map("extension_metadata")
+  userAgent     String?  @map("user_agent") @db.Text
+  expiresAt     DateTime @map("expires_at")
+  usedAt        DateTime? @map("used_at")
+  createdAt     DateTime @default(now()) @map("created_at")
+
+  license XoyLicense @relation(fields: [licenseId], references: [id], onDelete: Cascade)
+
+  @@index([licenseId, expiresAt])
+  @@map("xoy_device_challenges")
+}
+
+model XoyDeviceAudit {
+  id        String   @id @default(uuid())
+  licenseId String   @map("license_id")
+  deviceId  String?  @map("device_id")
+  eventType String   @map("event_type")
+  details   Json?
+  createdAt DateTime @default(now()) @map("created_at")
+
+  license XoyLicense @relation(fields: [licenseId], references: [id], onDelete: Cascade)
+  device  XoyDevice? @relation(fields: [deviceId], references: [id], onDelete: Cascade)
+
+  @@index([licenseId, createdAt])
+  @@index([deviceId, createdAt])
+  @@map("xoy_device_audits")
 }
 
 model XoyDeviceSession {

@@ -62,6 +62,7 @@ export const xoyLicensesApi = {
     create: (data: { name: string; telegramId?: string; plan: 'BASIC' | 'FULL'; maxFingerprints: number; expiresAt?: string }) => api.post('/xoy/admin/licenses', data),
     getKey: (licenseId: string) => api.get(`/xoy/admin/licenses/${encodeURIComponent(licenseId)}/key`),
     listDevices: (licenseId: string) => api.get(`/xoy/admin/licenses/${encodeURIComponent(licenseId)}/devices`),
+    listDeviceAudits: (licenseId: string) => api.get(`/xoy/admin/licenses/${encodeURIComponent(licenseId)}/device-audits`),
     revokeDevice: (licenseId: string, deviceId: string) => api.delete(`/xoy/admin/licenses/${encodeURIComponent(licenseId)}/devices/${encodeURIComponent(deviceId)}`),
 };
 

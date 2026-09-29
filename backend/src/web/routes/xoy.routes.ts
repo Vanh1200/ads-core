@@ -20,6 +20,9 @@ function requireScope(scope: 'xoy-device') {
     };
 }
 
+router.post('/activation-challenge', asyncHandler(async (req, res) => {
+    res.json(await xoyLicenseService.createActivationChallenge(req.body));
+}));
 router.post('/activate', asyncHandler(async (req, res) => {
     res.json(await xoyLicenseService.activate(req.body));
 }));
@@ -28,6 +31,9 @@ router.post('/admin/licenses', authenticateToken, isAdmin, asyncHandler(async (r
 }));
 router.get('/admin/licenses', authenticateToken, isAdmin, asyncHandler(async (_req, res) => {
     res.json(await xoyLicenseService.listLicenses());
+}));
+router.post('/session/refresh-challenge', asyncHandler(async (req, res) => {
+    res.json(await xoyLicenseService.createRefreshChallenge(req.body));
 }));
 router.post('/session/refresh', asyncHandler(async (req, res) => {
     res.json(await xoyLicenseService.refresh(req.body));
@@ -49,6 +55,9 @@ router.get('/admin/licenses/:licenseId/key', authenticateToken, isAdmin, asyncHa
 }));
 router.get('/admin/licenses/:licenseId/devices', authenticateToken, isAdmin, asyncHandler(async (req, res) => {
     res.json(await xoyLicenseService.listDevices(req.params.licenseId));
+}));
+router.get('/admin/licenses/:licenseId/device-audits', authenticateToken, isAdmin, asyncHandler(async (req, res) => {
+    res.json(await xoyLicenseService.listDeviceAudits(req.params.licenseId));
 }));
 router.delete('/admin/licenses/:licenseId/devices/:deviceId', authenticateToken, isAdmin, asyncHandler(async (req, res) => {
     await xoyLicenseService.revokeDevice(req.params.licenseId, req.params.deviceId);
