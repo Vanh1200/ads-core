@@ -106,13 +106,14 @@ export default function XoyLicenses() {
     const submit = (event: React.FormEvent<HTMLFormElement>) => {
         event.preventDefault();
         const values = new FormData(event.currentTarget);
-        const months = Number(values.get('durationMonths') || 6);
+        const duration = String(values.get('duration') || '6');
+        const isTrial = duration === 'TRIAL_7';
         create.mutate({
             name: String(values.get('name') || ''),
             telegramId: String(values.get('telegramId') || '') || undefined,
             plan: String(values.get('plan') || 'BASIC') === 'FULL' ? 'FULL' : 'BASIC',
             maxFingerprints: Number(values.get('maxFingerprints') || 3),
-            expiresAt: expiresAfterMonths(months),
+            ...(isTrial ? { trialDays: 7 } : { expiresAt: expiresAfterMonths(Number(duration)) }),
         });
     };
 
@@ -139,7 +140,7 @@ export default function XoyLicenses() {
                     <div><label className="form-label">Telegram ID</label><input className="form-input" name="telegramId" placeholder="Không bắt buộc" /></div>
                     <div><label className="form-label">Gói license *</label><select className="form-select" name="plan" defaultValue="BASIC"><option value="BASIC">Gói Cơ bản</option><option value="FULL">Gói Full</option></select></div>
                     <div><label className="form-label">Số thiết bị tối đa *</label><input className="form-input" name="maxFingerprints" required type="number" min="1" max="100" defaultValue="3" /></div>
-                    <div><label className="form-label">Thời hạn *</label><select className="form-select" name="durationMonths" defaultValue="6"><option value="1">1 tháng</option><option value="6">6 tháng</option><option value="12">1 năm</option></select></div>
+                    <div><label className="form-label">Thời hạn *</label><select className="form-select" name="duration" defaultValue="6"><option value="TRIAL_7">Dùng thử 7 ngày</option><option value="1">1 tháng</option><option value="6">6 tháng</option><option value="12">1 năm</option></select><small style={{ display: 'block', marginTop: 5, color: 'var(--text-muted)' }}>Dùng thử sẽ tự hết hạn sau đúng 7 ngày kể từ lúc cấp key.</small></div>
                 </div>
                 <div style={{ marginTop: 16 }}><button className="btn btn-primary" disabled={create.isPending}><Plus size={16} />{create.isPending ? 'Đang cấp...' : 'Cấp key'}</button></div>
             </form>

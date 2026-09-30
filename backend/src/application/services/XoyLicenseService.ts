@@ -8,6 +8,7 @@ const INACTIVE_DEVICE_DAYS = 45;
 const CHALLENGE_TTL_MS = 60_000;
 const PROOF_MAX_AGE_MS = 2 * 60_000;
 const MAX_USER_AGENT_LENGTH = 2_000;
+const TRIAL_DAYS = 7;
 
 function secret() { return process.env.XOY_JWT_SECRET || process.env.JWT_SECRET || 'change-me-in-production'; }
 function hash(value: string) { return crypto.createHmac('sha256', process.env.XOY_LICENSE_PEPPER || secret()).update(value.trim()).digest('hex'); }
@@ -80,18 +81,27 @@ function featuresFor(plan: 'BASIC' | 'FULL') {
     const basic = plan === 'BASIC';
     return { appeal: true, verify: true, reactivate: true, rename: true, backupCampaign: !basic, backupPerformance: !basic };
 }
+function trialExpiresAt() { return new Date(Date.now() + TRIAL_DAYS * 24 * 60 * 60 * 1000); }
+function optionalExpiry(value: unknown) {
+    if (!value) return null;
+    const expiry = new Date(String(value));
+    if (Number.isNaN(expiry.getTime())) throw new Error('BAD_REQUEST: Thời hạn không hợp lệ');
+    return expiry;
+}
 
 type ChallengeInput = { installationId: string; deviceContext: unknown; extension?: unknown; userAgent?: unknown };
 type DeviceProof = { challengeId: string; nonce: string; timestamp: number; signature: string };
 
 export class XoyLicenseService {
-    async createLicense(input: { name: string; telegramId?: string; plan?: 'BASIC' | 'FULL'; maxFingerprints?: number; expiresAt?: string | null }) {
+    async createLicense(input: { name: string; telegramId?: string; plan?: 'BASIC' | 'FULL'; maxFingerprints?: number; expiresAt?: string | null; trialDays?: number }) {
         const name = requiredText(input.name, 'Tên khách');
         const plan = input.plan === 'FULL' ? 'FULL' : 'BASIC';
+        if (input.trialDays !== undefined && Number(input.trialDays) !== TRIAL_DAYS) throw new Error('BAD_REQUEST: Chỉ hỗ trợ gói dùng thử 7 ngày');
+        const expiresAt = Number(input.trialDays) === TRIAL_DAYS ? trialExpiresAt() : optionalExpiry(input.expiresAt);
         const licenseKey = `XOY-${crypto.randomBytes(18).toString('base64url').toUpperCase()}`;
         const license = await prisma.xoyLicense.create({ data: {
             name, telegramId: optionalText(input.telegramId, 100), keyPrefix: licenseKey.slice(0, 12), keyHash: hash(licenseKey), keyEncrypted: encryptKey(licenseKey),
-            plan, maxFingerprints: Math.max(1, Math.min(100, Number(input.maxFingerprints) || 3)), status: 'ISSUED', expiresAt: input.expiresAt ? new Date(input.expiresAt) : null,
+            plan, maxFingerprints: Math.max(1, Math.min(100, Number(input.maxFingerprints) || 3)), status: 'ISSUED', expiresAt,
         } });
         return { license: this.adminLicense(license), licenseKey };
     }

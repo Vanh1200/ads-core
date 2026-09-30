@@ -1,5 +1,5 @@
 import crypto from 'crypto';
-import { beforeEach, describe, expect, it } from 'vitest';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { prismaMock } from '../../../__tests__/setup';
 import { XoyLicenseService } from '../XoyLicenseService';
 
@@ -22,6 +22,17 @@ function challenge(privateKey: crypto.KeyObject, overrides: any = {}) {
 beforeEach(() => { process.env.XOY_LICENSE_PEPPER = 'xoy-test-pepper'; });
 
 describe('XoyLicenseService device proof protocol', () => {
+    it('issues a trial key that expires exactly after seven days', async () => {
+        vi.useFakeTimers();
+        vi.setSystemTime(new Date('2026-10-01T08:00:00.000Z'));
+        prismaMock.xoyLicense.create.mockResolvedValue({ ...license, status: 'ISSUED', expiresAt: new Date('2026-10-08T08:00:00.000Z') } as any);
+
+        await new XoyLicenseService().createLicense({ name: 'Khách dùng thử', trialDays: 7 });
+
+        expect(prismaMock.xoyLicense.create).toHaveBeenCalledWith(expect.objectContaining({ data: expect.objectContaining({ expiresAt: new Date('2026-10-08T08:00:00.000Z') }) }));
+        vi.useRealTimers();
+    });
+
     it('rejects a replayed nonce', async () => {
         const keys = deviceKey();
         prismaMock.xoyDeviceChallenge.findUnique.mockResolvedValue(challenge(keys.privateKey, { usedAt: new Date() }) as any);
