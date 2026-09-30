@@ -143,24 +143,32 @@ export class XoySupportLogService {
         const lifecycle = [...events].reverse().find((event) =>
             ['job_started', 'job_progress', 'job_finished'].includes(event.eventType || '') && event.metadata
         );
-        if (lifecycle?.metadata) {
-            const metadata: any = lifecycle.metadata;
+        // Lifecycle events carry the counters, while a restored job retried
+        // manually may only have ordinary log events. Both forms include the
+        // job identity, so persist that identity from any event in the run.
+        const jobContext = lifecycle || [...events].reverse().find((event) =>
+            Boolean(event.jobId || event.traceId || event.jobType)
+        );
+        if (jobContext) {
+            const metadata: any = lifecycle?.metadata;
             await prisma.xoySupportLogRun.update({
                 where: { id: run.id },
                 data: {
-                    jobId: lifecycle.jobId || undefined,
-                    traceId: lifecycle.traceId || undefined,
-                    jobType: lifecycle.jobType || undefined,
-                    jobStatus: optionalText(metadata.jobStatus),
-                    inputIds: metadataArray(metadata.inputIds),
-                    inputMccIds: metadataArray(metadata.inputMccIds),
-                    targetTotal: safeNumber(metadata.totalTargets),
-                    processedTargets: safeNumber(metadata.processedTargets),
-                    successfulTargets: safeNumber(metadata.successfulTargets),
-                    failedTargets: safeNumber(metadata.failedTargets),
-                    skippedTargets: safeNumber(metadata.skippedTargets),
-                    startedAt: metadata.startedAt ? safeOccurredAt(metadata.startedAt) : undefined,
-                    finishedAt: metadata.finishedAt ? safeOccurredAt(metadata.finishedAt) : undefined,
+                    jobId: jobContext.jobId || undefined,
+                    traceId: jobContext.traceId || undefined,
+                    jobType: jobContext.jobType || undefined,
+                    ...(metadata ? {
+                        jobStatus: optionalText(metadata.jobStatus),
+                        inputIds: metadataArray(metadata.inputIds),
+                        inputMccIds: metadataArray(metadata.inputMccIds),
+                        targetTotal: safeNumber(metadata.totalTargets),
+                        processedTargets: safeNumber(metadata.processedTargets),
+                        successfulTargets: safeNumber(metadata.successfulTargets),
+                        failedTargets: safeNumber(metadata.failedTargets),
+                        skippedTargets: safeNumber(metadata.skippedTargets),
+                        startedAt: metadata.startedAt ? safeOccurredAt(metadata.startedAt) : undefined,
+                        finishedAt: metadata.finishedAt ? safeOccurredAt(metadata.finishedAt) : undefined,
+                    } : {}),
                 },
             });
         }
@@ -177,7 +185,7 @@ export class XoySupportLogService {
                 select: {
                     id: true, supportId: true, jobType: true, jobStatus: true, targetTotal: true,
                     processedTargets: true, successfulTargets: true, failedTargets: true, skippedTargets: true,
-                    inputIds: true, inputMccIds: true, startedAt: true, finishedAt: true, updatedAt: true,
+                    startedAt: true, finishedAt: true, updatedAt: true,
                     device: { select: { license: { select: { id: true, name: true } } } },
                 },
             }),
@@ -186,10 +194,13 @@ export class XoySupportLogService {
         ]);
         const byJobType = new Map<string, any>();
         const byDay = new Map<string, any>();
+        // A run created by legacy/manual support logs has no lifecycle event,
+        // therefore no job type. It is support history, not an operational job.
+        const operationalRuns = runs.filter((run) => Boolean(run.jobType));
         let completed = 0; let failed = 0; let stopped = 0; let active = 0;
         let targets = 0; let processed = 0; let successes = 0; let failures = 0; let skipped = 0;
-        for (const run of runs) {
-            const type = run.jobType || 'unclassified';
+        for (const run of operationalRuns) {
+            const type = run.jobType!;
             const item = byJobType.get(type) || { jobType: type, jobs: 0, completed: 0, failed: 0, stopped: 0, active: 0, targets: 0, processed: 0, successes: 0, failures: 0, skipped: 0 };
             const status = run.jobStatus || 'RUNNING';
             item.jobs++; item.targets += run.targetTotal; item.processed += run.processedTargets; item.successes += run.successfulTargets; item.failures += run.failedTargets; item.skipped += run.skippedTargets;
@@ -202,11 +213,11 @@ export class XoySupportLogService {
         }
         return {
             generatedAt: new Date(), period: { sentFrom, sentTo }, capped: runs.length === 5_000,
-            overview: { jobs: runs.length, completed, failed, stopped, active, targets, processed, successes, failures, skipped, rpcErrors },
+            overview: { jobs: operationalRuns.length, completed, failed, stopped, active, targets, processed, successes, failures, skipped, rpcErrors },
             licenseStatuses: licenseStatuses.map((row) => ({ status: row.status, count: row._count._all })),
             byJobType: [...byJobType.values()].sort((a, b) => b.jobs - a.jobs),
             byDay: [...byDay.values()].sort((a, b) => a.day.localeCompare(b.day)),
-            recentJobs: runs.slice(0, 50).map((run) => ({ ...run, license: run.device.license })),
+            recentJobs: operationalRuns.slice(0, 50).map((run) => ({ ...run, license: run.device.license })),
         };
     }
 

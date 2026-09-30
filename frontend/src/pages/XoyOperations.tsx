@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
 import { Activity, AlertTriangle, CheckCircle2, PauseCircle, RefreshCw, XCircle } from 'lucide-react';
 import { xoyOperationsApi } from '../api/client';
@@ -9,10 +10,11 @@ function statusLabel(status: string) {
     return ({ COMPLETED: 'Hoàn tất', FAILED: 'Thất bại', STOPPED: 'Đã dừng', INTERRUPTED: 'Gián đoạn', RUNNING: 'Đang chạy' } as Record<string, string>)[status] || status || 'Đang chạy';
 }
 function jobTypeLabel(type: string) {
-    return ({ backup_campaign: 'Sao lưu chiến dịch', backup_perf: 'Báo cáo hiệu suất', verify: 'Xác minh', rename: 'Đổi tên', appeal: 'Kháng nghị', reactivate: 'Kích hoạt lại', unclassified: 'Chưa phân loại' } as Record<string, string>)[type] || type;
+    return ({ backup_campaign: 'Sao lưu chiến dịch', backup_perf: 'Báo cáo hiệu suất', verify: 'Xác minh', rename: 'Đổi tên', appeal: 'Kháng nghị', reactivate: 'Kích hoạt lại' } as Record<string, string>)[type] || type;
 }
 
 export default function XoyOperations() {
+    const navigate = useNavigate();
     const [range, setRange] = useState({ sentFrom: dateOffset(-30), sentTo: dateOffset(0) });
     const metrics = useQuery({ queryKey: ['xoy-operations', range], queryFn: () => xoyOperationsApi.get(range) });
     const data = metrics.data?.data;
@@ -26,7 +28,7 @@ export default function XoyOperations() {
         { label: 'Đã dừng', value: overview.stopped, icon: PauseCircle, color: 'var(--text-secondary)' },
     ];
     return <div>
-        <div className="page-header"><div><h1 className="page-title">Vận hành XOY</h1><p className="page-subtitle">Theo dõi trạng thái job, MCC/tài khoản đã xử lý và lỗi RPC từ extension.</p></div></div>
+        <div className="page-header"><div><h1 className="page-title">Vận hành XOY</h1><p className="page-subtitle">Theo dõi trạng thái job, tiến độ xử lý và lỗi RPC từ extension.</p></div></div>
         <div className="card" style={{ marginBottom: 16 }}><form style={{ display: 'flex', gap: 12, alignItems: 'end', flexWrap: 'wrap' }} onSubmit={(event) => { event.preventDefault(); metrics.refetch(); }}>
             <div><label className="form-label">Từ ngày</label><input className="form-input" type="date" value={range.sentFrom} onChange={(event) => setRange({ ...range, sentFrom: event.target.value })} /></div>
             <div><label className="form-label">Đến ngày</label><input className="form-input" type="date" value={range.sentTo} onChange={(event) => setRange({ ...range, sentTo: event.target.value })} /></div>
@@ -42,7 +44,12 @@ export default function XoyOperations() {
                 <div className="stat-card"><div><div className="stat-label">Đã bỏ qua</div><div className="stat-value">{number(overview.skipped)}</div></div></div>
             </div>
             <div className="card" style={{ marginTop: 16 }}><div className="card-header">Hiệu quả theo tính năng</div><div className="table-container"><table className="data-table"><thead><tr><th>Tính năng</th><th>Job</th><th>Hoàn tất</th><th>Thất bại</th><th>Đang chạy</th><th>Mục tiêu</th><th>Thành công</th><th>Thất bại</th><th>Bỏ qua</th></tr></thead><tbody>{(data?.byJobType || []).map((row: any) => <tr key={row.jobType}><td>{jobTypeLabel(row.jobType)}</td><td>{number(row.jobs)}</td><td>{number(row.completed)}</td><td>{number(row.failed)}</td><td>{number(row.active)}</td><td>{number(row.targets)}</td><td>{number(row.successes)}</td><td>{number(row.failures)}</td><td>{number(row.skipped)}</td></tr>)}</tbody></table></div></div>
-            <div className="card" style={{ marginTop: 16 }}><div className="card-header">50 job gần nhất</div><div className="table-container"><table className="data-table"><thead><tr><th>Thời gian</th><th>Khách hàng</th><th>Tính năng</th><th>Trạng thái</th><th>MCC / ID đầu vào</th><th>Tiến độ</th><th>Kết quả</th><th>Support ID</th></tr></thead><tbody>{(data?.recentJobs || []).map((job: any) => <tr key={job.id}><td>{new Date(job.updatedAt).toLocaleString('vi-VN')}</td><td>{job.license?.name || '—'}</td><td>{jobTypeLabel(job.jobType)}</td><td>{statusLabel(job.jobStatus)}</td><td><small>{Array.isArray(job.inputMccIds) && job.inputMccIds.length ? job.inputMccIds.join(', ') : Array.isArray(job.inputIds) && job.inputIds.length ? job.inputIds.join(', ') : '—'}</small></td><td>{number(job.processedTargets)}/{number(job.targetTotal)}</td><td>{number(job.successfulTargets)} thành công · {number(job.failedTargets)} lỗi · {number(job.skippedTargets)} bỏ qua</td><td>{job.supportId}</td></tr>)}</tbody></table></div>{data?.capped && <small style={{ display: 'block', padding: 12 }}>Dữ liệu đã chạm giới hạn 5.000 job; hãy thu hẹp khoảng thời gian.</small>}</div>
+            <div className="card" style={{ marginTop: 16 }}><div className="card-header">50 job gần nhất</div><div className="table-container"><table className="data-table"><thead><tr><th>Thời gian</th><th>Khách hàng</th><th>Tính năng</th><th>Trạng thái</th><th>Tiến độ</th><th>Kết quả</th><th>Mã hỗ trợ</th><th></th></tr></thead><tbody>{(data?.recentJobs || []).map((job: any) => {
+                const detailUrl = `/xoy-support-logs/${encodeURIComponent(job.license?.id || '')}?supportId=${encodeURIComponent(job.supportId || '')}`;
+                return <tr key={job.id} onClick={() => navigate(detailUrl)} style={{ cursor: 'pointer' }} title="Mở chi tiết job">
+                    <td>{new Date(job.updatedAt).toLocaleString('vi-VN')}</td><td>{job.license?.name || '—'}</td><td>{jobTypeLabel(job.jobType)}</td><td>{statusLabel(job.jobStatus)}</td><td>{number(job.processedTargets)}/{number(job.targetTotal)}</td><td>{number(job.successfulTargets)} thành công · {number(job.failedTargets)} lỗi · {number(job.skippedTargets)} bỏ qua</td><td>{job.supportId}</td><td><button className="btn btn-secondary btn-sm" onClick={(event) => { event.stopPropagation(); navigate(detailUrl); }}>Chi tiết</button></td>
+                </tr>;
+            })}</tbody></table></div>{data?.capped && <small style={{ display: 'block', padding: 12 }}>Dữ liệu đã chạm giới hạn 5.000 job; hãy thu hẹp khoảng thời gian.</small>}</div>
         </>}
     </div>;
 }
