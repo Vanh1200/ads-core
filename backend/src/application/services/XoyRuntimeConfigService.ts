@@ -68,10 +68,15 @@ const rpc = {
     },
     appealList: {
         path: '/ga/_/AwSupportPlatform/_/rpc/AccountSuspensionAppealService/List',
-        buildVersion: 'boq_google-ads-supportplatform_20260830.04_p0',
+        buildVersion: 'boq_google-ads-supportplatform_20260920.03_p0',
         trackingId: 'AccountSuspensionAppealService.List',
     },
-    appealSignals: {
+    appealPreflightSignals: {
+        path: '/ga/_/AwSupportPlatform/_/rpc/EducationFeatureService/GetSignals',
+        buildVersion: 'boq_google-ads-supportplatform_20260920.03_p0',
+        trackingId: 'EducationFeatureService.GetSignals',
+    },
+    appealSubmitSignals: {
         path: '/ga/_/AwSupportPlatform/_/rpc/EducationFeatureService/GetSignals',
         buildVersion: 'boq_google-ads-supportplatform_20260830.04_p0',
         trackingId: 'EducationFeatureService.GetSignals',
@@ -83,7 +88,6 @@ const rpc = {
     },
     accountList: {
         path: '/aw_mcc/_/rpc/AccountService/List',
-        trackingId: 'AccountService.List',
     },
     reactivate: {
         path: '/aw_accountsettings/_/rpc/CustomerService/Mutate',

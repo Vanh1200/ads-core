@@ -16,6 +16,10 @@ describe('XoyRuntimeConfigService', () => {
         expect(config.features).toEqual({ appeal: true, rename: false });
         expect(config.extensionVersion).toBe('1.7.9');
         expect(config.rpc.appealSubmit.path).toContain('/_/rpc/');
+        expect(config.rpc.appealList.buildVersion).toBe('boq_google-ads-supportplatform_20260920.03_p0');
+        expect(config.rpc.appealPreflightSignals.buildVersion).toBe('boq_google-ads-supportplatform_20260920.03_p0');
+        expect(config.rpc.appealSubmitSignals.buildVersion).toBe('boq_google-ads-supportplatform_20260830.04_p0');
+        expect(config.rpc.accountList).not.toHaveProperty('trackingId');
         expect(config.protocol.tagToCategory[61]).toBe(8);
         expect(config).not.toHaveProperty('expiresAt');
     });
