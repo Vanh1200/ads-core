@@ -66,6 +66,7 @@ export const xoyLicensesApi = {
     revokeDevice: (licenseId: string, deviceId: string) => api.delete(`/xoy/admin/licenses/${encodeURIComponent(licenseId)}/devices/${encodeURIComponent(deviceId)}`),
     update: (licenseId: string, data: { plan?: 'BASIC' | 'FULL'; maxFingerprints?: number; expiresAt?: string | null }) => api.patch(`/xoy/admin/licenses/${encodeURIComponent(licenseId)}`, data),
     revokeAllDevices: (licenseId: string) => api.post(`/xoy/admin/licenses/${encodeURIComponent(licenseId)}/revoke-all-devices`),
+    revokePermanently: (licenseId: string) => api.post(`/xoy/admin/licenses/${encodeURIComponent(licenseId)}/revoke-permanently`),
 };
 
 export const xoySupportLogsApi = {

@@ -81,6 +81,15 @@ export default function XoyLicenses() {
             queryClient.invalidateQueries({ queryKey: ['xoy-license-device-audits', openLicenseId] });
         },
     });
+    const revokePermanently = useMutation({
+        mutationFn: (licenseId: string) => xoyLicensesApi.revokePermanently(licenseId),
+        onSuccess: () => {
+            setEditingLicenseId(null);
+            queryClient.invalidateQueries({ queryKey: ['xoy-licenses'] });
+            queryClient.invalidateQueries({ queryKey: ['xoy-license-devices', openLicenseId] });
+            queryClient.invalidateQueries({ queryKey: ['xoy-license-device-audits', openLicenseId] });
+        },
+    });
     const licenses = data?.data || [];
 
     const issuedKeyBlock = useMemo(() => issuedKey && <div style={{ margin: '0 16px 16px', padding: 14, background: '#ecfdf5', border: '1px solid #6ee7b7', borderRadius: 8, color: '#064e3b' }}>
@@ -148,18 +157,22 @@ export default function XoyLicenses() {
                         <td><div style={{ display: 'flex', alignItems: 'center', gap: 6 }}><code>{visibleKey || `${license.keyPrefix}...`}</code>{visibleKey ? <button className="icon-btn" title="Ẩn key" onClick={() => setRevealedKeys((current) => { const next = { ...current }; delete next[license.id]; return next; })}><EyeOff size={15} /></button> : <button className="icon-btn" title="Hiện key" disabled={!license.keyAvailable || revealKey.isPending} onClick={() => revealKey.mutate(license.id)}><Eye size={15} /></button>}{visibleKey && <button className="icon-btn" title="Sao chép key" onClick={() => navigator.clipboard.writeText(visibleKey)}><Copy size={15} /></button>}</div></td>
                         <td>{license.activeFingerprints}/{license.maxFingerprints}</td>
                         <td>{license.expiresAt ? new Date(license.expiresAt).toLocaleDateString('vi-VN') : '—'}</td>
-                        <td>{license.status === 'ISSUED' ? 'CHƯA ACTIVE' : license.status}</td>
+                        <td>{license.status === 'ISSUED' ? 'CHƯA ACTIVE' : license.status === 'REVOKED' ? 'ĐÃ VÔ HIỆU HÓA' : license.status}</td>
                         <td><button className="btn btn-secondary" onClick={() => { setOpenLicenseId(isOpen ? null : license.id); if (isOpen) setEditingLicenseId(null); }}>{isOpen ? <ChevronUp size={16} /> : <ChevronDown size={16} />}{isOpen ? 'Ẩn' : 'Quản lý'}</button></td>
                     </tr>
                     {isOpen && <tr key={`${license.id}-devices`}><td colSpan={7} style={{ padding: 16, background: 'var(--background)' }}>
                         <div className="card" style={{ marginBottom: 16 }}>
                             <div className="card-header" style={{ justifyContent: 'space-between' }}>
                                 <span>Quản lý license · {license.name}</span>
-                                <div style={{ display: 'flex', gap: 8 }}>
-                                    {editingLicenseId !== license.id && <button className="btn btn-secondary" onClick={() => setEditingLicenseId(license.id)}><Pencil size={15} />Sửa license</button>}
-                                    <button className="btn btn-danger" disabled={revokeAllDevices.isPending} onClick={() => window.confirm('Thu hồi toàn bộ thiết bị của license này? Mọi Chrome profile đang dùng key sẽ bị dừng. License và key vẫn giữ nguyên để kích hoạt lại khi cần.') && revokeAllDevices.mutate(license.id)}><MonitorX size={15} />{revokeAllDevices.isPending ? 'Đang thu hồi...' : 'Thu hồi tất cả thiết bị'}</button>
+                                <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', justifyContent: 'flex-end' }}>
+                                    {license.status !== 'REVOKED' && <>
+                                        {editingLicenseId !== license.id && <button className="btn btn-secondary" onClick={() => setEditingLicenseId(license.id)}><Pencil size={15} />Sửa license</button>}
+                                        <button className="btn btn-danger" disabled={revokeAllDevices.isPending} onClick={() => window.confirm('Thu hồi toàn bộ thiết bị của license này? Mọi Chrome profile đang dùng key sẽ bị dừng. License và key vẫn giữ nguyên để kích hoạt lại khi cần.') && revokeAllDevices.mutate(license.id)}><MonitorX size={15} />{revokeAllDevices.isPending ? 'Đang thu hồi...' : 'Thu hồi tất cả thiết bị'}</button>
+                                        <button className="btn btn-danger" disabled={revokePermanently.isPending} onClick={() => window.confirm('Vô hiệu hóa VĨNH VIỄN key này? Toàn bộ thiết bị sẽ bị thu hồi và khách không thể kích hoạt lại, kể cả khi còn key.') && revokePermanently.mutate(license.id)}><MonitorX size={15} />{revokePermanently.isPending ? 'Đang vô hiệu hóa...' : 'Vô hiệu hóa vĩnh viễn key'}</button>
+                                    </>}
                                 </div>
                             </div>
+                            {license.status === 'REVOKED' && <div style={{ margin: '0 16px 16px', padding: 12, borderRadius: 8, background: 'color-mix(in srgb, var(--danger) 12%, transparent)', color: 'var(--danger)' }}><strong>Key đã bị vô hiệu hóa vĩnh viễn.</strong> Mọi session đã bị thu hồi và server sẽ từ chối mọi lần kích hoạt mới.</div>}
                             {editingLicenseId === license.id ? <form onSubmit={(event) => submitEdit(event, license.id)} style={{ padding: 16 }}>
                                 <div style={{ display: 'grid', gap: 14, gridTemplateColumns: 'repeat(auto-fit, minmax(190px, 1fr))' }}>
                                     <div><label className="form-label">Gói license</label><select className="form-select" name="plan" defaultValue={license.plan}><option value="BASIC">Gói Cơ bản</option><option value="FULL">Gói Full</option></select></div>
@@ -175,6 +188,7 @@ export default function XoyLicenses() {
                                 <span><strong style={{ color: 'var(--text)' }}>Hết hạn:</strong> {license.expiresAt ? new Date(license.expiresAt).toLocaleDateString('vi-VN') : 'Không giới hạn'}</span>
                             </div>}
                             {revokeAllDevices.isError && <div style={{ margin: '0 16px 16px', color: 'var(--danger)' }}>{(revokeAllDevices.error as any)?.response?.data?.error || 'Không thể thu hồi thiết bị.'}</div>}
+                            {revokePermanently.isError && <div style={{ margin: '0 16px 16px', color: 'var(--danger)' }}>{(revokePermanently.error as any)?.response?.data?.error || 'Không thể vô hiệu hóa vĩnh viễn key.'}</div>}
                         </div>
                         {devices.isLoading ? 'Đang tải thiết bị...' : devices.isError ? 'Không thể tải thiết bị.' : (devices.data || []).length === 0 ? 'Chưa có thiết bị nào kích hoạt license này.' : <div style={{ display: 'grid', gap: 12 }}>{devices.data.map((device: any) => {
                             const details = deviceContextDetails(device);

@@ -69,6 +69,9 @@ router.delete('/admin/licenses/:licenseId/devices/:deviceId', authenticateToken,
 router.post('/admin/licenses/:licenseId/revoke-all-devices', authenticateToken, isAdmin, asyncHandler(async (req, res) => {
     res.json(await xoyLicenseService.revokeAllDevices(req.params.licenseId));
 }));
+router.post('/admin/licenses/:licenseId/revoke-permanently', authenticateToken, isAdmin, asyncHandler(async (req, res) => {
+    res.json(await xoyLicenseService.revokeLicensePermanently(req.params.licenseId));
+}));
 router.get('/admin/support-logs', authenticateToken, isAdmin, asyncHandler(async (req, res) => {
     res.json(await xoySupportLogService.list(req.query));
 }));

@@ -300,6 +300,18 @@ export class XoyLicenseService {
         await this.audit(licenseId, 'LICENSE_ALL_DEVICES_REVOKED', { deviceCount: devices.count });
         return { revokedDevices: devices.count };
     }
+    async revokeLicensePermanently(licenseId: string) {
+        const license = await prisma.xoyLicense.findUnique({ where: { id: licenseId }, select: { id: true, status: true } });
+        if (!license) throw new Error('NOT_FOUND: Không tìm thấy license');
+        const now = new Date();
+        const [, devices] = await prisma.$transaction([
+            prisma.xoyLicense.update({ where: { id: licenseId }, data: { status: 'REVOKED' } }),
+            prisma.xoyDevice.updateMany({ where: { licenseId, status: { not: 'REVOKED' } }, data: { status: 'REVOKED', revokedAt: now } }),
+            prisma.xoyDeviceSession.updateMany({ where: { device: { licenseId }, revokedAt: null }, data: { revokedAt: now, refreshTokenHash: null, refreshExpiresAt: null } }),
+        ]);
+        await this.audit(licenseId, 'LICENSE_PERMANENTLY_REVOKED', { previousStatus: license.status, revokedDevices: devices.count });
+        return { status: 'REVOKED', revokedDevices: devices.count };
+    }
     async getEntitlement(deviceId: string, sessionId?: string) { return this.entitlement((await this.currentDevice(deviceId, sessionId)).device.licenseId); }
 }
 

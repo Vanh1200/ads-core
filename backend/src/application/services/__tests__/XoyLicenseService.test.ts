@@ -102,4 +102,14 @@ describe('XoyLicenseService device proof protocol', () => {
         expect(prismaMock.xoyDeviceSession.updateMany).toHaveBeenCalledWith(expect.objectContaining({ data: expect.objectContaining({ refreshTokenHash: null }) }));
         expect(prismaMock.xoyDeviceAudit.create).toHaveBeenCalledWith(expect.objectContaining({ data: expect.objectContaining({ eventType: 'LICENSE_ALL_DEVICES_REVOKED' }) }));
     });
+
+    it('permanently revokes a license and every attached device session', async () => {
+        prismaMock.xoyLicense.findUnique.mockResolvedValue({ id: license.id, status: 'ACTIVE' } as any);
+        prismaMock.$transaction.mockResolvedValue([{ id: license.id, status: 'REVOKED' }, { count: 2 }, { count: 4 }] as any);
+
+        await expect(new XoyLicenseService().revokeLicensePermanently(license.id)).resolves.toEqual({ status: 'REVOKED', revokedDevices: 2 });
+        expect(prismaMock.xoyLicense.update).toHaveBeenCalledWith(expect.objectContaining({ data: { status: 'REVOKED' } }));
+        expect(prismaMock.xoyDeviceSession.updateMany).toHaveBeenCalledWith(expect.objectContaining({ data: expect.objectContaining({ refreshTokenHash: null }) }));
+        expect(prismaMock.xoyDeviceAudit.create).toHaveBeenCalledWith(expect.objectContaining({ data: expect.objectContaining({ eventType: 'LICENSE_PERMANENTLY_REVOKED' }) }));
+    });
 });
