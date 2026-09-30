@@ -77,7 +77,7 @@ function optionalDate(value: unknown, endOfDay = false) {
 }
 
 function newSupportId() {
-    return `SUP-${new Date().toISOString().slice(0, 10).replaceAll('-', '')}-${crypto.randomBytes(4).toString('hex').toUpperCase()}`;
+    return `SUP-${crypto.randomBytes(4).toString('hex').toUpperCase()}`;
 }
 
 export class XoySupportLogService {

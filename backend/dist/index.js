@@ -77,8 +77,10 @@ app.use((0, cors_1.default)({
     credentials: true,
 }));
 app.use((0, morgan_1.default)('dev'));
-app.use(express_1.default.json());
-app.use(express_1.default.urlencoded({ extended: true }));
+// XOY support telemetry can include structured lifecycle data for large jobs.
+// Keep a bounded but practical limit above Express's 100 KB default.
+app.use(express_1.default.json({ limit: '1mb' }));
+app.use(express_1.default.urlencoded({ extended: true, limit: '1mb' }));
 // Health check with logic
 app.get('/api/health', (req, res) => {
     res.json({
