@@ -3,6 +3,7 @@ import jwt from 'jsonwebtoken';
 import { asyncHandler } from '../../infrastructure/middleware/errorHandler';
 import { xoyLicenseService } from '../../application/services/XoyLicenseService';
 import { xoySupportLogService } from '../../application/services/XoySupportLogService';
+import { xoyRuntimeConfigService } from '../../application/services/XoyRuntimeConfigService';
 import { authenticateToken, isAdmin } from '../../infrastructure/middleware/auth';
 
 const router = Router();
@@ -46,6 +47,12 @@ router.post('/heartbeat', requireScope('xoy-device'), asyncHandler(async (req: a
 }));
 router.get('/entitlement', requireScope('xoy-device'), asyncHandler(async (req: any, res) => {
     res.json(await xoyLicenseService.getEntitlement(req.xoyAuth.deviceId, req.xoyAuth.sessionId));
+}));
+router.get('/runtime-config', requireScope('xoy-device'), asyncHandler(async (req: any, res) => {
+    const entitlement = await xoyLicenseService.getEntitlement(req.xoyAuth.deviceId, req.xoyAuth.sessionId);
+    const extensionVersion = String(req.headers['x-xoy-extension-version'] || '');
+    res.setHeader('Cache-Control', 'no-store');
+    res.json(xoyRuntimeConfigService.create(entitlement, extensionVersion));
 }));
 router.post('/support/logs/batches', requireScope('xoy-device'), asyncHandler(async (req: any, res) => {
     // A signed token may still exist briefly after a device is revoked. Check

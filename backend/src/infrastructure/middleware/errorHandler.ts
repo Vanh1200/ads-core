@@ -108,6 +108,12 @@ export const errorHandler = (
         return;
     }
 
+    if (err.message?.startsWith('EXTENSION_UPDATE_REQUIRED:')) {
+        const minimumVersion = err.message.split(':', 2)[1] || null;
+        res.status(426).json({ error: 'Extension update required', code: 'EXTENSION_UPDATE_REQUIRED', minimumVersion });
+        return;
+    }
+
     if (err.message?.startsWith('NOT_FOUND:')) {
         res.status(404).json({
             error: err.message.replace('NOT_FOUND:', '').trim(),
