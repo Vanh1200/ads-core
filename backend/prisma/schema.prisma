@@ -475,18 +475,32 @@ model XoyDeviceSession {
 // Popup logs are deliberately not the source of truth: every client event is
 // stored idempotently by eventId before the extension receives an ACK.
 model XoySupportLogRun {
-  id        String   @id @default(uuid())
-  deviceId  String   @map("device_id")
-  runId     String   @map("run_id")
-  supportId String   @unique @map("support_id")
-  createdAt DateTime @default(now()) @map("created_at")
-  updatedAt DateTime @updatedAt @map("updated_at")
+  id                String   @id @default(uuid())
+  deviceId          String   @map("device_id")
+  runId             String   @map("run_id")
+  supportId         String   @unique @map("support_id")
+  jobId             String?  @map("job_id")
+  traceId           String?  @map("trace_id")
+  jobType           String?  @map("job_type")
+  jobStatus         String?  @map("job_status")
+  inputIds          Json?    @map("input_ids")
+  inputMccIds       Json?    @map("input_mcc_ids")
+  targetTotal       Int      @default(0) @map("target_total")
+  processedTargets  Int      @default(0) @map("processed_targets")
+  successfulTargets Int      @default(0) @map("successful_targets")
+  failedTargets     Int      @default(0) @map("failed_targets")
+  skippedTargets    Int      @default(0) @map("skipped_targets")
+  startedAt         DateTime? @map("started_at")
+  finishedAt        DateTime? @map("finished_at")
+  createdAt         DateTime @default(now()) @map("created_at")
+  updatedAt         DateTime @updatedAt @map("updated_at")
 
   device XoyDevice            @relation(fields: [deviceId], references: [id], onDelete: Cascade)
   events XoySupportLogEvent[]
 
   @@unique([deviceId, runId])
   @@index([deviceId, createdAt])
+  @@index([jobType, jobStatus, updatedAt])
   @@map("xoy_support_log_runs")
 }
 
@@ -499,6 +513,8 @@ model XoySupportLogEvent {
   jobId       String?  @map("job_id")
   jobType     String?  @map("job_type")
   success     Boolean?
+  eventType   String   @default("log") @map("event_type")
+  metadata    Json?
   text        String
   fileLine    String?  @map("file_line")
   displayTime String?  @map("display_time")

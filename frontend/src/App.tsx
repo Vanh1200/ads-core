@@ -24,6 +24,7 @@ import GoogleAdsExplorer from './pages/GoogleAdsExplorer';
 import XoyLicenses from './pages/XoyLicenses';
 import XoySupportLogs from './pages/XoySupportLogs';
 import XoySupportLogDetail from './pages/XoySupportLogDetail';
+import XoyOperations from './pages/XoyOperations';
 import './App.css';
 
 const queryClient = new QueryClient({
@@ -95,6 +96,7 @@ function AppRoutes() {
         <Route path="xoy-licenses" element={<XoyLicenses />} />
         <Route path="xoy-support-logs" element={<XoySupportLogs />} />
         <Route path="xoy-support-logs/:licenseId" element={<XoySupportLogDetail />} />
+        <Route path="xoy-operations" element={<XoyOperations />} />
       </Route>
       <Route path="*" element={<Navigate to="/" />} />
     </Routes>

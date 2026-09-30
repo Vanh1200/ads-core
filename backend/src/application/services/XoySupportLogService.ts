@@ -8,6 +8,8 @@ type IncomingEvent = {
     jobId?: string | null;
     jobType?: string | null;
     success?: boolean | null;
+    eventType: string;
+    metadata: any;
     text: string;
     fileLine?: string | null;
     displayTime?: string | null;
@@ -26,6 +28,8 @@ type SupportLogFilters = {
 const MAX_EVENTS_PER_BATCH = 100;
 const MAX_TEXT_LENGTH = 12_000;
 const MAX_FIELD_LENGTH = 255;
+const MAX_EVENT_TYPE_LENGTH = 64;
+const MAX_METADATA_LENGTH = 12_000;
 
 function requiredText(value: unknown, label: string, limit = MAX_FIELD_LENGTH) {
     const text = String(value || '').trim();
@@ -41,6 +45,26 @@ function optionalText(value: unknown, limit = MAX_FIELD_LENGTH) {
 function safeOccurredAt(value: unknown) {
     const date = value ? new Date(String(value)) : new Date();
     return Number.isNaN(date.getTime()) ? new Date() : date;
+}
+
+function safeJson(value: unknown) {
+    if (value == null) return null;
+    try {
+        const json = JSON.stringify(value);
+        if (json.length > MAX_METADATA_LENGTH) return { truncated: true, preview: json.slice(0, MAX_METADATA_LENGTH) };
+        return JSON.parse(json);
+    } catch {
+        throw new Error('BAD_REQUEST: metadata không hợp lệ');
+    }
+}
+
+function safeNumber(value: unknown) {
+    const number = Number(value);
+    return Number.isFinite(number) && number >= 0 ? Math.floor(number) : 0;
+}
+
+function metadataArray(value: unknown) {
+    return Array.isArray(value) ? value.map(String).slice(0, 2_000) : [];
 }
 
 function optionalDate(value: unknown, endOfDay = false) {
@@ -91,6 +115,8 @@ export class XoySupportLogService {
             jobId: optionalText(event?.jobId),
             jobType: optionalText(event?.jobType),
             success: typeof event?.success === 'boolean' ? event.success : null,
+            eventType: optionalText(event?.eventType, MAX_EVENT_TYPE_LENGTH) || 'log',
+            metadata: safeJson(event?.metadata),
             text: requiredText(event?.text, 'text', MAX_TEXT_LENGTH),
             fileLine: optionalText(event?.fileLine, MAX_TEXT_LENGTH),
             displayTime: optionalText(event?.displayTime),
@@ -105,7 +131,74 @@ export class XoySupportLogService {
             data: events.map((event) => ({ ...event, occurredAt: safeOccurredAt(event.occurredAt), runDbId: run.id })),
             skipDuplicates: true,
         });
+        const lifecycle = [...events].reverse().find((event) =>
+            ['job_started', 'job_progress', 'job_finished'].includes(event.eventType || '') && event.metadata
+        );
+        if (lifecycle?.metadata) {
+            const metadata: any = lifecycle.metadata;
+            await prisma.xoySupportLogRun.update({
+                where: { id: run.id },
+                data: {
+                    jobId: lifecycle.jobId || undefined,
+                    traceId: lifecycle.traceId || undefined,
+                    jobType: lifecycle.jobType || undefined,
+                    jobStatus: optionalText(metadata.jobStatus),
+                    inputIds: metadataArray(metadata.inputIds),
+                    inputMccIds: metadataArray(metadata.inputMccIds),
+                    targetTotal: safeNumber(metadata.totalTargets),
+                    processedTargets: safeNumber(metadata.processedTargets),
+                    successfulTargets: safeNumber(metadata.successfulTargets),
+                    failedTargets: safeNumber(metadata.failedTargets),
+                    skippedTargets: safeNumber(metadata.skippedTargets),
+                    startedAt: metadata.startedAt ? safeOccurredAt(metadata.startedAt) : undefined,
+                    finishedAt: metadata.finishedAt ? safeOccurredAt(metadata.finishedAt) : undefined,
+                },
+            });
+        }
         return { supportId: run.supportId, acceptedEventIds: events.map((event) => event.eventId) };
+    }
+
+    async operationalMetrics(input: Pick<SupportLogFilters, 'sentFrom' | 'sentTo'>) {
+        const sentFrom = optionalDate(input.sentFrom) || new Date(Date.now() - 30 * 24 * 60 * 60 * 1000);
+        const sentTo = optionalDate(input.sentTo, true) || new Date();
+        const where = { updatedAt: { gte: sentFrom, lte: sentTo } };
+        const [runs, licenseStatuses, rpcErrors] = await Promise.all([
+            prisma.xoySupportLogRun.findMany({
+                where, orderBy: { updatedAt: 'desc' }, take: 5_000,
+                select: {
+                    id: true, supportId: true, jobType: true, jobStatus: true, targetTotal: true,
+                    processedTargets: true, successfulTargets: true, failedTargets: true, skippedTargets: true,
+                    inputIds: true, inputMccIds: true, startedAt: true, finishedAt: true, updatedAt: true,
+                    device: { select: { license: { select: { id: true, name: true } } } },
+                },
+            }),
+            prisma.xoyLicense.groupBy({ by: ['status'], _count: { _all: true } }),
+            prisma.xoySupportLogEvent.count({ where: { eventType: 'rpc_error', occurredAt: { gte: sentFrom, lte: sentTo } } }),
+        ]);
+        const byJobType = new Map<string, any>();
+        const byDay = new Map<string, any>();
+        let completed = 0; let failed = 0; let stopped = 0; let active = 0;
+        let targets = 0; let processed = 0; let successes = 0; let failures = 0; let skipped = 0;
+        for (const run of runs) {
+            const type = run.jobType || 'unclassified';
+            const item = byJobType.get(type) || { jobType: type, jobs: 0, completed: 0, failed: 0, stopped: 0, active: 0, targets: 0, processed: 0, successes: 0, failures: 0, skipped: 0 };
+            const status = run.jobStatus || 'RUNNING';
+            item.jobs++; item.targets += run.targetTotal; item.processed += run.processedTargets; item.successes += run.successfulTargets; item.failures += run.failedTargets; item.skipped += run.skippedTargets;
+            if (status === 'COMPLETED') { item.completed++; completed++; } else if (status === 'FAILED') { item.failed++; failed++; } else if (status === 'STOPPED' || status === 'INTERRUPTED') { item.stopped++; stopped++; } else { item.active++; active++; }
+            byJobType.set(type, item);
+            targets += run.targetTotal; processed += run.processedTargets; successes += run.successfulTargets; failures += run.failedTargets; skipped += run.skippedTargets;
+            const day = run.updatedAt.toISOString().slice(0, 10);
+            const dayItem = byDay.get(day) || { day, jobs: 0, successes: 0, failures: 0 };
+            dayItem.jobs++; dayItem.successes += run.successfulTargets; dayItem.failures += run.failedTargets; byDay.set(day, dayItem);
+        }
+        return {
+            generatedAt: new Date(), period: { sentFrom, sentTo }, capped: runs.length === 5_000,
+            overview: { jobs: runs.length, completed, failed, stopped, active, targets, processed, successes, failures, skipped, rpcErrors },
+            licenseStatuses: licenseStatuses.map((row) => ({ status: row.status, count: row._count._all })),
+            byJobType: [...byJobType.values()].sort((a, b) => b.jobs - a.jobs),
+            byDay: [...byDay.values()].sort((a, b) => a.day.localeCompare(b.day)),
+            recentJobs: runs.slice(0, 50).map((run) => ({ ...run, license: run.device.license })),
+        };
     }
 
     async list(input: SupportLogFilters) {

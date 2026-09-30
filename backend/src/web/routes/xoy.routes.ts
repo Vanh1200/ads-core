@@ -82,6 +82,9 @@ router.post('/admin/licenses/:licenseId/revoke-permanently', authenticateToken, 
 router.get('/admin/support-logs', authenticateToken, isAdmin, asyncHandler(async (req, res) => {
     res.json(await xoySupportLogService.list(req.query));
 }));
+router.get('/admin/operations', authenticateToken, isAdmin, asyncHandler(async (req, res) => {
+    res.json(await xoySupportLogService.operationalMetrics(req.query));
+}));
 router.get('/admin/licenses/:licenseId/support-logs', authenticateToken, isAdmin, asyncHandler(async (req, res) => {
     res.json(await xoySupportLogService.listByLicense(req.params.licenseId, req.query));
 }));

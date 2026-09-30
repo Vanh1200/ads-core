@@ -31,8 +31,9 @@ const navItems = [
     { path: '/google-ads', icon: Globe, label: 'Google Ads API', section: 'Công cụ' },
     { path: '/activity-logs', icon: Activity, label: 'Lịch sử hoạt động', section: 'Hệ thống' },
     { path: '/users', icon: Users, label: 'Nhân viên', section: 'Hệ thống' },
-    { path: '/xoy-licenses', icon: Key, label: 'XOY Licenses', section: 'Hệ thống' },
-    { path: '/xoy-support-logs', icon: ShieldAlert, label: 'XOY Support Logs', section: 'Hệ thống' },
+    { path: '/xoy-licenses', icon: Key, label: 'License XOY', section: 'Hệ thống' },
+    { path: '/xoy-support-logs', icon: ShieldAlert, label: 'Nhật ký hỗ trợ XOY', section: 'Hệ thống' },
+    { path: '/xoy-operations', icon: Activity, label: 'Vận hành XOY', section: 'Hệ thống' },
 ];
 
 export default function Layout() {
@@ -75,6 +76,7 @@ export default function Layout() {
                 return ['ADMIN', 'MANAGER', 'BUYER', 'LINKER', 'UPDATER'].includes(user.role);
             case '/xoy-licenses':
             case '/xoy-support-logs':
+            case '/xoy-operations':
                 return false; // ADMIN already returned above; all other roles are denied.
             default:
                 return false;

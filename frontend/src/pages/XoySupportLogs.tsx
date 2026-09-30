@@ -36,11 +36,11 @@ export default function XoySupportLogs() {
     const groups = list.data?.data?.data || [];
     const knownTypes = useMemo<string[]>(() => [...new Set<string>(groups.flatMap((group: any) => group.jobTypes || []))].sort(), [groups]);
     return <div>
-        <div className="page-header"><div><h1 className="page-title">XOY Support Logs</h1><p className="page-subtitle">Nhật ký được gom theo license/khách hàng. Mở chi tiết để tra cứu và sao chép từng support.</p></div></div>
+        <div className="page-header"><div><h1 className="page-title">Nhật ký hỗ trợ XOY</h1><p className="page-subtitle">Nhật ký được gom theo License/khách hàng. Mở chi tiết để tra cứu và sao chép từng mã hỗ trợ.</p></div></div>
         <XoySupportLogFilters value={filters} jobTypes={knownTypes} onApply={setFilters} />
-        <div className="card"><div className="card-header"><ShieldAlert size={18} />Danh sách support theo khách hàng</div><div className="table-container"><table className="data-table"><thead><tr><th>Khách hàng / License</th><th>Gói</th><th>Loại log</th><th>Runs / sự kiện</th><th>Gửi gần nhất</th><th></th></tr></thead><tbody>
+        <div className="card"><div className="card-header"><ShieldAlert size={18} />Danh sách hỗ trợ theo khách hàng</div><div className="table-container"><table className="data-table"><thead><tr><th>Khách hàng / License</th><th>Gói</th><th>Loại log</th><th>Lượt chạy / sự kiện</th><th>Gửi gần nhất</th><th></th></tr></thead><tbody>
             {list.isLoading ? <tr><td colSpan={6} style={{ textAlign: 'center', padding: 28 }}>Đang tải...</td></tr> : groups.length === 0 ? <tr><td colSpan={6} style={{ textAlign: 'center', padding: 28 }}>Chưa có support log phù hợp.</td></tr> : groups.map((group: any) => <tr key={group.license.id}>
-                <td><strong>{group.license.name}</strong>{group.license.telegramId && <small style={{ display: 'block' }}>Telegram: {group.license.telegramId}</small>}</td><td>{group.license.plan === 'BASIC' ? 'Cơ bản' : 'Full'}</td><td><small>{group.jobTypes?.length ? group.jobTypes.join(', ') : 'Chưa phân loại'}</small></td><td>{group.runs} runs / {group.events} sự kiện</td><td>{formatXoyLogTime(group.lastSentAt)}</td>
+                <td><strong>{group.license.name}</strong>{group.license.telegramId && <small style={{ display: 'block' }}>Telegram: {group.license.telegramId}</small>}</td><td>{group.license.plan === 'BASIC' ? 'Cơ bản' : 'Đầy đủ'}</td><td><small>{group.jobTypes?.length ? group.jobTypes.join(', ') : 'Chưa phân loại'}</small></td><td>{group.runs} lượt chạy / {group.events} sự kiện</td><td>{formatXoyLogTime(group.lastSentAt)}</td>
                 <td><button className="btn btn-secondary" onClick={() => navigate(`/xoy-support-logs/${group.license.id}`)}>Chi tiết</button></td>
             </tr>)}
         </tbody></table></div></div>

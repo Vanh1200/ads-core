@@ -75,6 +75,10 @@ export const xoySupportLogsApi = {
     get: (supportId: string) => api.get(`/xoy/admin/support-logs/${encodeURIComponent(supportId)}`),
 };
 
+export const xoyOperationsApi = {
+    get: (params?: { sentFrom?: string; sentTo?: string }) => api.get('/xoy/admin/operations', { params }),
+};
+
 // Partners API
 export const partnersApi = {
     list: (params?: object) => api.get('/partners', { params }),

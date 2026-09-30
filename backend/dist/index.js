@@ -236,6 +236,24 @@ async function applyDatabasePatches() {
         await prisma_1.default.$executeRawUnsafe('CREATE UNIQUE INDEX IF NOT EXISTS "xoy_support_log_events_run_db_id_event_id_key" ON "xoy_support_log_events"("run_db_id", "event_id")');
         await prisma_1.default.$executeRawUnsafe('CREATE INDEX IF NOT EXISTS "xoy_support_log_events_run_db_id_occurred_at_idx" ON "xoy_support_log_events"("run_db_id", "occurred_at")');
         await prisma_1.default.$executeRawUnsafe('CREATE INDEX IF NOT EXISTS "xoy_support_log_events_trace_id_idx" ON "xoy_support_log_events"("trace_id")');
+        // Structured job telemetry is kept on the run for fast operational
+        // dashboards; raw events remain append-only for support investigations.
+        await prisma_1.default.$executeRawUnsafe('ALTER TABLE "xoy_support_log_runs" ADD COLUMN IF NOT EXISTS "job_id" TEXT');
+        await prisma_1.default.$executeRawUnsafe('ALTER TABLE "xoy_support_log_runs" ADD COLUMN IF NOT EXISTS "trace_id" TEXT');
+        await prisma_1.default.$executeRawUnsafe('ALTER TABLE "xoy_support_log_runs" ADD COLUMN IF NOT EXISTS "job_type" TEXT');
+        await prisma_1.default.$executeRawUnsafe('ALTER TABLE "xoy_support_log_runs" ADD COLUMN IF NOT EXISTS "job_status" TEXT');
+        await prisma_1.default.$executeRawUnsafe('ALTER TABLE "xoy_support_log_runs" ADD COLUMN IF NOT EXISTS "input_ids" JSONB');
+        await prisma_1.default.$executeRawUnsafe('ALTER TABLE "xoy_support_log_runs" ADD COLUMN IF NOT EXISTS "input_mcc_ids" JSONB');
+        await prisma_1.default.$executeRawUnsafe('ALTER TABLE "xoy_support_log_runs" ADD COLUMN IF NOT EXISTS "target_total" INTEGER NOT NULL DEFAULT 0');
+        await prisma_1.default.$executeRawUnsafe('ALTER TABLE "xoy_support_log_runs" ADD COLUMN IF NOT EXISTS "processed_targets" INTEGER NOT NULL DEFAULT 0');
+        await prisma_1.default.$executeRawUnsafe('ALTER TABLE "xoy_support_log_runs" ADD COLUMN IF NOT EXISTS "successful_targets" INTEGER NOT NULL DEFAULT 0');
+        await prisma_1.default.$executeRawUnsafe('ALTER TABLE "xoy_support_log_runs" ADD COLUMN IF NOT EXISTS "failed_targets" INTEGER NOT NULL DEFAULT 0');
+        await prisma_1.default.$executeRawUnsafe('ALTER TABLE "xoy_support_log_runs" ADD COLUMN IF NOT EXISTS "skipped_targets" INTEGER NOT NULL DEFAULT 0');
+        await prisma_1.default.$executeRawUnsafe('ALTER TABLE "xoy_support_log_runs" ADD COLUMN IF NOT EXISTS "started_at" TIMESTAMP(3)');
+        await prisma_1.default.$executeRawUnsafe('ALTER TABLE "xoy_support_log_runs" ADD COLUMN IF NOT EXISTS "finished_at" TIMESTAMP(3)');
+        await prisma_1.default.$executeRawUnsafe('ALTER TABLE "xoy_support_log_events" ADD COLUMN IF NOT EXISTS "event_type" TEXT NOT NULL DEFAULT \'log\'');
+        await prisma_1.default.$executeRawUnsafe('ALTER TABLE "xoy_support_log_events" ADD COLUMN IF NOT EXISTS "metadata" JSONB');
+        await prisma_1.default.$executeRawUnsafe('CREATE INDEX IF NOT EXISTS "xoy_support_log_runs_job_type_job_status_updated_at_idx" ON "xoy_support_log_runs"("job_type", "job_status", "updated_at")');
         await prisma_1.default.$executeRawUnsafe(`CREATE TABLE IF NOT EXISTS "xoy_device_challenges" (
             "id" TEXT NOT NULL PRIMARY KEY, "license_id" TEXT NOT NULL, "session_id" TEXT, "purpose" TEXT NOT NULL,
             "installation_id" TEXT NOT NULL, "nonce_hash" TEXT NOT NULL, "device_hash" TEXT NOT NULL, "device_context" JSONB NOT NULL,
