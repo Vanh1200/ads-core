@@ -106,6 +106,47 @@ export class XoyLicenseService {
         if (!license.keyEncrypted) throw new Error('LICENSE_KEY_UNAVAILABLE');
         return { licenseKey: decryptKey(license.keyEncrypted) };
     }
+    async updateLicense(licenseId: string, input: { plan?: 'BASIC' | 'FULL'; maxFingerprints?: number; expiresAt?: string | null }) {
+        const license = await prisma.xoyLicense.findUnique({ where: { id: licenseId } });
+        if (!license) throw new Error('NOT_FOUND: Không tìm thấy license');
+
+        const data: any = {};
+        const auditChanges: Record<string, unknown> = {};
+        if (input.plan !== undefined) {
+            if (!['BASIC', 'FULL'].includes(input.plan)) throw new Error('BAD_REQUEST: Gói license không hợp lệ');
+            data.plan = input.plan;
+            if (license.plan !== input.plan) auditChanges.plan = { from: license.plan, to: input.plan };
+        }
+        if (input.maxFingerprints !== undefined) {
+            const maxFingerprints = Number(input.maxFingerprints);
+            if (!Number.isInteger(maxFingerprints) || maxFingerprints < 1 || maxFingerprints > 100) {
+                throw new Error('BAD_REQUEST: Số thiết bị phải từ 1 đến 100');
+            }
+            await this.expireInactiveDevices(licenseId);
+            const activeDevices = await prisma.xoyDevice.count({ where: { licenseId, status: 'ACTIVE' } });
+            if (maxFingerprints < activeDevices) {
+                throw new Error(`BAD_REQUEST: License đang có ${activeDevices} thiết bị active. Thu hồi thiết bị trước khi giảm giới hạn.`);
+            }
+            data.maxFingerprints = maxFingerprints;
+            if (license.maxFingerprints !== maxFingerprints) auditChanges.maxFingerprints = { from: license.maxFingerprints, to: maxFingerprints };
+        }
+        if (Object.prototype.hasOwnProperty.call(input, 'expiresAt')) {
+            const rawExpiry = input.expiresAt;
+            let expiresAt: Date | null = null;
+            if (rawExpiry) {
+                expiresAt = new Date(rawExpiry);
+                if (Number.isNaN(expiresAt.getTime())) throw new Error('BAD_REQUEST: Thời hạn không hợp lệ');
+            }
+            data.expiresAt = expiresAt;
+            const previous = license.expiresAt?.toISOString() || null;
+            const next = expiresAt?.toISOString() || null;
+            if (previous !== next) auditChanges.expiresAt = { from: previous, to: next };
+        }
+        if (Object.keys(data).length === 0) return this.adminLicense(license);
+        const updated = await prisma.xoyLicense.update({ where: { id: licenseId }, data });
+        if (Object.keys(auditChanges).length) await this.audit(licenseId, 'LICENSE_UPDATED', auditChanges);
+        return this.adminLicense(updated);
+    }
     private async audit(licenseId: string, eventType: string, details: unknown, deviceId?: string) { await prisma.xoyDeviceAudit.create({ data: { licenseId, deviceId, eventType, details: details as any } }); }
     private async expireInactiveDevices(licenseId: string) {
         const threshold = new Date(Date.now() - INACTIVE_DEVICE_DAYS * 24 * 60 * 60 * 1000);
@@ -247,6 +288,17 @@ export class XoyLicenseService {
         const now = new Date();
         await prisma.$transaction([prisma.xoyDevice.update({ where: { id: device.id }, data: { status: 'REVOKED', revokedAt: now } }), prisma.xoyDeviceSession.updateMany({ where: { deviceId: device.id, revokedAt: null }, data: { revokedAt: now, refreshTokenHash: null, refreshExpiresAt: null } })]);
         await this.audit(licenseId, 'DEVICE_REVOKED', {}, device.id);
+    }
+    async revokeAllDevices(licenseId: string) {
+        const license = await prisma.xoyLicense.findUnique({ where: { id: licenseId }, select: { id: true } });
+        if (!license) throw new Error('NOT_FOUND: Không tìm thấy license');
+        const now = new Date();
+        const [devices] = await prisma.$transaction([
+            prisma.xoyDevice.updateMany({ where: { licenseId, status: { not: 'REVOKED' } }, data: { status: 'REVOKED', revokedAt: now } }),
+            prisma.xoyDeviceSession.updateMany({ where: { device: { licenseId }, revokedAt: null }, data: { revokedAt: now, refreshTokenHash: null, refreshExpiresAt: null } }),
+        ]);
+        await this.audit(licenseId, 'LICENSE_ALL_DEVICES_REVOKED', { deviceCount: devices.count });
+        return { revokedDevices: devices.count };
     }
     async getEntitlement(deviceId: string, sessionId?: string) { return this.entitlement((await this.currentDevice(deviceId, sessionId)).device.licenseId); }
 }

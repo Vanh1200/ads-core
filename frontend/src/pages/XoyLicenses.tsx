@@ -1,6 +1,6 @@
 import { Fragment, useMemo, useState } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { Check, ChevronDown, ChevronUp, Copy, Eye, EyeOff, Key, MonitorX, Plus } from 'lucide-react';
+import { Check, ChevronDown, ChevronUp, Copy, Eye, EyeOff, Key, MonitorX, Pencil, Plus, Save, X } from 'lucide-react';
 import { xoyLicensesApi } from '../api/client';
 
 const PLAN_LABELS = {
@@ -41,6 +41,7 @@ export default function XoyLicenses() {
     const [issuedKey, setIssuedKey] = useState('');
     const [copied, setCopied] = useState(false);
     const [openLicenseId, setOpenLicenseId] = useState<string | null>(null);
+    const [editingLicenseId, setEditingLicenseId] = useState<string | null>(null);
     const [revealedKeys, setRevealedKeys] = useState<Record<string, string>>({});
     const { data, isLoading } = useQuery({ queryKey: ['xoy-licenses'], queryFn: xoyLicensesApi.list });
     const devices = useQuery({ queryKey: ['xoy-license-devices', openLicenseId], queryFn: () => xoyLicensesApi.listDevices(openLicenseId!).then((result) => result.data), enabled: Boolean(openLicenseId) });
@@ -62,6 +63,22 @@ export default function XoyLicenses() {
         onSuccess: () => {
             queryClient.invalidateQueries({ queryKey: ['xoy-licenses'] });
             queryClient.invalidateQueries({ queryKey: ['xoy-license-devices', openLicenseId] });
+        },
+    });
+    const updateLicense = useMutation({
+        mutationFn: ({ licenseId, values }: { licenseId: string; values: { plan: 'BASIC' | 'FULL'; maxFingerprints: number; expiresAt: string | null } }) => xoyLicensesApi.update(licenseId, values),
+        onSuccess: () => {
+            setEditingLicenseId(null);
+            queryClient.invalidateQueries({ queryKey: ['xoy-licenses'] });
+            queryClient.invalidateQueries({ queryKey: ['xoy-license-device-audits', openLicenseId] });
+        },
+    });
+    const revokeAllDevices = useMutation({
+        mutationFn: (licenseId: string) => xoyLicensesApi.revokeAllDevices(licenseId),
+        onSuccess: () => {
+            queryClient.invalidateQueries({ queryKey: ['xoy-licenses'] });
+            queryClient.invalidateQueries({ queryKey: ['xoy-license-devices', openLicenseId] });
+            queryClient.invalidateQueries({ queryKey: ['xoy-license-device-audits', openLicenseId] });
         },
     });
     const licenses = data?.data || [];
@@ -87,6 +104,19 @@ export default function XoyLicenses() {
             plan: String(values.get('plan') || 'BASIC') === 'FULL' ? 'FULL' : 'BASIC',
             maxFingerprints: Number(values.get('maxFingerprints') || 3),
             expiresAt: expiresAfterMonths(months),
+        });
+    };
+
+    const submitEdit = (event: React.FormEvent<HTMLFormElement>, licenseId: string) => {
+        event.preventDefault();
+        const values = new FormData(event.currentTarget);
+        updateLicense.mutate({
+            licenseId,
+            values: {
+                plan: values.get('plan') === 'FULL' ? 'FULL' : 'BASIC',
+                maxFingerprints: Number(values.get('maxFingerprints')),
+                expiresAt: String(values.get('expiresAt') || '') || null,
+            },
         });
     };
 
@@ -119,9 +149,33 @@ export default function XoyLicenses() {
                         <td>{license.activeFingerprints}/{license.maxFingerprints}</td>
                         <td>{license.expiresAt ? new Date(license.expiresAt).toLocaleDateString('vi-VN') : '—'}</td>
                         <td>{license.status === 'ISSUED' ? 'CHƯA ACTIVE' : license.status}</td>
-                        <td><button className="btn btn-secondary" onClick={() => setOpenLicenseId(isOpen ? null : license.id)}>{isOpen ? <ChevronUp size={16} /> : <ChevronDown size={16} />}{isOpen ? 'Ẩn' : 'Thiết bị'}</button></td>
+                        <td><button className="btn btn-secondary" onClick={() => { setOpenLicenseId(isOpen ? null : license.id); if (isOpen) setEditingLicenseId(null); }}>{isOpen ? <ChevronUp size={16} /> : <ChevronDown size={16} />}{isOpen ? 'Ẩn' : 'Quản lý'}</button></td>
                     </tr>
                     {isOpen && <tr key={`${license.id}-devices`}><td colSpan={7} style={{ padding: 16, background: 'var(--background)' }}>
+                        <div className="card" style={{ marginBottom: 16 }}>
+                            <div className="card-header" style={{ justifyContent: 'space-between' }}>
+                                <span>Quản lý license · {license.name}</span>
+                                <div style={{ display: 'flex', gap: 8 }}>
+                                    {editingLicenseId !== license.id && <button className="btn btn-secondary" onClick={() => setEditingLicenseId(license.id)}><Pencil size={15} />Sửa license</button>}
+                                    <button className="btn btn-danger" disabled={revokeAllDevices.isPending} onClick={() => window.confirm('Thu hồi toàn bộ thiết bị của license này? Mọi Chrome profile đang dùng key sẽ bị dừng. License và key vẫn giữ nguyên để kích hoạt lại khi cần.') && revokeAllDevices.mutate(license.id)}><MonitorX size={15} />{revokeAllDevices.isPending ? 'Đang thu hồi...' : 'Thu hồi tất cả thiết bị'}</button>
+                                </div>
+                            </div>
+                            {editingLicenseId === license.id ? <form onSubmit={(event) => submitEdit(event, license.id)} style={{ padding: 16 }}>
+                                <div style={{ display: 'grid', gap: 14, gridTemplateColumns: 'repeat(auto-fit, minmax(190px, 1fr))' }}>
+                                    <div><label className="form-label">Gói license</label><select className="form-select" name="plan" defaultValue={license.plan}><option value="BASIC">Gói Cơ bản</option><option value="FULL">Gói Full</option></select></div>
+                                    <div><label className="form-label">Số thiết bị tối đa</label><input className="form-input" name="maxFingerprints" type="number" min="1" max="100" required defaultValue={license.maxFingerprints} /></div>
+                                    <div><label className="form-label">Hết hạn</label><input className="form-input" name="expiresAt" type="date" defaultValue={license.expiresAt ? new Date(license.expiresAt).toISOString().slice(0, 10) : ''} /></div>
+                                </div>
+                                <small style={{ display: 'block', marginTop: 10, color: 'var(--text-muted)' }}>Không thể giảm giới hạn thấp hơn số thiết bị đang active. Hãy thu hồi thiết bị trước.</small>
+                                <div style={{ display: 'flex', gap: 8, marginTop: 16 }}><button className="btn btn-primary" disabled={updateLicense.isPending}><Save size={15} />{updateLicense.isPending ? 'Đang lưu...' : 'Lưu thay đổi'}</button><button type="button" className="btn btn-secondary" onClick={() => setEditingLicenseId(null)}><X size={15} />Hủy</button></div>
+                                {updateLicense.isError && <div style={{ marginTop: 12, color: 'var(--danger)' }}>{(updateLicense.error as any)?.response?.data?.error || 'Không thể lưu thay đổi license.'}</div>}
+                            </form> : <div style={{ padding: '0 16px 16px', display: 'flex', flexWrap: 'wrap', gap: 18, color: 'var(--text-muted)', fontSize: 13 }}>
+                                <span><strong style={{ color: 'var(--text)' }}>Gói:</strong> {PLAN_LABELS[license.plan as keyof typeof PLAN_LABELS] || license.plan}</span>
+                                <span><strong style={{ color: 'var(--text)' }}>Thiết bị:</strong> {license.activeFingerprints}/{license.maxFingerprints}</span>
+                                <span><strong style={{ color: 'var(--text)' }}>Hết hạn:</strong> {license.expiresAt ? new Date(license.expiresAt).toLocaleDateString('vi-VN') : 'Không giới hạn'}</span>
+                            </div>}
+                            {revokeAllDevices.isError && <div style={{ margin: '0 16px 16px', color: 'var(--danger)' }}>{(revokeAllDevices.error as any)?.response?.data?.error || 'Không thể thu hồi thiết bị.'}</div>}
+                        </div>
                         {devices.isLoading ? 'Đang tải thiết bị...' : devices.isError ? 'Không thể tải thiết bị.' : (devices.data || []).length === 0 ? 'Chưa có thiết bị nào kích hoạt license này.' : <div style={{ display: 'grid', gap: 12 }}>{devices.data.map((device: any) => {
                             const details = deviceContextDetails(device);
                             return <div key={device.id} style={{ padding: 12, border: '1px solid var(--border)', borderRadius: 8, background: 'var(--surface)' }}>

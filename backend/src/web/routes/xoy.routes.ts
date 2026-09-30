@@ -32,6 +32,9 @@ router.post('/admin/licenses', authenticateToken, isAdmin, asyncHandler(async (r
 router.get('/admin/licenses', authenticateToken, isAdmin, asyncHandler(async (_req, res) => {
     res.json(await xoyLicenseService.listLicenses());
 }));
+router.patch('/admin/licenses/:licenseId', authenticateToken, isAdmin, asyncHandler(async (req, res) => {
+    res.json(await xoyLicenseService.updateLicense(req.params.licenseId, req.body));
+}));
 router.post('/session/refresh-challenge', asyncHandler(async (req, res) => {
     res.json(await xoyLicenseService.createRefreshChallenge(req.body));
 }));
@@ -62,6 +65,9 @@ router.get('/admin/licenses/:licenseId/device-audits', authenticateToken, isAdmi
 router.delete('/admin/licenses/:licenseId/devices/:deviceId', authenticateToken, isAdmin, asyncHandler(async (req, res) => {
     await xoyLicenseService.revokeDevice(req.params.licenseId, req.params.deviceId);
     res.status(204).end();
+}));
+router.post('/admin/licenses/:licenseId/revoke-all-devices', authenticateToken, isAdmin, asyncHandler(async (req, res) => {
+    res.json(await xoyLicenseService.revokeAllDevices(req.params.licenseId));
 }));
 router.get('/admin/support-logs', authenticateToken, isAdmin, asyncHandler(async (req, res) => {
     res.json(await xoySupportLogService.list(req.query));

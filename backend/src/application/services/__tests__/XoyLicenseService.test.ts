@@ -70,4 +70,36 @@ describe('XoyLicenseService device proof protocol', () => {
         await expect(new XoyLicenseService().createRefreshChallenge({ installationId: 'profile-1', refreshToken: 'token', deviceContext: context })).rejects.toThrow('DEVICE_CONTEXT_CHANGED');
         expect(prismaMock.xoyDeviceAudit.create).toHaveBeenCalledWith(expect.objectContaining({ data: expect.objectContaining({ eventType: 'DEVICE_CONTEXT_CHANGED' }) }));
     });
+
+    it('updates the commercial plan, device limit and expiry while retaining active devices', async () => {
+        prismaMock.xoyLicense.findUnique.mockResolvedValue(license as any);
+        prismaMock.xoyDevice.updateMany.mockResolvedValue({ count: 0 } as any);
+        prismaMock.xoyDevice.count.mockResolvedValue(1 as any);
+        const updated = { ...license, plan: 'FULL', maxFingerprints: 4, expiresAt: new Date('2030-06-01') };
+        prismaMock.xoyLicense.update.mockResolvedValue(updated as any);
+
+        const result = await new XoyLicenseService().updateLicense(license.id, { plan: 'FULL', maxFingerprints: 4, expiresAt: '2030-06-01' });
+        expect(result.plan).toBe('FULL');
+        expect(prismaMock.xoyLicense.update).toHaveBeenCalledWith(expect.objectContaining({ data: expect.objectContaining({ plan: 'FULL', maxFingerprints: 4 }) }));
+        expect(prismaMock.xoyDeviceAudit.create).toHaveBeenCalledWith(expect.objectContaining({ data: expect.objectContaining({ eventType: 'LICENSE_UPDATED' }) }));
+    });
+
+    it('does not permit lowering the limit below active devices', async () => {
+        prismaMock.xoyLicense.findUnique.mockResolvedValue({ ...license, maxFingerprints: 3 } as any);
+        prismaMock.xoyDevice.updateMany.mockResolvedValue({ count: 0 } as any);
+        prismaMock.xoyDevice.count.mockResolvedValue(2 as any);
+
+        await expect(new XoyLicenseService().updateLicense(license.id, { maxFingerprints: 1 })).rejects.toThrow('đang có 2 thiết bị active');
+        expect(prismaMock.xoyLicense.update).not.toHaveBeenCalled();
+    });
+
+    it('revokes every device session while retaining the license for later activation', async () => {
+        prismaMock.xoyLicense.findUnique.mockResolvedValue({ id: license.id } as any);
+        prismaMock.$transaction.mockResolvedValue([{ count: 2 }, { count: 4 }] as any);
+
+        await expect(new XoyLicenseService().revokeAllDevices(license.id)).resolves.toEqual({ revokedDevices: 2 });
+        expect(prismaMock.xoyDevice.updateMany).toHaveBeenCalledWith(expect.objectContaining({ where: expect.objectContaining({ licenseId: license.id }) }));
+        expect(prismaMock.xoyDeviceSession.updateMany).toHaveBeenCalledWith(expect.objectContaining({ data: expect.objectContaining({ refreshTokenHash: null }) }));
+        expect(prismaMock.xoyDeviceAudit.create).toHaveBeenCalledWith(expect.objectContaining({ data: expect.objectContaining({ eventType: 'LICENSE_ALL_DEVICES_REVOKED' }) }));
+    });
 });
