@@ -71,6 +71,21 @@ function formatTemplateValue(value: unknown) {
     return String(value);
 }
 
+function jobStatusLabel(status: unknown) {
+    return ({ COMPLETED: 'Hoàn tất', FAILED: 'Thất bại', STOPPED: 'Đã dừng', INTERRUPTED: 'Gián đoạn', RUNNING: 'Đang chạy' } as Record<string, string>)[String(status || '')] || 'Đang chạy';
+}
+
+function RunProgressSummary({ run }: { run: any }) {
+    const total = Math.max(0, Number(run.targetTotal) || 0);
+    const processed = Math.min(total || Number(run.processedTargets) || 0, Math.max(0, Number(run.processedTargets) || 0));
+    const percent = total ? Math.round((processed / total) * 100) : null;
+    return <div aria-live="polite" style={{ display: 'flex', flexWrap: 'wrap', gap: 8, padding: '10px 12px', borderBottom: '1px solid var(--border)', background: 'var(--background)', fontSize: 13 }}>
+        <span className="badge badge-info">Trạng thái: {jobStatusLabel(run.jobStatus)}</span>
+        <span className="badge badge-secondary">Tiến độ: {total ? `${processed}/${total}${percent != null ? ` (${percent}%)` : ''}` : 'Chưa nhận tiến độ'}</span>
+        <span style={{ color: 'var(--text-secondary)' }}>Kết quả: {Number(run.successfulTargets) || 0} thành công · {Number(run.failedTargets) || 0} lỗi · {Number(run.skippedTargets) || 0} bỏ qua</span>
+    </div>;
+}
+
 function AppealTemplateCard({ event }: { event: any }) {
     const template = event?.eventType === 'appeal_template_started' && event?.metadata?.template;
     if (!template || typeof template !== 'object' || Array.isArray(template)) return null;
@@ -102,7 +117,7 @@ export default function XoySupportLogDetail() {
     const [filters, setFilters] = useState<XoyLogFilters>(() => ({ ...EMPTY_XOY_LOG_FILTERS, supportId: searchParams.get('supportId') || '' }));
     const [copied, setCopied] = useState<string | null>(null);
     const licenses = useQuery({ queryKey: ['xoy-licenses'], queryFn: xoyLicensesApi.list });
-    const logs = useQuery({ queryKey: ['xoy-license-support-logs', licenseId, filters], queryFn: () => xoySupportLogsApi.listByLicense(licenseId!, filters), enabled: Boolean(licenseId) });
+    const logs = useQuery({ queryKey: ['xoy-license-support-logs', licenseId, filters], queryFn: () => xoySupportLogsApi.listByLicense(licenseId!, filters), enabled: Boolean(licenseId), refetchInterval: 15_000 });
     const license = (licenses.data?.data || []).find((item: any) => item.id === licenseId);
     const runs = logs.data?.data || [];
     const knownTypes = useMemo<string[]>(() => [...new Set<string>(runs.flatMap((run: any) => run.events.map((event: any) => event.jobType).filter(Boolean)))].sort(), [runs]);
@@ -113,6 +128,7 @@ export default function XoySupportLogDetail() {
         <div className="card"><div className="card-header"><ShieldAlert size={18} />Chi tiết support logs</div>
             {logs.isLoading ? <div style={{ padding: 20 }}>Đang tải log...</div> : logs.isError ? <div style={{ padding: 20, color: 'var(--danger)' }}>Không tải được support log.</div> : runs.length === 0 ? <div style={{ padding: 20 }}>Không có log phù hợp với bộ lọc hiện tại.</div> : <div style={{ padding: 16, display: 'grid', gap: 14 }}>{runs.map((run: any) => <section key={run.id} className="card" style={{ margin: 0, overflow: 'hidden' }}>
                 <div className="card-header" style={{ justifyContent: 'space-between' }}><span><strong>{run.supportId}</strong> · {run.events.length} sự kiện · {formatXoyLogTime(run.updatedAt)}</span><button className="btn btn-secondary btn-sm" onClick={() => copy(run.id, copyableRun(run))}>{copied === run.id ? <Check size={15} /> : <ClipboardCopy size={15} />}{copied === run.id ? 'Đã sao chép' : 'Copy support'}</button></div>
+                <RunProgressSummary run={run} />
                 <div style={{ display: 'grid', gap: 8, padding: 12 }}>{run.events.map((event: any) => <div key={event.id} style={{ borderLeft: `4px solid ${event.success === false ? 'var(--danger)' : event.success === true ? 'var(--secondary)' : 'var(--border)'}`, background: 'var(--background)', padding: '10px 12px', borderRadius: 4 }}><div style={{ fontSize: 12, color: 'var(--text-muted)', marginBottom: 6 }}>{formatXoyLogTime(event.occurredAt)} {event.traceId ? `· ${event.traceId}` : ''} {event.jobType ? `· ${event.jobType}` : ''}</div><pre style={{ margin: 0, whiteSpace: 'pre-wrap', overflowWrap: 'anywhere', fontFamily: 'ui-monospace, SFMono-Regular, Menlo, monospace', fontSize: 13, color: 'var(--text)' }}>{event.text}</pre><AppealTemplateCard event={event} /></div>)}</div>
             </section>)}</div>}
         </div>
