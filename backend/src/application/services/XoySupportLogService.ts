@@ -128,7 +128,16 @@ export class XoySupportLogService {
             update: {},
         });
         await prisma.xoySupportLogEvent.createMany({
-            data: events.map((event) => ({ ...event, occurredAt: safeOccurredAt(event.occurredAt), runDbId: run.id })),
+            // Prisma distinguishes a database NULL from a JSON null. Support
+            // log lines normally do not have metadata, so omit the JSON field
+            // entirely rather than passing JavaScript null and rejecting the
+            // whole batch (including a paused job's lifecycle event).
+            data: events.map(({ metadata, ...event }) => ({
+                ...event,
+                occurredAt: safeOccurredAt(event.occurredAt),
+                runDbId: run.id,
+                ...(metadata == null ? {} : { metadata }),
+            })),
             skipDuplicates: true,
         });
         const lifecycle = [...events].reverse().find((event) =>
