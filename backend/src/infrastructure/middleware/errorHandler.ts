@@ -108,6 +108,26 @@ export const errorHandler = (
         return;
     }
 
+    if (err.message === 'CHALLENGE_EXPIRED') {
+        res.status(408).json({ error: 'Activation challenge expired', code: 'CHALLENGE_EXPIRED' });
+        return;
+    }
+
+    if (err.message === 'CHALLENGE_REPLAYED') {
+        res.status(409).json({ error: 'Activation challenge was already used', code: 'CHALLENGE_REPLAYED' });
+        return;
+    }
+
+    if (err.message === 'INVALID_DEVICE_PROOF') {
+        res.status(400).json({ error: 'Invalid device proof', code: 'INVALID_DEVICE_PROOF' });
+        return;
+    }
+
+    if (err.message === 'DEVICE_CONTEXT_CHANGED') {
+        res.status(409).json({ error: 'Device context changed', code: 'DEVICE_CONTEXT_CHANGED' });
+        return;
+    }
+
     if (err.message?.startsWith('EXTENSION_UPDATE_REQUIRED:')) {
         const minimumVersion = err.message.split(':', 2)[1] || null;
         res.status(426).json({ error: 'Extension update required', code: 'EXTENSION_UPDATE_REQUIRED', minimumVersion });

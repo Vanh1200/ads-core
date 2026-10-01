@@ -76,6 +76,26 @@ describe('XoyLicenseService device proof protocol', () => {
         expect(prismaMock.xoyDevice.create).not.toHaveBeenCalled();
     });
 
+    it('accepts an activation proof when the client clock is substantially skewed', async () => {
+        const keys = deviceKey();
+        prismaMock.xoyDeviceChallenge.findUnique.mockResolvedValue(challenge(keys.privateKey) as any);
+        prismaMock.xoyDeviceChallenge.updateMany.mockResolvedValue({ count: 1 } as any);
+        prismaMock.xoyDevice.updateMany.mockResolvedValue({ count: 0 } as any);
+        prismaMock.xoyDevice.findUnique.mockResolvedValue(null);
+        prismaMock.xoyDevice.count.mockResolvedValue(0 as any);
+        prismaMock.xoyDevice.create.mockResolvedValue({ id: 'device-a', licenseId: license.id, status: 'ACTIVE' } as any);
+        prismaMock.xoyDeviceSession.findUnique.mockResolvedValue(null);
+        prismaMock.xoyDeviceSession.create.mockResolvedValue({ id: 'session-a', deviceId: 'device-a' } as any);
+        prismaMock.xoyDeviceSession.update.mockResolvedValue({ id: 'session-a' } as any);
+        prismaMock.xoyDevice.update.mockResolvedValue({ id: 'device-a', licenseId: license.id, status: 'ACTIVE' } as any);
+        prismaMock.xoyLicense.findUnique.mockResolvedValue(license as any);
+
+        await expect(new XoyLicenseService().activate({
+            installationId: 'profile-1',
+            deviceProof: proofFor(keys.privateKey, 'challenge-1', 'nonce-1', 'profile-1', Date.now() - 24 * 60 * 60 * 1000),
+        })).resolves.toEqual(expect.objectContaining({ accessToken: expect.any(String) }));
+    });
+
     it('rejects a refresh when the device context belongs to another machine', async () => {
         prismaMock.xoyDeviceSession.findFirst.mockResolvedValue({ id: 'session-a', deviceId: 'device-a', refreshExpiresAt: new Date(Date.now() + 60_000), publicKey: { kty: 'EC' }, device: { licenseId: license.id, deviceHash: 'stored-hash', status: 'ACTIVE', license } } as any);
         await expect(new XoyLicenseService().createRefreshChallenge({ installationId: 'profile-1', refreshToken: 'token', deviceContext: context })).rejects.toThrow('DEVICE_CONTEXT_CHANGED');

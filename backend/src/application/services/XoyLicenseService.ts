@@ -6,7 +6,6 @@ const DEVICE_TOKEN_TTL = '15m';
 const REFRESH_TOKEN_DAYS = 90;
 const INACTIVE_DEVICE_DAYS = 45;
 const CHALLENGE_TTL_MS = 60_000;
-const PROOF_MAX_AGE_MS = 2 * 60_000;
 const MAX_USER_AGENT_LENGTH = 2_000;
 const TRIAL_DAYS = 7;
 
@@ -229,7 +228,12 @@ export class XoyLicenseService {
         const challenge = await prisma.xoyDeviceChallenge.findUnique({ where: { id: challengeId }, include: { license: true } });
         if (!challenge || challenge.purpose !== purpose || challenge.installationId !== installationId || challenge.nonceHash !== hash(nonce)) throw new Error('INVALID_DEVICE_PROOF');
         if (challenge.usedAt) throw new Error('CHALLENGE_REPLAYED');
-        if (challenge.expiresAt.getTime() <= Date.now() || !Number.isFinite(timestamp) || Math.abs(Date.now() - timestamp) > PROOF_MAX_AGE_MS) {
+        // The client timestamp is part of the signed payload, but must not be
+        // used as a clock check: Windows VPS instances can drift substantially
+        // from the server clock. The server-issued, one-time challenge already
+        // provides the replay boundary through its expiry and atomic usedAt
+        // update, independent of the client's wall clock.
+        if (challenge.expiresAt.getTime() <= Date.now() || !Number.isFinite(timestamp)) {
             await this.audit(challenge.licenseId, 'DEVICE_PROOF_FAILED', { reason: 'expired', purpose });
             throw new Error('CHALLENGE_EXPIRED');
         }
