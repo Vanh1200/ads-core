@@ -327,6 +327,15 @@ export class XoyLicenseService {
         return { status: 'REVOKED', revokedDevices: devices.count };
     }
     async getEntitlement(deviceId: string, sessionId?: string) { return this.entitlement((await this.currentDevice(deviceId, sessionId)).device.licenseId); }
+    async getRuntimeConfigContext(deviceId: string, sessionId: string) {
+        if (!deviceId || !sessionId) throw new Error('SESSION_INVALID');
+        const session = await this.currentDevice(deviceId, sessionId);
+        if (!session.publicKey) throw new Error('SESSION_INVALID');
+        return {
+            deviceId: session.deviceId, sessionId: session.id, publicKey: session.publicKey,
+            entitlement: await this.entitlement(session.device.licenseId),
+        };
+    }
 }
 
 export const xoyLicenseService = new XoyLicenseService();

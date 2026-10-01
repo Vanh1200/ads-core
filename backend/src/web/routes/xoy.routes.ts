@@ -4,6 +4,7 @@ import { asyncHandler } from '../../infrastructure/middleware/errorHandler';
 import { xoyLicenseService } from '../../application/services/XoyLicenseService';
 import { xoySupportLogService } from '../../application/services/XoySupportLogService';
 import { xoyRuntimeConfigService } from '../../application/services/XoyRuntimeConfigService';
+import { xoyEncryptedRuntimeConfigService } from '../../application/services/XoyEncryptedRuntimeConfigService';
 import { authenticateToken, isAdmin } from '../../infrastructure/middleware/auth';
 
 const router = Router();
@@ -53,6 +54,12 @@ router.get('/runtime-config', requireScope('xoy-device'), asyncHandler(async (re
     const extensionVersion = String(req.headers['x-xoy-extension-version'] || '');
     res.setHeader('Cache-Control', 'no-store');
     res.json(xoyRuntimeConfigService.create(entitlement, extensionVersion));
+}));
+router.post('/runtime-config/v2', requireScope('xoy-device'), asyncHandler(async (req: any, res) => {
+    res.setHeader('Cache-Control', 'no-store');
+    const context = await xoyLicenseService.getRuntimeConfigContext(req.xoyAuth.deviceId, req.xoyAuth.sessionId);
+    const token = String(req.headers.authorization || '').replace(/^Bearer\s+/i, '');
+    res.json(xoyEncryptedRuntimeConfigService.create(context, token, req.body));
 }));
 router.post('/support/logs/batches', requireScope('xoy-device'), asyncHandler(async (req: any, res) => {
     // A signed token may still exist briefly after a device is revoked. Check

@@ -21,6 +21,8 @@ describe('XoyRuntimeConfigService', () => {
         expect(config.rpc.appealSubmitSignals.buildVersion).toBe('boq_google-ads-supportplatform_20260830.04_p0');
         expect(config.rpc.accountList).not.toHaveProperty('trackingId');
         expect(config.protocol.tagToCategory[61]).toBe(8);
+        expect(config.protocol.tagToCategory[236]).toBe(5);
+        expect(config.protocol.tagToCategory[296]).toBe(5);
         expect(config).not.toHaveProperty('expiresAt');
     });
 
