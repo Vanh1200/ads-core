@@ -60,4 +60,14 @@ describe('XoySupportLogService', () => {
         }));
         expect(result.pagination).toEqual({ page: 3, limit: 50, total: 18_874, totalPages: 378 });
     });
+
+    it('returns a paginated job list without embedding every event for a customer', async () => {
+        prismaMock.xoySupportLogRun.findMany.mockResolvedValue([] as any);
+        prismaMock.xoySupportLogRun.count.mockResolvedValue(61);
+
+        const result = await new XoySupportLogService().listByLicense('license-1', { page: '2', limit: '30' });
+
+        expect(prismaMock.xoySupportLogRun.findMany).toHaveBeenCalledWith(expect.objectContaining({ skip: 30, take: 30 }));
+        expect(result.pagination).toEqual({ page: 2, limit: 30, total: 61, totalPages: 3 });
+    });
 });

@@ -71,7 +71,7 @@ export const xoyLicensesApi = {
 
 export const xoySupportLogsApi = {
     list: (params?: { supportId?: string; traceId?: string; jobType?: string; sentFrom?: string; sentTo?: string }) => api.get('/xoy/admin/support-logs', { params }),
-    listByLicense: (licenseId: string, params?: { supportId?: string; traceId?: string; jobType?: string; sentFrom?: string; sentTo?: string }) => api.get(`/xoy/admin/licenses/${encodeURIComponent(licenseId)}/support-logs`, { params }),
+    listByLicense: (licenseId: string, params?: { supportId?: string; traceId?: string; jobType?: string; sentFrom?: string; sentTo?: string; page?: number; limit?: number }) => api.get(`/xoy/admin/licenses/${encodeURIComponent(licenseId)}/support-logs`, { params }),
     get: (supportId: string, params?: { traceId?: string; jobType?: string; page?: number; limit?: number }) => api.get(`/xoy/admin/support-logs/${encodeURIComponent(supportId)}`, { params }),
 };
 

@@ -261,15 +261,15 @@ export class XoySupportLogService {
 
     async listByLicense(licenseId: string, input: SupportLogFilters) {
         const where = this.filters(input, licenseId);
-        const eventFilter = this.eventFilter(input);
-        const hasEventFilter = Object.keys(eventFilter).length > 0;
-        return prisma.xoySupportLogRun.findMany({
-            where, orderBy: { updatedAt: 'desc' }, take: 500,
-            include: {
-                device: { select: { license: { select: { id: true, name: true, telegramId: true, plan: true } } } },
-                events: { where: hasEventFilter ? eventFilter : undefined, orderBy: [{ occurredAt: 'asc' }, { createdAt: 'asc' }] },
-            },
-        });
+        const { page, limit } = pagination(input);
+        const [data, total] = await Promise.all([
+            prisma.xoySupportLogRun.findMany({
+                where, orderBy: { updatedAt: 'desc' }, skip: (page - 1) * limit, take: limit,
+                include: { device: { select: { license: { select: { id: true, name: true, telegramId: true, plan: true } } } } },
+            }),
+            prisma.xoySupportLogRun.count({ where }),
+        ]);
+        return { data, pagination: { page, limit, total, totalPages: Math.max(1, Math.ceil(total / limit)) } };
     }
 
     async getBySupportId(supportId: string, input: SupportLogFilters = {}) {
