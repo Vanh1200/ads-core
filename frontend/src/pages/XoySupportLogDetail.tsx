@@ -1,4 +1,4 @@
-import { Fragment, useMemo, useState } from 'react';
+import { Fragment, useEffect, useMemo, useState } from 'react';
 import { useNavigate, useParams, useSearchParams } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
 import { ArrowLeft, Check, ClipboardCopy, ShieldAlert } from 'lucide-react';
@@ -114,10 +114,18 @@ export default function XoySupportLogDetail() {
     const { licenseId } = useParams<{ licenseId: string }>();
     const navigate = useNavigate();
     const [searchParams] = useSearchParams();
+    const supportIdFromUrl = searchParams.get('supportId')?.trim() || '';
     const [filters, setFilters] = useState<XoyLogFilters>(() => ({ ...EMPTY_XOY_LOG_FILTERS, supportId: searchParams.get('supportId') || '' }));
     const [page, setPage] = useState(1);
     const [limit, setLimit] = useState(30);
     const [copied, setCopied] = useState<string | null>(null);
+    // React keeps this screen mounted when only ?supportId changes. Sync that
+    // URL state so a click from the customer's job list actually opens the
+    // selected job detail rather than leaving the previous list rendered.
+    useEffect(() => {
+        setFilters((current) => current.supportId.trim() === supportIdFromUrl ? current : { ...EMPTY_XOY_LOG_FILTERS, supportId: supportIdFromUrl });
+        setPage(1);
+    }, [supportIdFromUrl]);
     const licenses = useQuery({ queryKey: ['xoy-licenses'], queryFn: xoyLicensesApi.list });
     const supportId = filters.supportId.trim();
     const isSingleSupport = /^SUP-[A-Z0-9]+$/i.test(supportId);
@@ -147,7 +155,7 @@ export default function XoySupportLogDetail() {
             </section>)}</div>}
             {pagination?.total > 0 && <div className="pagination-container" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 12, flexWrap: 'wrap', padding: '0 16px 16px' }}>
                 <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}><span style={{ color: 'var(--text-muted)', fontSize: 13 }}>{isSingleSupport ? 'Số dòng hiển thị:' : 'Số job hiển thị:'}</span><select className="form-select" style={{ width: 'auto', padding: '4px 8px', fontSize: 13 }} value={limit} onChange={(event) => { setLimit(Number(event.target.value)); setPage(1); }}><option value={10}>10</option><option value={20}>20</option><option value={30}>30</option><option value={50}>50</option><option value={100}>100</option></select><span style={{ color: 'var(--text-muted)', fontSize: 13 }}>{((page - 1) * limit) + 1} - {Math.min(page * limit, pagination.total)} trong tổng số {pagination.total}</span></div>
-                <div className="pagination"><button className="pagination-btn" disabled={page <= 1} onClick={() => setPage(page - 1)}>← Trước</button><span className="pagination-info">Trang {page} / {pagination.totalPages}</span><button className="pagination-btn" disabled={page >= pagination.totalPages} onClick={() => setPage(page + 1)}>Sau →</button></div>
+                <div className="pagination"><button className="pagination-btn" disabled={page <= 1} onClick={() => setPage(page - 1)}>← Trước</button><span className="pagination-info">Trang {page} / {pagination.totalPages}</span><button className="pagination-btn" disabled={page >= pagination.totalPages} onClick={() => setPage(page + 1)}>Sau →</button><button className="pagination-btn" disabled={page >= pagination.totalPages} onClick={() => setPage(pagination.totalPages)}>Đến trang cuối →</button></div>
             </div>}
         </div>
     </div>;
