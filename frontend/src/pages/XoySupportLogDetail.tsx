@@ -115,22 +115,40 @@ export default function XoySupportLogDetail() {
     const navigate = useNavigate();
     const [searchParams] = useSearchParams();
     const [filters, setFilters] = useState<XoyLogFilters>(() => ({ ...EMPTY_XOY_LOG_FILTERS, supportId: searchParams.get('supportId') || '' }));
+    const [page, setPage] = useState(1);
+    const [limit, setLimit] = useState(30);
     const [copied, setCopied] = useState<string | null>(null);
     const licenses = useQuery({ queryKey: ['xoy-licenses'], queryFn: xoyLicensesApi.list });
-    const logs = useQuery({ queryKey: ['xoy-license-support-logs', licenseId, filters], queryFn: () => xoySupportLogsApi.listByLicense(licenseId!, filters), enabled: Boolean(licenseId), refetchInterval: 15_000 });
+    const supportId = filters.supportId.trim();
+    const isSingleSupport = /^SUP-[A-Z0-9]+$/i.test(supportId);
+    const logs = useQuery({
+        queryKey: ['xoy-license-support-logs', licenseId, filters, page, limit],
+        queryFn: () => isSingleSupport
+            ? xoySupportLogsApi.get(supportId, { traceId: filters.traceId || undefined, jobType: filters.jobType || undefined, page, limit })
+            : xoySupportLogsApi.listByLicense(licenseId!, filters),
+        enabled: Boolean(licenseId),
+        refetchInterval: 15_000,
+    });
     const license = (licenses.data?.data || []).find((item: any) => item.id === licenseId);
-    const runs = logs.data?.data || [];
+    const detailRun = isSingleSupport ? logs.data?.data?.data : null;
+    const runs = isSingleSupport ? (detailRun ? [detailRun] : []) : (logs.data?.data || []);
+    const eventPagination = isSingleSupport ? logs.data?.data?.pagination : null;
     const knownTypes = useMemo<string[]>(() => [...new Set<string>(runs.flatMap((run: any) => run.events.map((event: any) => event.jobType).filter(Boolean)))].sort(), [runs]);
     const copy = async (key: string, text: string) => { await navigator.clipboard.writeText(text); setCopied(key); };
+    const applyFilters = (next: XoyLogFilters) => { setFilters(next); setPage(1); };
     return <div>
         <div className="page-header" style={{ alignItems: 'center' }}><div style={{ display: 'flex', gap: 12, alignItems: 'center' }}><button className="btn btn-secondary" onClick={() => navigate('/xoy-support-logs')}><ArrowLeft size={16} />Quay lại</button><div><h1 className="page-title">Support log · {license?.name || 'Đang tải...'}</h1><p className="page-subtitle">{license?.telegramId ? `Telegram: ${license.telegramId} · ` : ''}{filters.supportId ? `Chi tiết job ${filters.supportId}.` : 'Tra cứu, lọc và sao chép dữ liệu theo từng mã hỗ trợ.'}</p></div></div><button className="btn btn-primary" disabled={!runs.length} onClick={() => copy('all', copyableAll(license, runs))}>{copied === 'all' ? <Check size={16} /> : <ClipboardCopy size={16} />}{copied === 'all' ? 'Đã sao chép' : 'Copy toàn bộ log'}</button></div>
-        <XoySupportLogFilters value={filters} jobTypes={knownTypes} onApply={setFilters} />
+        <XoySupportLogFilters value={filters} jobTypes={knownTypes} onApply={applyFilters} />
         <div className="card"><div className="card-header"><ShieldAlert size={18} />Chi tiết support logs</div>
             {logs.isLoading ? <div style={{ padding: 20 }}>Đang tải log...</div> : logs.isError ? <div style={{ padding: 20, color: 'var(--danger)' }}>Không tải được support log.</div> : runs.length === 0 ? <div style={{ padding: 20 }}>Không có log phù hợp với bộ lọc hiện tại.</div> : <div style={{ padding: 16, display: 'grid', gap: 14 }}>{runs.map((run: any) => <section key={run.id} className="card" style={{ margin: 0, overflow: 'hidden' }}>
-                <div className="card-header" style={{ justifyContent: 'space-between' }}><span><strong>{run.supportId}</strong> · {run.events.length} sự kiện · {formatXoyLogTime(run.updatedAt)}</span><button className="btn btn-secondary btn-sm" onClick={() => copy(run.id, copyableRun(run))}>{copied === run.id ? <Check size={15} /> : <ClipboardCopy size={15} />}{copied === run.id ? 'Đã sao chép' : 'Copy support'}</button></div>
+                <div className="card-header" style={{ justifyContent: 'space-between' }}><span><strong>{run.supportId}</strong> · {isSingleSupport && eventPagination ? `${eventPagination.total} sự kiện` : `${run.events.length} sự kiện`} · {formatXoyLogTime(run.updatedAt)}</span><button className="btn btn-secondary btn-sm" onClick={() => copy(run.id, copyableRun(run))}>{copied === run.id ? <Check size={15} /> : <ClipboardCopy size={15} />}{copied === run.id ? 'Đã sao chép' : 'Copy support'}</button></div>
                 <RunProgressSummary run={run} />
                 <div style={{ display: 'grid', gap: 8, padding: 12 }}>{run.events.map((event: any) => <div key={event.id} style={{ borderLeft: `4px solid ${event.success === false ? 'var(--danger)' : event.success === true ? 'var(--secondary)' : 'var(--border)'}`, background: 'var(--background)', padding: '10px 12px', borderRadius: 4 }}><div style={{ fontSize: 12, color: 'var(--text-muted)', marginBottom: 6 }}>{formatXoyLogTime(event.occurredAt)} {event.traceId ? `· ${event.traceId}` : ''} {event.jobType ? `· ${event.jobType}` : ''}</div><pre style={{ margin: 0, whiteSpace: 'pre-wrap', overflowWrap: 'anywhere', fontFamily: 'ui-monospace, SFMono-Regular, Menlo, monospace', fontSize: 13, color: 'var(--text)' }}>{event.text}</pre><AppealTemplateCard event={event} /></div>)}</div>
             </section>)}</div>}
+            {eventPagination?.total > 0 && <div className="pagination-container" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 12, flexWrap: 'wrap', padding: '0 16px 16px' }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}><span style={{ color: 'var(--text-muted)', fontSize: 13 }}>Số dòng hiển thị:</span><select className="form-select" style={{ width: 'auto', padding: '4px 8px', fontSize: 13 }} value={limit} onChange={(event) => { setLimit(Number(event.target.value)); setPage(1); }}><option value={10}>10</option><option value={20}>20</option><option value={30}>30</option><option value={50}>50</option><option value={100}>100</option></select><span style={{ color: 'var(--text-muted)', fontSize: 13 }}>{((page - 1) * limit) + 1} - {Math.min(page * limit, eventPagination.total)} trong tổng số {eventPagination.total}</span></div>
+                <div className="pagination"><button className="pagination-btn" disabled={page <= 1} onClick={() => setPage(page - 1)}>← Trước</button><span className="pagination-info">Trang {page} / {eventPagination.totalPages}</span><button className="pagination-btn" disabled={page >= eventPagination.totalPages} onClick={() => setPage(page + 1)}>Sau →</button></div>
+            </div>}
         </div>
     </div>;
 }

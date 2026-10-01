@@ -89,7 +89,7 @@ router.get('/admin/licenses/:licenseId/support-logs', authenticateToken, isAdmin
     res.json(await xoySupportLogService.listByLicense(req.params.licenseId, req.query));
 }));
 router.get('/admin/support-logs/:supportId', authenticateToken, isAdmin, asyncHandler(async (req, res) => {
-    res.json(await xoySupportLogService.getBySupportId(req.params.supportId));
+    res.json(await xoySupportLogService.getBySupportId(req.params.supportId, req.query));
 }));
 
 export default router;

@@ -76,6 +76,15 @@ function optionalDate(value: unknown, endOfDay = false) {
     return date;
 }
 
+function pagination(input: SupportLogFilters) {
+    const requestedPage = Math.floor(Number(input.page));
+    const requestedLimit = Math.floor(Number(input.limit));
+    return {
+        page: Number.isFinite(requestedPage) && requestedPage > 0 ? requestedPage : 1,
+        limit: Number.isFinite(requestedLimit) ? Math.min(100, Math.max(10, requestedLimit)) : 30,
+    };
+}
+
 function newSupportId() {
     return `SUP-${crypto.randomBytes(4).toString('hex').toUpperCase()}`;
 }
@@ -263,16 +272,28 @@ export class XoySupportLogService {
         });
     }
 
-    async getBySupportId(supportId: string) {
-        const run = await prisma.xoySupportLogRun.findUnique({
+    async getBySupportId(supportId: string, input: SupportLogFilters = {}) {
+        const { page, limit } = pagination(input);
+        const eventFilter = this.eventFilter(input);
+        const [run, total] = await Promise.all([
+            prisma.xoySupportLogRun.findUnique({
             where: { supportId },
             include: {
                 device: { select: { license: { select: { name: true } } } },
-                events: { orderBy: [{ occurredAt: 'asc' }, { createdAt: 'asc' }] },
+                events: {
+                    where: Object.keys(eventFilter).length ? eventFilter : undefined,
+                    orderBy: [{ occurredAt: 'asc' }, { createdAt: 'asc' }],
+                    skip: (page - 1) * limit,
+                    take: limit,
+                },
             },
-        });
+            }),
+            prisma.xoySupportLogEvent.count({
+                where: { run: { supportId }, ...(Object.keys(eventFilter).length ? eventFilter : {}) },
+            }),
+        ]);
         if (!run) throw new Error('NOT_FOUND: Không tìm thấy support log');
-        return run;
+        return { data: run, pagination: { page, limit, total, totalPages: Math.max(1, Math.ceil(total / limit)) } };
     }
 }
 

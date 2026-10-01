@@ -48,4 +48,16 @@ describe('XoySupportLogService', () => {
         expect(query.select).not.toHaveProperty('inputIds');
         expect(query.select).not.toHaveProperty('inputMccIds');
     });
+
+    it('paginates the events of one support job instead of loading its full history', async () => {
+        prismaMock.xoySupportLogRun.findUnique.mockResolvedValue({ id: 'run-db-1', supportId: 'SUP-0E32B137', events: [] } as any);
+        prismaMock.xoySupportLogEvent.count.mockResolvedValue(18_874);
+
+        const result = await new XoySupportLogService().getBySupportId('SUP-0E32B137', { page: '3', limit: '50' });
+
+        expect(prismaMock.xoySupportLogRun.findUnique).toHaveBeenCalledWith(expect.objectContaining({
+            include: expect.objectContaining({ events: expect.objectContaining({ skip: 100, take: 50 }) }),
+        }));
+        expect(result.pagination).toEqual({ page: 3, limit: 50, total: 18_874, totalPages: 378 });
+    });
 });
