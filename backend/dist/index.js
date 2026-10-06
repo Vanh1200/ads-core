@@ -46,6 +46,7 @@ const creditLinking_routes_1 = __importDefault(require("./web/routes/creditLinki
 const stats_routes_1 = __importDefault(require("./web/routes/stats.routes"));
 const googleAds_routes_1 = __importDefault(require("./web/routes/googleAds.routes"));
 const xoy_routes_1 = __importDefault(require("./web/routes/xoy.routes"));
+const XoySupportLogRetention_1 = require("./application/services/XoySupportLogRetention");
 // Import infrastructure
 const Logger_1 = require("./infrastructure/logging/Logger");
 const errorHandler_1 = require("./infrastructure/middleware/errorHandler");
@@ -238,8 +239,11 @@ async function applyDatabasePatches() {
         await prisma_1.default.$executeRawUnsafe('CREATE UNIQUE INDEX IF NOT EXISTS "xoy_support_log_events_run_db_id_event_id_key" ON "xoy_support_log_events"("run_db_id", "event_id")');
         await prisma_1.default.$executeRawUnsafe('CREATE INDEX IF NOT EXISTS "xoy_support_log_events_run_db_id_occurred_at_idx" ON "xoy_support_log_events"("run_db_id", "occurred_at")');
         await prisma_1.default.$executeRawUnsafe('CREATE INDEX IF NOT EXISTS "xoy_support_log_events_trace_id_idx" ON "xoy_support_log_events"("trace_id")');
+        await prisma_1.default.$executeRawUnsafe('CREATE INDEX IF NOT EXISTS "xoy_support_log_events_created_at_idx" ON "xoy_support_log_events"("created_at")');
+        await prisma_1.default.$executeRawUnsafe('CREATE TABLE IF NOT EXISTS "xoy_support_log_maintenance" ("id" INTEGER PRIMARY KEY CHECK ("id" = 1), "paused" BOOLEAN NOT NULL DEFAULT FALSE)');
+        await prisma_1.default.$executeRawUnsafe('INSERT INTO "xoy_support_log_maintenance" ("id", "paused") VALUES (1, FALSE) ON CONFLICT ("id") DO NOTHING');
         // Structured job telemetry is kept on the run for fast operational
-        // dashboards; raw events remain append-only for support investigations.
+        // dashboards; raw events expire after 48 hours for support investigations.
         await prisma_1.default.$executeRawUnsafe('ALTER TABLE "xoy_support_log_runs" ADD COLUMN IF NOT EXISTS "job_id" TEXT');
         await prisma_1.default.$executeRawUnsafe('ALTER TABLE "xoy_support_log_runs" ADD COLUMN IF NOT EXISTS "trace_id" TEXT');
         await prisma_1.default.$executeRawUnsafe('ALTER TABLE "xoy_support_log_runs" ADD COLUMN IF NOT EXISTS "job_type" TEXT');
@@ -274,13 +278,18 @@ async function applyDatabasePatches() {
         await prisma_1.default.$executeRawUnsafe('CREATE INDEX IF NOT EXISTS "xoy_device_audits_license_id_created_at_idx" ON "xoy_device_audits"("license_id", "created_at")');
         await prisma_1.default.$executeRawUnsafe('CREATE INDEX IF NOT EXISTS "xoy_device_audits_device_id_created_at_idx" ON "xoy_device_audits"("device_id", "created_at")');
         console.log('[DB] Database patches applied.\n');
+        return true;
     }
     catch (err) {
         // Only log if it's a real error, if it's already dropped it might or might not error
         console.error('[DB] Lỗi khi chạy database patches:', err.message);
+        return false;
     }
 }
-applyDatabasePatches();
+applyDatabasePatches().then(applied => {
+    if (applied)
+        (0, XoySupportLogRetention_1.startXoySupportLogRetention)();
+});
 // Bind explicitly to 0.0.0.0
 app.listen(PORT, '0.0.0.0', () => {
     console.log(`🚀 Ads Core System running on http://0.0.0.0:${PORT}`);

@@ -14,7 +14,8 @@
     "db:migrate": "prisma migrate dev",
     "db:studio": "prisma studio",
     "db:seed": "ts-node prisma/seed.ts",
-    "db:backup": "ts-node scripts/backup_production.ts"
+    "db:backup": "ts-node scripts/backup_production.ts",
+    "xoy:logs:retention": "ts-node scripts/xoy_log_retention.ts"
   },
   "keywords": [
     "google-ads",

@@ -103,4 +103,5 @@ test-db.ts
 backend/test-db.ts
 backend.log
 frontend.log
+.xoy-maintenance/
 node_modules

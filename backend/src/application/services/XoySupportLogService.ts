@@ -1,5 +1,7 @@
 import crypto from 'crypto';
 import prisma from '../../infrastructure/database/prisma';
+import { withXoySupportLogWrite } from './XoySupportLogMaintenance';
+import { shouldStoreSupportEvent } from './XoySupportLogPolicy';
 
 type IncomingEvent = {
     eventId: string;
@@ -127,61 +129,70 @@ export class XoySupportLogService {
             eventType: optionalText(event?.eventType, MAX_EVENT_TYPE_LENGTH) || 'log',
             metadata: safeJson(event?.metadata),
             text: requiredText(event?.text, 'text', MAX_TEXT_LENGTH),
-            fileLine: optionalText(event?.fileLine, MAX_TEXT_LENGTH),
+            // Legacy clients send a second formatted copy of text here. The
+            // support UI/export uses text + timestamps, so do not persist it.
             displayTime: optionalText(event?.displayTime),
         }));
 
-        const run = await prisma.xoySupportLogRun.upsert({
-            where: { deviceId_runId: { deviceId, runId } },
-            create: { deviceId, runId, supportId: newSupportId() },
-            update: {},
-        });
-        await prisma.xoySupportLogEvent.createMany({
-            // Prisma distinguishes a database NULL from a JSON null. Support
-            // log lines normally do not have metadata, so omit the JSON field
-            // entirely rather than passing JavaScript null and rejecting the
-            // whole batch (including a paused job's lifecycle event).
-            data: events.map(({ metadata, ...event }) => ({
-                ...event,
-                occurredAt: safeOccurredAt(event.occurredAt),
-                runDbId: run.id,
-                ...(metadata == null ? {} : { metadata }),
-            })),
-            skipDuplicates: true,
-        });
-        const lifecycle = [...events].reverse().find((event) =>
-            ['job_started', 'job_progress', 'job_finished'].includes(event.eventType || '') && event.metadata
-        );
-        // Lifecycle events carry the counters, while a restored job retried
-        // manually may only have ordinary log events. Both forms include the
-        // job identity, so persist that identity from any event in the run.
-        const jobContext = lifecycle || [...events].reverse().find((event) =>
-            Boolean(event.jobId || event.traceId || event.jobType)
-        );
-        if (jobContext) {
-            const metadata: any = lifecycle?.metadata;
-            await prisma.xoySupportLogRun.update({
-                where: { id: run.id },
-                data: {
-                    jobId: jobContext.jobId || undefined,
-                    traceId: jobContext.traceId || undefined,
-                    jobType: jobContext.jobType || undefined,
-                    ...(metadata ? {
-                        jobStatus: optionalText(metadata.jobStatus),
-                        inputIds: metadataArray(metadata.inputIds),
-                        inputMccIds: metadataArray(metadata.inputMccIds),
-                        targetTotal: safeNumber(metadata.totalTargets),
-                        processedTargets: safeNumber(metadata.processedTargets),
-                        successfulTargets: safeNumber(metadata.successfulTargets),
-                        failedTargets: safeNumber(metadata.failedTargets),
-                        skippedTargets: safeNumber(metadata.skippedTargets),
-                        startedAt: metadata.startedAt ? safeOccurredAt(metadata.startedAt) : undefined,
-                        finishedAt: metadata.finishedAt ? safeOccurredAt(metadata.finishedAt) : undefined,
-                    } : {}),
-                },
+        return withXoySupportLogWrite(async database => {
+            const run = await database.xoySupportLogRun.upsert({
+                where: { deviceId_runId: { deviceId, runId } },
+                create: { deviceId, runId, supportId: newSupportId() },
+                update: {},
             });
-        }
-        return { supportId: run.supportId, acceptedEventIds: events.map((event) => event.eventId) };
+            const retainedEvents = events.filter(shouldStoreSupportEvent);
+            if (retainedEvents.length) await database.xoySupportLogEvent.createMany({
+                // Prisma distinguishes a database NULL from a JSON null. Support
+                // log lines normally do not have metadata, so omit the JSON field
+                // entirely rather than passing JavaScript null and rejecting the
+                // whole batch (including a paused job's lifecycle event).
+                data: retainedEvents.map(({ metadata, ...event }) => ({
+                    ...event,
+                    occurredAt: safeOccurredAt(event.occurredAt),
+                    runDbId: run.id,
+                    ...(metadata == null ? {} : { metadata }),
+                })),
+                skipDuplicates: true,
+            });
+            const lifecycle = [...events].reverse().find((event) =>
+                ['job_started', 'job_progress', 'job_finished'].includes(event.eventType || '') && event.metadata
+            );
+            // Lifecycle events carry the counters, while a restored job retried
+            // manually may only have ordinary log events. Both forms include the
+            // job identity, so persist that identity from any event in the run.
+            const jobContext = lifecycle || [...events].reverse().find((event) =>
+                Boolean(event.jobId || event.traceId || event.jobType)
+            );
+            const identityChanged = jobContext && (
+                (jobContext.jobId && jobContext.jobId !== run.jobId)
+                || (jobContext.traceId && jobContext.traceId !== run.traceId)
+                || (jobContext.jobType && jobContext.jobType !== run.jobType)
+            );
+            if (jobContext && (retainedEvents.length || lifecycle || identityChanged)) {
+                const metadata: any = lifecycle?.metadata;
+                await database.xoySupportLogRun.update({
+                    where: { id: run.id },
+                    data: {
+                        jobId: jobContext.jobId || undefined,
+                        traceId: jobContext.traceId || undefined,
+                        jobType: jobContext.jobType || undefined,
+                        ...(metadata ? {
+                            jobStatus: optionalText(metadata.jobStatus),
+                            inputIds: metadataArray(metadata.inputIds),
+                            inputMccIds: metadataArray(metadata.inputMccIds),
+                            targetTotal: safeNumber(metadata.totalTargets),
+                            processedTargets: safeNumber(metadata.processedTargets),
+                            successfulTargets: safeNumber(metadata.successfulTargets),
+                            failedTargets: safeNumber(metadata.failedTargets),
+                            skippedTargets: safeNumber(metadata.skippedTargets),
+                            startedAt: metadata.startedAt ? safeOccurredAt(metadata.startedAt) : undefined,
+                            finishedAt: metadata.finishedAt ? safeOccurredAt(metadata.finishedAt) : undefined,
+                        } : {}),
+                    },
+                });
+            }
+            return { supportId: run.supportId, acceptedEventIds: events.map((event) => event.eventId) };
+        });
     }
 
     async operationalMetrics(input: Pick<SupportLogFilters, 'sentFrom' | 'sentTo'>) {

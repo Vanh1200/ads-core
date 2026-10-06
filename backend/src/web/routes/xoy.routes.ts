@@ -3,6 +3,7 @@ import jwt from 'jsonwebtoken';
 import { asyncHandler } from '../../infrastructure/middleware/errorHandler';
 import { xoyLicenseService } from '../../application/services/XoyLicenseService';
 import { xoySupportLogService } from '../../application/services/XoySupportLogService';
+import { XOY_LOG_MAINTENANCE } from '../../application/services/XoySupportLogMaintenance';
 import { xoyRuntimeConfigService } from '../../application/services/XoyRuntimeConfigService';
 import { xoyEncryptedRuntimeConfigService } from '../../application/services/XoyEncryptedRuntimeConfigService';
 import { authenticateToken, isAdmin } from '../../infrastructure/middleware/auth';
@@ -65,7 +66,13 @@ router.post('/support/logs/batches', requireScope('xoy-device'), asyncHandler(as
     // A signed token may still exist briefly after a device is revoked. Check
     // current device/license state before accepting diagnostic data.
     await xoyLicenseService.getEntitlement(req.xoyAuth.deviceId, req.xoyAuth.sessionId);
-    res.json(await xoySupportLogService.ingest(req.xoyAuth.deviceId, req.body));
+    try {
+        res.json(await xoySupportLogService.ingest(req.xoyAuth.deviceId, req.body));
+    } catch (error) {
+        if (!(error instanceof Error && error.message === XOY_LOG_MAINTENANCE)) throw error;
+        res.setHeader('Retry-After', '60');
+        res.status(503).json({ code: XOY_LOG_MAINTENANCE, error: 'Đang bảo trì log. Vui lòng thử lại sau.' });
+    }
 }));
 router.get('/admin/licenses/:licenseId/key', authenticateToken, isAdmin, asyncHandler(async (req, res) => {
     res.json(await xoyLicenseService.getLicenseKey(req.params.licenseId));

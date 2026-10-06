@@ -504,6 +504,13 @@ model XoySupportLogRun {
   @@map("xoy_support_log_runs")
 }
 
+model XoySupportLogMaintenance {
+  id     Int     @id @default(1)
+  paused Boolean @default(false)
+
+  @@map("xoy_support_log_maintenance")
+}
+
 model XoySupportLogEvent {
   id          String   @id @default(uuid())
   runDbId     String   @map("run_db_id")
@@ -524,6 +531,7 @@ model XoySupportLogEvent {
 
   @@unique([runDbId, eventId])
   @@index([runDbId, occurredAt])
+  @@index([createdAt])
   @@index([traceId])
   @@map("xoy_support_log_events")
 }
