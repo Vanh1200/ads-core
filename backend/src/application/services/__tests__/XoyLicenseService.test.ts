@@ -97,7 +97,7 @@ describe('XoyLicenseService device proof protocol', () => {
     });
 
     it('rejects a refresh when the device context belongs to another machine', async () => {
-        prismaMock.xoyDeviceSession.findFirst.mockResolvedValue({ id: 'session-a', deviceId: 'device-a', refreshExpiresAt: new Date(Date.now() + 60_000), publicKey: { kty: 'EC' }, device: { licenseId: license.id, deviceHash: 'stored-hash', status: 'ACTIVE', license } } as any);
+        prismaMock.xoyDeviceSession.findFirst.mockResolvedValue({ id: 'session-a', deviceId: 'device-a', refreshTokenHash: 'hash', refreshExpiresAt: new Date(Date.now() + 60_000), publicKey: { kty: 'EC' }, device: { licenseId: license.id, deviceHash: 'stored-hash', status: 'ACTIVE', license } } as any);
         await expect(new XoyLicenseService().createRefreshChallenge({ installationId: 'profile-1', refreshToken: 'token', deviceContext: context })).rejects.toThrow('DEVICE_CONTEXT_CHANGED');
         expect(prismaMock.xoyDeviceAudit.create).toHaveBeenCalledWith(expect.objectContaining({ data: expect.objectContaining({ eventType: 'DEVICE_CONTEXT_CHANGED' }) }));
     });

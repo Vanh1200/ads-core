@@ -205,10 +205,17 @@ export class XoyLicenseService {
         const data = this.metadata(input);
         return this.createChallenge({ licenseId: license.id, purpose: 'ACTIVATE', installationId, ...data, publicKey: normalizePublicKey(input.devicePublicKey) });
     }
-    async createRefreshChallenge(input: ChallengeInput & { refreshToken: string }) {
+    async createRefreshChallenge(input: ChallengeInput & { refreshToken: string; recoverSession?: boolean; devicePublicKey?: unknown }) {
         const installationId = requiredText(input.installationId, 'Installation ID', 255);
-        const session = await prisma.xoyDeviceSession.findFirst({ where: { installationId, refreshTokenHash: hash(requiredText(input.refreshToken, 'Refresh token', 1_000)), revokedAt: null }, include: { device: { include: { license: true } } } });
-        if (!session || !session.refreshExpiresAt || session.refreshExpiresAt.getTime() <= Date.now() || session.device.status !== 'ACTIVE') throw new Error('SESSION_INVALID');
+        let session = await prisma.xoyDeviceSession.findFirst({ where: { installationId, refreshTokenHash: hash(requiredText(input.refreshToken, 'Refresh token', 1_000)), revokedAt: null }, include: { device: { include: { license: true } } } });
+        if (!session && input.recoverSession === true) {
+            // A lost refresh response leaves a valid registered profile with an
+            // obsolete token. This issues only a nonce, never credentials. The
+            // final refresh must be signed by its previously registered key.
+            session = await prisma.xoyDeviceSession.findUnique({ where: { installationId }, include: { device: { include: { license: true } } } });
+            if (!session?.publicKey || publicKeyHash(normalizePublicKey(input.devicePublicKey)) !== publicKeyHash(normalizePublicKey(session.publicKey))) throw new Error('SESSION_INVALID');
+        }
+        if (!session || session.revokedAt || !session.refreshTokenHash || !session.refreshExpiresAt || session.refreshExpiresAt.getTime() <= Date.now() || session.device.status !== 'ACTIVE') throw new Error('SESSION_INVALID');
         ensureUsableLicense(session.device.license);
         const data = this.metadata(input);
         if (data.deviceHash !== session.device.deviceHash) {
@@ -275,7 +282,11 @@ export class XoyLicenseService {
         const challenge = await this.consumeChallenge(input, 'REFRESH');
         if (!challenge.sessionId) throw new Error('SESSION_INVALID');
         const session = await prisma.xoyDeviceSession.findUnique({ where: { id: challenge.sessionId }, include: { device: { include: { license: true } } } });
-        if (!session || session.revokedAt || session.device.status !== 'ACTIVE') throw new Error('SESSION_INVALID');
+        if (!session || session.revokedAt || session.installationId !== challenge.installationId
+            || !session.refreshTokenHash || !session.refreshExpiresAt || session.refreshExpiresAt.getTime() <= Date.now()
+            || session.device.status !== 'ACTIVE' || session.device.licenseId !== challenge.licenseId
+            || !session.publicKey || publicKeyHash(session.publicKey) !== challenge.publicKeyHash) throw new Error('SESSION_INVALID');
+        if (session.device.deviceHash !== challenge.deviceHash) throw new Error('DEVICE_CONTEXT_CHANGED');
         ensureUsableLicense(session.device.license);
         return this.issueDeviceSession(session.device, session);
     }
